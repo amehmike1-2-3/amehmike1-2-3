@@ -1,0 +1,75 @@
+<section id="team">
+  <h2>Meet Our Team</h2>
+  <ul>
+    <li>
+      <img src="dr-smith.jpg" alt="Dr. Smith">
+      <h3>Dr. Smith</h3>
+      <p>Cardiovascular Specialist</p>
+    </li>
+    <li>
+      <img src="dr-johnson.jpg" alt="Dr. Johnson">
+      <h3>Dr. Johnson</h3>
+      <p>Oncology Specialist</p>
+    </li>
+    <li>
+      <img src="dr-davis.jpg" alt="Dr. Davis">
+      <h3>Dr. Davis</h3>
+      <p>Neurology Specialist</p>
+    </li>
+  </ul>
+</section>
+```
+_Testimonials Page:_
+
+Create a new file called `testimonials.html` and add:
+```
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Testimonials</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>What Our Patients Say</h1>
+  <ul>
+    <li>
+      <blockquote>
+        "Excellent care and compassion!"
+      </blockquote>
+      <p>— John D.</p>
+    </li>
+    <li>
+      <blockquote>
+        "Professional and courteous staff!"
+      </blockquote>
+      <p>— Emily K.</p>
+    </li>
+    <li>
+      <blockquote>
+        "Life-changing treatment!"
+      </blockquote>
+      <p>— David L.</p>
+    </li>
+  </ul>
+</body>
+</html>
+<section id="appointment">
+  <h2>Book an Appointment</h2>
+  <form>
+    <label>Name:</label>
+    <input type="text" name="name"><br><br>
+    <label>Email:</label>
+    <input type="email" name="email"><br><br>
+    <label>Department:</label>
+    <select name="department">
+      <option value="cardiology">Cardiology</option>
+      <option value="oncology">Oncology</option>
+      <option value="neurology">Neurology</option>
+    </select><br><br>
+    <label>Date:</label>
+    <input type="date" name="date"><br><br>
+    <label>Time:</label>
+    <input type="time" name="time"><br><br>
+    <button>Book Appointment</button>
+  </form>
+</section>
