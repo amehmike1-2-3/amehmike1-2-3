@@ -1088,29 +1088,55 @@ let currentFilter='all';
   if(s){const u=dec(s);if(u){currentUser=u;}}
 })();
 
-// --- MOBILE STEALTH ADMIN TRIGGER (FINAL VERSION) ---
+  // --- BUTTON FIXER ---
+function go(pageId) {
+    // 1. Hide all pages
+    document.querySelectorAll('.page').forEach(p => {
+        p.style.display = 'none';
+        p.classList.remove('active');
+    });
+
+    // 2. Show the page the button is asking for
+    let target = document.getElementById(pageId);
+    
+    // 3. If it can't find it, try adding 'page-' to the front automatically
+    if (!target) target = document.getElementById('page-' + pageId);
+
+    if (target) {
+        target.style.display = 'block';
+        target.classList.add('active');
+    } else {
+        console.log("Could not find page: " + pageId);
+    }
+}
+
+
+// --- MOBILE STEALTH ADMIN TRIGGER (POWER VERSION) ---
 let adminTaps = 0;
 document.addEventListener('click', (e) => {
+    // This looks for your logo or any image in the navigation
     if (e.target.closest('.nav-logo') || e.target.closest('img')) {
         adminTaps++;
         if (adminTaps === 5) {
             let masterKey = prompt("ENTER SYSTEM KEY:");
             if (masterKey && masterKey.toUpperCase() === "NEYO2026") {
-                // 1. Hide the Login Page
-                const loginPage = document.getElementById('page-login');
-                if (loginPage) loginPage.style.display = 'none';
                 
-                // 2. Open the REAL Dashboard (using ID from your photo)
+                // 1. HIDE EVERY SINGLE PAGE (Force Clear)
+                document.querySelectorAll('.page').forEach(p => {
+                    p.style.display = 'none';
+                    p.classList.remove('active');
+                });
+
+                // 2. SHOW THE DASHBOARD (Using the ID from your photo)
                 const dashboard = document.getElementById('page-admin');
                 if (dashboard) {
                     dashboard.style.display = 'block';
-                    dashboard.classList.add('active'); 
+                    dashboard.classList.add('active');
+                    console.log("Admin Dashboard Loaded");
+                } else {
+                    alert("Error: page-admin not found in code.");
                 }
-                
-                // 3. Force the internal system to load the view
-                if (typeof go === "function") {
-                    go('page-admin');
-                }
+
             } else {
                 alert("ACCESS DENIED");
             }
@@ -1119,7 +1145,6 @@ document.addEventListener('click', (e) => {
         setTimeout(() => { adminTaps = 0; }, 3000);
     }
 });
-
 
 
 // ══════════════════════════════════════════════════
