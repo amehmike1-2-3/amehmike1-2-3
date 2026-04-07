@@ -1088,11 +1088,26 @@ let currentFilter='all';
   if(s){const u=dec(s);if(u){currentUser=u;}}
 })();
 
-// ── CONSOLE ADMIN TRIGGER (Ghost Admin) ──
-window.NEYO_ADMIN=function(){go('admin-gate');};
-// Suppress console in production-feel
-const origLog=console.log,origWarn=console.warn,origErr=console.error;
-console.log=function(){};console.warn=function(){};console.error=function(){};
+// --- MOBILE STEALTH ADMIN TRIGGER ---
+let adminTaps = 0;
+document.addEventListener('click', (e) => {
+    // Check if the thing you clicked is your Logo
+    if (e.target.closest('.nav-logo') || e.target.closest('img')) {
+        adminTaps++;
+        if (adminTaps === 5) {
+            let masterKey = prompt("ENTER SYSTEM KEY:");
+            if (masterKey === "NEYO2026") {
+                go('admin-gate');
+            } else {
+                alert("ACCESS DENIED");
+            }
+            adminTaps = 0;
+        }
+        // Reset taps if you wait too long
+        setTimeout(() => { adminTaps = 0; }, 3000);
+    }
+});
+
 
 // ══════════════════════════════════════════════════
 //  IMAGE SLOTS
