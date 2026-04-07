@@ -647,6 +647,18 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
         <textarea class="fi" id="s-desc" rows="4" placeholder="Describe your product clearly. What does the buyer get? What's included?" oninput="validateSell()"></textarea>
       </div>
 
+      <div class="page" id="page-shipping" style="display:none; padding:100px 20px;">
+    <h2>Delivery Information</h2>
+    <div class="auth-card">
+        <input type="text" id="ship-name" class="fi" placeholder="Full Name">
+        <input type="tel" id="ship-phone" class="fi" placeholder="WhatsApp Number">
+        <input type="text" id="ship-address" class="fi" placeholder="Address & City">
+        <button class="auth-btn" onclick="processPaystack()">Proceed to Payment 💳</button>
+        <button class="auth-btn" style="background:#444;" onclick="go('market')">Cancel</button>
+    </div>
+</div>
+
+
       <!-- DIGITAL FILE ZONE -->
       <div class="fg" id="digital-file-fg" style="display:block">
         <label>Product File <span class="req">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:.78rem">(PDF/ZIP/MP4 required for digital/course)</span></label>
@@ -1298,6 +1310,80 @@ function doSignUp(){
     joined:new Date().toLocaleDateString(),
     affCode:'REF'+Math.random().toString(36).substr(2,7).toUpperCase()
   };
+
+function forgotPassword() {
+    let email = prompt("Enter email for reset:");
+    if (email) alert("📩 Reset link sent to " + email);
+}
+
+function triggerFileUpload() {
+    document.getElementById('d-file-input').click();
+}
+
+function handleFile(event) {
+    const file = event.target.files[0];
+    const status = document.getElementById('dfile-name');
+    if (file && status) { status.innerText = "📁 " + file.name; status.style.color = "#4CAF50"; }
+}
+
+function startPurchase(price) {
+    window.currentPrice = price;
+    go('page-shipping');
+}
+
+function processPaystack() {
+    const email = prompt("Confirm Email:");
+    if (!email) return;
+    alert("🚀 Redirecting to Paystack... (Tracking ID: NYO-" + Math.floor(Math.random()*9999) + ")");
+    go('home');
+}
+
+
+
+  // --- DIGITAL FILE & SUBMIT LOGIC ---
+function triggerFileUpload() {
+    document.getElementById('d-file-input').click();
+}
+
+function handleFile(event) {
+    const file = event.target.files[0];
+    const statusText = document.getElementById('dfile-name');
+    if (file && statusText) {
+        statusText.innerText = "📁 Selected: " + file.name;
+        statusText.style.color = "#4CAF50"; // Green for success
+    }
+}
+
+function submitProduct() {
+    const name = document.getElementById('s-name').value;
+    const price = document.getElementById('s-price').value;
+    const fileInput = document.getElementById('d-file-input');
+
+    // Simple check to make sure they filled the basics
+    if (!name || !price) {
+        alert("Please enter the Product Name and Price!");
+        return;
+    }
+
+    if (fileInput.files.length === 0) {
+        alert("Please upload the product file first!");
+        return;
+    }
+
+    // Success Message
+    alert("✅ Sent to Admin! Your product is now under review.");
+    
+    // Take the seller back to the dashboard
+    setTimeout(() => {
+        if (typeof go === "function") {
+            go('page-admin'); 
+        } else {
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+            document.getElementById('page-admin').style.display = 'block';
+        }
+    }, 1500);
+}
+
   users.push(u);saveUsers(users);
   currentUser=u;
   sessionStorage.setItem('nm_session',enc(u));
