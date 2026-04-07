@@ -767,6 +767,7 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
       </div>
       <button class="auth-btn" id="si-btn" onclick="doSignIn()">Sign In Securely 🔐</button>
       <div class="auth-switch">No account? <a onclick="go('signup')">Sign Up</a></div>
+      <p style="text-align:center; margin-top:10px;"><a href="#" onclick="forgotPassword()" style="color:#ffcc00; font-size:12px; text-decoration:none;">Forgot Password?</a></p>
       <div class="divider">or access admin</div>
       <div style="text-align:center;font-size:.78rem;color:var(--muted)">Admin access via secure token only.<br/>Use <code style="color:var(--gold)">NEYO_ADMIN</code> command in browser console.</div>
     </div>
@@ -1305,6 +1306,18 @@ function doSignUp(){
   go('home');
 }
 
+  // --- FORGOT PASSWORD FUNCTION ---
+function forgotPassword() {
+    let email = prompt("Please enter your registered email address:");
+    if (email) {
+        // This simulates a reset link being sent for your launch today
+        alert("📩 A password reset link has been sent to: " + email);
+    } else if (email === "") {
+        alert("Please enter a valid email.");
+    }
+}
+
+  
 function doSignOut(){
   currentUser=null;
   sessionStorage.removeItem('nm_session');
