@@ -1,75 +1,1635 @@
-<section id="team">
-  <h2>Meet Our Team</h2>
-  <ul>
-    <li>
-      <img src="dr-smith.jpg" alt="Dr. Smith">
-      <h3>Dr. Smith</h3>
-      <p>Cardiovascular Specialist</p>
-    </li>
-    <li>
-      <img src="dr-johnson.jpg" alt="Dr. Johnson">
-      <h3>Dr. Johnson</h3>
-      <p>Oncology Specialist</p>
-    </li>
-    <li>
-      <img src="dr-davis.jpg" alt="Dr. Davis">
-      <h3>Dr. Davis</h3>
-      <p>Neurology Specialist</p>
-    </li>
-  </ul>
-</section>
-```
-_Testimonials Page:_
-
-Create a new file called `testimonials.html` and add:
-```
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Testimonials</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeyoMarket – Digital & Physical Marketplace</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a0a1a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='40' font-family='serif' font-weight='900' fill='%23f0c040'%3EN%3C/text%3E%3C/svg%3E"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --gold:#f0c040;--gold2:#e0a820;--dark:#0a0a1a;--darker:#060610;--mid:#12122a;
+  --surface:#1a1a35;--card:#1e1e3a;--border:#2e2e55;
+  --text:#e8e8f0;--muted:#8888aa;--white:#ffffff;
+  --green:#22c980;--red:#ff4d6d;--blue:#4da6ff;
+  --radius:14px;--shadow:0 8px 32px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--darker);color:var(--text);overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:'DM Sans',sans-serif}
+input,textarea,select{font-family:'DM Sans',sans-serif}
+.hidden{display:none!important}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--dark)}
+::-webkit-scrollbar-thumb{background:var(--gold);border-radius:3px}
+
+/* ── PAGES ── */
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* ════════════════════════════════
+   NAVBAR
+════════════════════════════════ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  background:rgba(6,6,16,.92);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;height:64px;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+.nav-logo .logo-icon{
+  width:38px;height:38px;border-radius:10px;background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:900;font-size:22px;color:var(--dark);
+  box-shadow:0 0 18px rgba(240,192,64,.4);
+}
+.nav-logo span{font-family:'Playfair Display',serif;font-weight:900;font-size:1.3rem;
+  background:linear-gradient(135deg,var(--gold),#fff8e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;gap:6px;align-items:center}
+.nav-links button{
+  background:none;border:none;color:var(--muted);font-size:.88rem;
+  padding:7px 14px;border-radius:8px;transition:.2s;font-weight:500;
+}
+.nav-links button:hover,.nav-links button.active{color:var(--gold);background:rgba(240,192,64,.08)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.btn-outline{background:none;border:1.5px solid var(--gold);color:var(--gold);padding:8px 18px;border-radius:9px;font-size:.85rem;font-weight:600;transition:.2s}
+.btn-outline:hover{background:var(--gold);color:var(--dark)}
+.btn-gold{background:var(--gold);color:var(--dark);border:none;padding:8px 18px;border-radius:9px;font-size:.85rem;font-weight:700;transition:.2s;box-shadow:0 4px 16px rgba(240,192,64,.3)}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-1px)}
+.cart-btn{
+  position:relative;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);width:40px;height:40px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:.2s;
+}
+.cart-btn:hover{border-color:var(--gold);color:var(--gold)}
+.cart-badge{
+  position:absolute;top:-5px;right:-5px;background:var(--gold);color:var(--dark);
+  width:18px;height:18px;border-radius:50%;font-size:.65rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.user-avatar{
+  width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--dark);cursor:pointer;
+  border:2px solid var(--gold);
+}
+
+/* ════════════════════════════════
+   HERO
+════════════════════════════════ */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:100px 28px 60px;text-align:center;position:relative;overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 30%, rgba(240,192,64,.12) 0%,transparent 70%),
+             radial-gradient(ellipse 40% 40% at 20% 80%, rgba(77,166,255,.08) 0%,transparent 60%),
+             var(--darker);
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(46,46,85,.3) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(46,46,85,.3) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 50%,black 0%,transparent 80%);
+}
+.hero-content{position:relative;z-index:1;max-width:760px}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);
+  color:var(--gold);padding:6px 16px;border-radius:50px;font-size:.8rem;font-weight:600;
+  margin-bottom:28px;letter-spacing:.5px;
+}
+.hero h1{
+  font-family:'Playfair Display',serif;font-size:clamp(2.8rem,7vw,5rem);
+  font-weight:900;line-height:1.1;margin-bottom:22px;
+  background:linear-gradient(135deg,#fff 0%,var(--gold) 50%,#fff8e1 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:520px;margin:0 auto 36px;line-height:1.7}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero-stats{
+  display:flex;gap:40px;justify-content:center;margin-top:60px;
+  padding-top:40px;border-top:1px solid var(--border);flex-wrap:wrap;
+}
+.stat h3{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold);font-weight:900}
+.stat p{font-size:.82rem;color:var(--muted);margin-top:4px}
+
+/* ════════════════════════════════
+   SECTIONS
+════════════════════════════════ */
+.section{padding:80px 28px;max-width:1240px;margin:0 auto}
+.section-header{text-align:center;margin-bottom:50px}
+.section-header h2{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:900;margin-bottom:10px}
+.section-header p{color:var(--muted);font-size:1rem;max-width:500px;margin:0 auto}
+.gold-text{color:var(--gold)}
+
+/* ── CATEGORY PILLS ── */
+.categories{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:40px}
+.cat-pill{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--muted);padding:8px 20px;border-radius:50px;font-size:.85rem;
+  cursor:pointer;transition:.2s;font-weight:500;
+}
+.cat-pill:hover,.cat-pill.active{background:var(--gold);color:var(--dark);border-color:var(--gold);font-weight:700}
+
+/* ── PRODUCT GRID ── */
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+.product-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;cursor:pointer;transition:.3s;position:relative;
+}
+.product-card:hover{transform:translateY(-4px);border-color:rgba(240,192,64,.4);box-shadow:var(--shadow)}
+.product-img{
+  height:190px;display:flex;align-items:center;justify-content:center;
+  font-size:3.5rem;position:relative;
+  background:linear-gradient(135deg,var(--surface),var(--mid));
+}
+.product-badge{
+  position:absolute;top:12px;left:12px;background:var(--gold);color:var(--dark);
+  padding:3px 10px;border-radius:50px;font-size:.72rem;font-weight:700;
+}
+.product-type-badge{
+  position:absolute;top:12px;right:12px;padding:3px 10px;border-radius:50px;font-size:.72rem;font-weight:700;
+}
+.digital-badge{background:rgba(77,166,255,.2);color:var(--blue);border:1px solid rgba(77,166,255,.3)}
+.physical-badge{background:rgba(34,201,128,.2);color:var(--green);border:1px solid rgba(34,201,128,.3)}
+.product-info{padding:16px}
+.product-info h4{font-weight:600;font-size:.95rem;margin-bottom:6px;line-height:1.4}
+.product-meta{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.product-price{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--gold)}
+.product-rating{color:var(--gold);font-size:.78rem}
+.product-seller{font-size:.78rem;color:var(--muted);margin-top:4px}
+.add-cart-btn{
+  width:100%;margin-top:14px;background:var(--gold);color:var(--dark);
+  border:none;padding:10px;border-radius:9px;font-weight:700;font-size:.88rem;
+  transition:.2s;
+}
+.add-cart-btn:hover{background:var(--gold2)}
+
+/* ── AFFILIATE SECTION ── */
+.affiliate-card{
+  background:linear-gradient(135deg,var(--surface),var(--card));
+  border:1px solid rgba(240,192,64,.2);border-radius:20px;
+  padding:50px;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;
+}
+.affiliate-steps{display:flex;flex-direction:column;gap:20px}
+.aff-step{display:flex;gap:16px;align-items:flex-start}
+.aff-num{
+  min-width:38px;height:38px;border-radius:50%;background:var(--gold);
+  color:var(--dark);font-weight:900;font-size:1rem;display:flex;align-items:center;justify-content:center;
+}
+.aff-step-text h4{font-weight:600;margin-bottom:4px}
+.aff-step-text p{font-size:.85rem;color:var(--muted);line-height:1.6}
+
+/* ── RULES SECTION ── */
+.rules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.rule-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;
+}
+.rule-icon{font-size:1.8rem;margin-bottom:12px}
+.rule-card h4{font-weight:600;margin-bottom:8px;font-size:1rem}
+.rule-card p{color:var(--muted);font-size:.85rem;line-height:1.6}
+
+/* ═══════ AUTH PAGES ═══════ */
+.auth-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:80px 20px;
+  background:radial-gradient(ellipse 60% 60% at 50% 30%,rgba(240,192,64,.1) 0%,transparent 70%),var(--darker);
+}
+.auth-box{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  padding:44px;width:100%;max-width:440px;
+}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo .logo-icon{width:52px;height:52px;border-radius:14px;font-size:28px;margin:0 auto 10px}
+.auth-logo h2{font-family:'Playfair Display',serif;font-size:1.6rem}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:.85rem;font-weight:500;color:var(--muted);margin-bottom:7px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);
+  color:var(--text);padding:11px 14px;border-radius:10px;font-size:.9rem;
+  transition:.2s;outline:none;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,192,64,.1)}
+.form-group select option{background:var(--dark)}
+.auth-btn{
+  width:100%;background:var(--gold);color:var(--dark);border:none;
+  padding:13px;border-radius:10px;font-size:.95rem;font-weight:700;
+  transition:.2s;margin-top:8px;
+}
+.auth-btn:hover{background:var(--gold2);transform:translateY(-1px)}
+.auth-switch{text-align:center;margin-top:20px;font-size:.88rem;color:var(--muted)}
+.auth-switch a{color:var(--gold);font-weight:600;cursor:pointer}
+.auth-switch a:hover{text-decoration:underline}
+.divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-size:.82rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.error-msg{color:var(--red);font-size:.82rem;margin-top:6px}
+
+/* ═══════ ADMIN DASHBOARD ═══════ */
+.admin-layout{display:flex;min-height:100vh;padding-top:64px}
+.admin-sidebar{
+  width:240px;min-height:calc(100vh - 64px);background:var(--dark);
+  border-right:1px solid var(--border);padding:28px 16px;
+  position:fixed;top:64px;left:0;bottom:0;overflow-y:auto;
+}
+.admin-sidebar h3{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:20px 0 8px 10px}
+.admin-sidebar h3:first-child{margin-top:0}
+.sidebar-btn{
+  display:flex;align-items:center;gap:10px;width:100%;
+  background:none;border:none;color:var(--muted);
+  padding:10px 14px;border-radius:9px;font-size:.88rem;text-align:left;
+  transition:.2s;font-weight:500;
+}
+.sidebar-btn:hover,.sidebar-btn.active{background:rgba(240,192,64,.1);color:var(--gold)}
+.sidebar-btn span.icon{font-size:1.1rem}
+.admin-main{margin-left:240px;flex:1;padding:36px 36px 80px;background:var(--darker)}
+.admin-header{margin-bottom:32px}
+.admin-header h1{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;margin-bottom:6px}
+.admin-header p{color:var(--muted);font-size:.9rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px;margin-bottom:32px}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;
+}
+.stat-card .label{font-size:.8rem;color:var(--muted);margin-bottom:8px;font-weight:500}
+.stat-card .value{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--gold)}
+.stat-card .change{font-size:.78rem;color:var(--green);margin-top:6px}
+.admin-table{width:100%;border-collapse:collapse}
+.admin-table th{background:var(--surface);padding:12px 16px;text-align:left;font-size:.8rem;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.admin-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:.88rem}
+.admin-table tr:hover td{background:rgba(255,255,255,.02)}
+.status-badge{padding:3px 10px;border-radius:50px;font-size:.75rem;font-weight:600}
+.active-badge{background:rgba(34,201,128,.15);color:var(--green)}
+.pending-badge{background:rgba(240,192,64,.15);color:var(--gold)}
+.inactive-badge{background:rgba(255,77,109,.15);color:var(--red)}
+.admin-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px}
+.admin-section h3{font-size:1.1rem;font-weight:700;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.action-btns{display:flex;gap:8px}
+.btn-sm{padding:5px 12px;border-radius:7px;font-size:.78rem;font-weight:600;border:none}
+.btn-approve{background:rgba(34,201,128,.15);color:var(--green)}
+.btn-ban{background:rgba(255,77,109,.15);color:var(--red)}
+.btn-view{background:rgba(240,192,64,.15);color:var(--gold)}
+
+/* ═══════ CART MODAL ═══════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;
+  display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(6px);
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  width:100%;max-width:540px;max-height:90vh;overflow-y:auto;
+}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 24px;border-bottom:1px solid var(--border);
+}
+.modal-header h3{font-size:1.1rem;font-weight:700}
+.modal-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:24px}
+.cart-item{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.cart-item-icon{font-size:2rem;width:52px;height:52px;background:var(--surface);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.cart-item-info{flex:1}
+.cart-item-info h4{font-size:.92rem;font-weight:600;margin-bottom:4px}
+.cart-item-info p{font-size:.8rem;color:var(--muted)}
+.cart-item-price{font-family:'Playfair Display',serif;font-weight:700;color:var(--gold)}
+.remove-item{background:none;border:none;color:var(--red);font-size:1rem;cursor:pointer}
+.cart-total{display:flex;justify-content:space-between;align-items:center;padding:18px 0 0;margin-top:8px;font-weight:700}
+.cart-total .total-price{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--gold)}
+.checkout-btn{width:100%;margin-top:18px;background:var(--gold);color:var(--dark);border:none;padding:14px;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;transition:.2s}
+.checkout-btn:hover{background:var(--gold2)}
+.empty-cart{text-align:center;padding:40px 0;color:var(--muted)}
+.empty-cart p{font-size:2.5rem;margin-bottom:12px}
+
+/* ═══════ PRODUCT MODAL ═══════ */
+.product-modal-img{font-size:5rem;text-align:center;padding:30px;background:var(--surface);border-radius:14px;margin-bottom:24px}
+.product-modal-price{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold);font-weight:900;margin:14px 0}
+.product-modal p{color:var(--muted);font-size:.9rem;line-height:1.7;margin-bottom:18px}
+.product-modal-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.meta-tag{background:var(--surface);border:1px solid var(--border);padding:5px 14px;border-radius:50px;font-size:.8rem;color:var(--muted)}
+
+/* ═══════ NEYO AI CHATBOT ═══════ */
+.chatbot-trigger{
+  position:fixed;bottom:28px;right:28px;z-index:1500;
+  width:58px;height:58px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border:none;display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;box-shadow:0 6px 24px rgba(240,192,64,.45);
+  cursor:pointer;transition:.3s;
+}
+.chatbot-trigger:hover{transform:scale(1.1)}
+.chatbot-panel{
+  position:fixed;bottom:100px;right:28px;z-index:1500;
+  width:360px;max-height:520px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;display:none;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;
+}
+.chatbot-panel.open{display:flex}
+.chat-header{
+  background:linear-gradient(135deg,var(--surface),var(--mid));
+  padding:16px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.chat-avatar{
+  width:36px;height:36px;border-radius:50%;background:var(--gold);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;color:var(--dark);
+}
+.chat-header-info h4{font-size:.9rem;font-weight:700}
+.chat-header-info p{font-size:.75rem;color:var(--green)}
+.chat-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:340px}
+.chat-bubble{max-width:82%;padding:10px 14px;border-radius:14px;font-size:.85rem;line-height:1.5}
+.chat-bubble.bot{background:var(--surface);border-bottom-left-radius:4px;align-self:flex-start}
+.chat-bubble.user{background:var(--gold);color:var(--dark);font-weight:500;border-bottom-right-radius:4px;align-self:flex-end}
+.chat-input-row{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border)}
+.chat-input{
+  flex:1;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:9px 12px;border-radius:9px;font-size:.85rem;outline:none;
+}
+.chat-input:focus{border-color:var(--gold)}
+.chat-send{
+  background:var(--gold);color:var(--dark);border:none;
+  width:36px;height:36px;border-radius:9px;font-size:1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.2s;
+}
+.chat-send:hover{background:var(--gold2)}
+.typing{display:flex;gap:4px;padding:12px 14px;align-self:flex-start}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ═══════ FOOTER ═══════ */
+footer{
+  background:var(--dark);border-top:1px solid var(--border);
+  padding:50px 28px 28px;
+}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1240px;margin:0 auto 40px;flex-wrap:wrap}
+.footer-brand h3{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:10px;color:var(--gold)}
+.footer-brand p{color:var(--muted);font-size:.85rem;line-height:1.7;max-width:260px}
+.footer-links h4{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;color:var(--text)}
+.footer-links a{display:block;color:var(--muted);font-size:.85rem;margin-bottom:8px;transition:.2s;cursor:pointer}
+.footer-links a:hover{color:var(--gold)}
+.footer-bottom{
+  max-width:1240px;margin:0 auto;
+  padding-top:28px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+}
+.footer-bottom p{color:var(--muted);font-size:.82rem}
+
+/* ═══════ PAYSTACK MODAL ═══════ */
+.pay-form .form-group{margin-bottom:16px}
+.pay-summary{background:var(--surface);border-radius:10px;padding:16px;margin-bottom:20px}
+.pay-summary-row{display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:8px;color:var(--muted)}
+.pay-summary-total{display:flex;justify-content:space-between;font-weight:700;font-size:1rem;padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
+
+/* ═══════ SELL PAGE ═══════ */
+.sell-form{max-width:680px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px}
+.sell-form h2{font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:24px}
+
+/* ═══════ TOAST ═══════ */
+.toast{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  padding:12px 22px;border-radius:50px;font-size:.88rem;font-weight:500;
+  z-index:3000;opacity:0;transition:.3s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
+
+/* ═══════ PROFILE ═══════ */
+.profile-header{
+  background:linear-gradient(135deg,var(--surface),var(--card));
+  border:1px solid var(--border);border-radius:20px;padding:36px;
+  display:flex;align-items:center;gap:24px;margin-bottom:28px;
+}
+.profile-avatar-big{
+  width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;color:var(--dark);
+  border:3px solid var(--gold);
+}
+.profile-info h2{font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:4px}
+.profile-info p{color:var(--muted);font-size:.9rem}
+.affiliate-link-box{
+  background:var(--surface);border:1px solid rgba(240,192,64,.2);border-radius:12px;
+  padding:18px;margin-top:20px;
+}
+.affiliate-link-box label{font-size:.82rem;color:var(--muted);display:block;margin-bottom:8px}
+.link-row{display:flex;gap:8px}
+.link-input{
+  flex:1;background:var(--dark);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:9px;font-size:.82rem;outline:none;
+}
+.copy-btn{background:var(--gold);color:var(--dark);border:none;padding:9px 16px;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer}
+
+/* ─── Responsive ─── */
+@media(max-width:768px){
+  .nav-links{display:none}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .affiliate-card{grid-template-columns:1fr}
+  .admin-sidebar{display:none}
+  .admin-main{margin-left:0}
+  .chatbot-panel{width:calc(100vw - 40px);right:20px}
+}
+</style>
 </head>
 <body>
-  <h1>What Our Patients Say</h1>
-  <ul>
-    <li>
-      <blockquote>
-        "Excellent care and compassion!"
-      </blockquote>
-      <p>— John D.</p>
-    </li>
-    <li>
-      <blockquote>
-        "Professional and courteous staff!"
-      </blockquote>
-      <p>— Emily K.</p>
-    </li>
-    <li>
-      <blockquote>
-        "Life-changing treatment!"
-      </blockquote>
-      <p>— David L.</p>
-    </li>
-  </ul>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">
+    <div class="logo-icon">N</div>
+    <span>NeyoMarket</span>
+  </div>
+  <div class="nav-links">
+    <button onclick="showPage('home')" id="nav-home" class="active">Home</button>
+    <button onclick="showPage('marketplace')" id="nav-marketplace">Marketplace</button>
+    <button onclick="showPage('sell')" id="nav-sell">Sell</button>
+    <button onclick="showPage('affiliate')" id="nav-affiliate">Affiliate</button>
+    <button onclick="showPage('rules')" id="nav-rules">Rules</button>
+  </div>
+  <div class="nav-right" id="nav-right">
+    <button class="btn-outline" onclick="showPage('signin')">Sign In</button>
+    <button class="btn-gold" onclick="showPage('signup')">Sign Up</button>
+    <button class="cart-btn" onclick="openCart()">🛒<span class="cart-badge" id="cart-count">0</span></button>
+  </div>
+</nav>
+
+<!-- ══════════════════ HOME PAGE ══════════════════ -->
+<div class="page active" id="page-home">
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-content">
+      <div class="hero-badge">✦ Africa's Premier Digital Marketplace</div>
+      <h1>Buy, Sell & Earn — Everything in One Place</h1>
+      <p>Discover thousands of digital products, physical goods, and earn passively through our affiliate program. Powered by Neyo AI.</p>
+      <div class="hero-btns">
+        <button class="btn-gold" style="padding:13px 28px;font-size:.95rem" onclick="showPage('marketplace')">🛒 Shop Now</button>
+        <button class="btn-outline" style="padding:13px 28px;font-size:.95rem" onclick="showPage('sell')">💰 Start Selling</button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><h3>12K+</h3><p>Products Listed</p></div>
+        <div class="stat"><h3>4.8K</h3><p>Active Sellers</p></div>
+        <div class="stat"><h3>₦2.4M</h3><p>Paid to Affiliates</p></div>
+        <div class="stat"><h3>98%</h3><p>Satisfaction Rate</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURED PRODUCTS -->
+  <div class="section" id="featured-section">
+    <div class="section-header">
+      <h2>Featured <span class="gold-text">Products</span></h2>
+      <p>Handpicked digital and physical products from top sellers</p>
+    </div>
+    <div class="categories">
+      <div class="cat-pill active" onclick="filterProducts('all',this)">All</div>
+      <div class="cat-pill" onclick="filterProducts('digital',this)">🖥 Digital</div>
+      <div class="cat-pill" onclick="filterProducts('physical',this)">📦 Physical</div>
+      <div class="cat-pill" onclick="filterProducts('ebooks',this)">📚 eBooks</div>
+      <div class="cat-pill" onclick="filterProducts('courses',this)">🎓 Courses</div>
+      <div class="cat-pill" onclick="filterProducts('software',this)">⚙️ Software</div>
+      <div class="cat-pill" onclick="filterProducts('fashion',this)">👗 Fashion</div>
+      <div class="cat-pill" onclick="filterProducts('electronics',this)">📱 Electronics</div>
+    </div>
+    <div class="products-grid" id="home-products"></div>
+    <div style="text-align:center;margin-top:36px">
+      <button class="btn-outline" onclick="showPage('marketplace')" style="padding:12px 32px">View All Products →</button>
+    </div>
+  </div>
+
+  <!-- AFFILIATE SECTION -->
+  <div class="section">
+    <div class="affiliate-card">
+      <div>
+        <div class="hero-badge" style="margin-bottom:18px">💸 Affiliate Program</div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;line-height:1.2;margin-bottom:16px">
+          Earn <span class="gold-text">15–30%</span> Commission on Every Sale
+        </h2>
+        <p style="color:var(--muted);line-height:1.7;margin-bottom:24px">
+          Join thousands of affiliates earning passively by sharing products. Get your unique link, share it, and earn real money — no investment needed.
+        </p>
+        <button class="btn-gold" style="padding:13px 28px" onclick="showPage('affiliate')">Join Affiliate Program →</button>
+      </div>
+      <div class="affiliate-steps">
+        <div class="aff-step">
+          <div class="aff-num">1</div>
+          <div class="aff-step-text">
+            <h4>Sign Up Free</h4>
+            <p>Create your affiliate account in under 2 minutes.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">2</div>
+          <div class="aff-step-text">
+            <h4>Get Your Link</h4>
+            <p>Receive a unique referral link for every product.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">3</div>
+          <div class="aff-step-text">
+            <h4>Share & Earn</h4>
+            <p>Post on social media and earn up to 30% per sale.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">4</div>
+          <div class="aff-step-text">
+            <h4>Get Paid</h4>
+            <p>Withdraw to your bank account every Monday.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div class="logo-icon" style="width:34px;height:34px;border-radius:9px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:18px;color:var(--dark)">N</div>
+          <span style="font-family:'Playfair Display',serif;font-weight:900;font-size:1.2rem;color:var(--gold)">NeyoMarket</span>
+        </div>
+        <p>Africa's most trusted marketplace for digital and physical products. Secure, fast, and fair.</p>
+        <p style="margin-top:12px;font-size:.8rem">📞 +2349072212496</p>
+      </div>
+      <div class="footer-links">
+        <h4>Marketplace</h4>
+        <a onclick="showPage('marketplace')">Browse Products</a>
+        <a onclick="showPage('sell')">Sell a Product</a>
+        <a onclick="showPage('affiliate')">Affiliate Program</a>
+        <a onclick="showPage('rules')">Rules & Guidelines</a>
+      </div>
+      <div class="footer-links">
+        <h4>Company</h4>
+        <a>About Us</a>
+        <a>Blog</a>
+        <a>Careers</a>
+        <a>Press Kit</a>
+      </div>
+      <div class="footer-links">
+        <h4>Support</h4>
+        <a>Help Center</a>
+        <a>Dispute Resolution</a>
+        <a>Privacy Policy</a>
+        <a>Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 NeyoMarket. All rights reserved. Powered by Neyo AI.</p>
+      <p>Secured payments via <span style="color:var(--gold)">Paystack</span></p>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════════ MARKETPLACE PAGE ══════════════════ -->
+<div class="page" id="page-marketplace">
+  <div style="padding-top:64px">
+    <div class="section">
+      <div class="section-header">
+        <h2>🛒 <span class="gold-text">Marketplace</span></h2>
+        <p>Explore thousands of products from verified sellers</p>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <input type="text" placeholder="🔍 Search products…" id="search-input"
+          style="flex:1;min-width:220px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:11px 16px;border-radius:10px;font-size:.9rem;outline:none"
+          oninput="searchProducts(this.value)"/>
+        <select id="sort-select" onchange="sortProducts(this.value)"
+          style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:11px 16px;border-radius:10px;font-size:.9rem;outline:none">
+          <option value="">Sort by</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="rating">Top Rated</option>
+        </select>
+      </div>
+      <div class="categories">
+        <div class="cat-pill active" onclick="filterProducts('all',this)">All</div>
+        <div class="cat-pill" onclick="filterProducts('digital',this)">🖥 Digital</div>
+        <div class="cat-pill" onclick="filterProducts('physical',this)">📦 Physical</div>
+        <div class="cat-pill" onclick="filterProducts('ebooks',this)">📚 eBooks</div>
+        <div class="cat-pill" onclick="filterProducts('courses',this)">🎓 Courses</div>
+        <div class="cat-pill" onclick="filterProducts('software',this)">⚙️ Software</div>
+        <div class="cat-pill" onclick="filterProducts('fashion',this)">👗 Fashion</div>
+        <div class="cat-pill" onclick="filterProducts('electronics',this)">📱 Electronics</div>
+      </div>
+      <div class="products-grid" id="marketplace-products"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SELL PAGE ══════════════════ -->
+<div class="page" id="page-sell">
+  <div style="padding:100px 28px 80px">
+    <div class="sell-form">
+      <h2>📦 List Your Product</h2>
+      <p style="color:var(--muted);margin-bottom:28px;font-size:.9rem">Fill in the details below to list your product on NeyoMarket</p>
+      <div class="form-group">
+        <label>Product Name *</label>
+        <input type="text" id="sell-name" placeholder="e.g. Complete Web Dev Course 2025"/>
+      </div>
+      <div class="form-group">
+        <label>Product Type *</label>
+        <select id="sell-type">
+          <option value="">Select type</option>
+          <option value="digital">Digital</option>
+          <option value="physical">Physical</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category *</label>
+        <select id="sell-cat">
+          <option value="">Select category</option>
+          <option value="ebooks">eBooks</option>
+          <option value="courses">Courses</option>
+          <option value="software">Software / Tools</option>
+          <option value="fashion">Fashion</option>
+          <option value="electronics">Electronics</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Price (₦) *</label>
+        <input type="number" id="sell-price" placeholder="e.g. 5000"/>
+      </div>
+      <div class="form-group">
+        <label>Affiliate Commission (%)</label>
+        <input type="number" id="sell-commission" placeholder="e.g. 20" min="5" max="40"/>
+      </div>
+      <div class="form-group">
+        <label>Description *</label>
+        <textarea id="sell-desc" rows="4" placeholder="Describe your product in detail…" style="resize:vertical"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Your Paystack Email (for payout) *</label>
+        <input type="email" id="sell-email" placeholder="seller@email.com"/>
+      </div>
+      <button class="auth-btn" onclick="submitProduct()">🚀 Submit for Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ AFFILIATE PAGE ══════════════════ -->
+<div class="page" id="page-affiliate">
+  <div style="padding:100px 28px 80px;max-width:900px;margin:0 auto">
+    <div class="section-header" style="text-align:left;margin-bottom:36px">
+      <h2>💸 Affiliate <span class="gold-text">Program</span></h2>
+      <p>Earn 15–30% commission on every sale you refer</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-bottom:40px">
+      <div class="stat-card"><div class="label">Commission Rate</div><div class="value">15–30%</div><div class="change">Per successful referral</div></div>
+      <div class="stat-card"><div class="label">Payout Day</div><div class="value">Monday</div><div class="change">Weekly withdrawals</div></div>
+      <div class="stat-card"><div class="label">Min. Payout</div><div class="value">₦500</div><div class="change">Low threshold</div></div>
+      <div class="stat-card"><div class="label">Cookie Window</div><div class="value">30 Days</div><div class="change">Long tracking period</div></div>
+    </div>
+    <div class="admin-section">
+      <h3>How It Works</h3>
+      <div class="affiliate-steps" style="gap:24px">
+        <div class="aff-step">
+          <div class="aff-num">1</div>
+          <div class="aff-step-text">
+            <h4>Register as Affiliate</h4>
+            <p style="color:var(--muted);font-size:.88rem">Sign up or log in and activate your affiliate account from your profile dashboard.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">2</div>
+          <div class="aff-step-text">
+            <h4>Pick Products to Promote</h4>
+            <p style="color:var(--muted);font-size:.88rem">Browse the marketplace and generate affiliate links for any product you'd like to promote.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">3</div>
+          <div class="aff-step-text">
+            <h4>Share Everywhere</h4>
+            <p style="color:var(--muted);font-size:.88rem">Post your links on WhatsApp, Instagram, TikTok, YouTube, blogs — anywhere you have an audience.</p>
+          </div>
+        </div>
+        <div class="aff-step">
+          <div class="aff-num">4</div>
+          <div class="aff-step-text">
+            <h4>Earn & Withdraw</h4>
+            <p style="color:var(--muted);font-size:.88rem">Commissions are tracked in real-time. Withdraw to any Nigerian bank account every Monday.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section" style="margin-top:20px">
+      <h3>Terms & Conditions</h3>
+      <ul style="color:var(--muted);font-size:.87rem;line-height:2;padding-left:18px">
+        <li>Affiliates must not use spam, misleading advertising, or fake reviews.</li>
+        <li>Self-referrals (buying through your own link) are strictly prohibited.</li>
+        <li>Commission is paid only on completed, non-refunded transactions.</li>
+        <li>NeyoMarket reserves the right to suspend affiliates for policy violations.</li>
+        <li>Minimum withdrawal is ₦500; maximum single withdrawal is ₦500,000.</li>
+        <li>Tax compliance is the responsibility of the affiliate.</li>
+      </ul>
+    </div>
+    <div style="text-align:center;margin-top:36px">
+      <button class="btn-gold" style="padding:14px 36px;font-size:1rem" onclick="joinAffiliate()">🚀 Join Now — It's Free</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ RULES PAGE ══════════════════ -->
+<div class="page" id="page-rules">
+  <div style="padding:100px 28px 80px;max-width:1100px;margin:0 auto">
+    <div class="section-header">
+      <h2>📜 Rules & <span class="gold-text">Regulations</span></h2>
+      <p>NeyoMarket is built on trust, transparency, and fairness. Please read carefully.</p>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card"><div class="rule-icon">🛡️</div><h4>Seller Verification</h4><p>All sellers must verify their identity and bank account via BVN or NIN before listing products for sale.</p></div>
+      <div class="rule-card"><div class="rule-icon">🚫</div><h4>Prohibited Items</h4><p>Selling counterfeit goods, stolen items, illegal software, weapons, or any item prohibited by Nigerian law is strictly banned.</p></div>
+      <div class="rule-card"><div class="rule-icon">📦</div><h4>Accurate Descriptions</h4><p>All product listings must accurately describe the item. Misleading titles, descriptions, or images will result in removal.</p></div>
+      <div class="rule-card"><div class="rule-icon">💳</div><h4>Payment Protection</h4><p>All payments are processed securely through Paystack. Sellers receive 90% of the sale price. 10% is retained as platform fee.</p></div>
+      <div class="rule-card"><div class="rule-icon">🔄</div><h4>Refund Policy</h4><p>Buyers may request refunds within 3 days of purchase for physical goods and within 24 hours for digital goods if not as described.</p></div>
+      <div class="rule-card"><div class="rule-icon">⚖️</div><h4>Dispute Resolution</h4><p>Disputes are reviewed by our team within 48 hours. Both parties must provide evidence. Our decision is final.</p></div>
+      <div class="rule-card"><div class="rule-icon">👤</div><h4>Account Conduct</h4><p>Harassment, impersonation, fake reviews, or any abusive behavior will result in immediate and permanent account suspension.</p></div>
+      <div class="rule-card"><div class="rule-icon">💸</div><h4>Split Payments</h4><p>NeyoMarket uses Paystack split payments. 90% goes to sellers, 10% to the platform to fund operations, support, and growth.</p></div>
+      <div class="rule-card"><div class="rule-icon">🔐</div><h4>Data Privacy</h4><p>We never share your personal data with third parties without consent. All data is stored securely in compliance with NDPR.</p></div>
+      <div class="rule-card"><div class="rule-icon">📣</div><h4>Affiliate Conduct</h4><p>Affiliates may not use spam, misleading ads, or create fake accounts. Self-purchases via own affiliate links are void.</p></div>
+      <div class="rule-card"><div class="rule-icon">📊</div><h4>Digital Delivery</h4><p>Digital products must be delivered within 24 hours of purchase. Sellers are responsible for ensuring download links are working.</p></div>
+      <div class="rule-card"><div class="rule-icon">🏷️</div><h4>Pricing Integrity</h4><p>Artificial price inflation, fee manipulation, or any scheme to circumvent the platform fee structure is prohibited.</p></div>
+    </div>
+    <div style="background:var(--card);border:1px solid rgba(240,192,64,.2);border-radius:14px;padding:28px;margin-top:36px;text-align:center">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:10px">Violation Consequences</h3>
+      <p style="color:var(--muted);font-size:.9rem;max-width:600px;margin:0 auto;line-height:1.7">
+        First violation: Warning + 7-day suspension. Second violation: Permanent ban + fund freeze pending review. Serious violations (fraud, illegal items) reported to relevant authorities.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SIGN IN PAGE ══════════════════ -->
+<div class="page" id="page-signin">
+  <div class="auth-page">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="logo-icon" style="width:52px;height:52px;border-radius:14px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:28px;color:var(--dark);margin:0 auto 10px">N</div>
+        <h2 style="font-family:'Playfair Display',serif">Welcome Back</h2>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:4px">Sign in to your NeyoMarket account</p>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="signin-email" placeholder="you@email.com"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signin-password" placeholder="••••••••"/>
+      </div>
+      <div id="signin-error" class="error-msg"></div>
+      <button class="auth-btn" onclick="handleSignIn()">Sign In</button>
+      <div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Sign Up</a></div>
+      <div class="divider">or</div>
+      <div class="auth-switch" style="font-size:.82rem">
+        Admin? Use <span style="color:var(--gold)">amehmichael0024@gmail.com</span> to access dashboard
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SIGN UP PAGE ══════════════════ -->
+<div class="page" id="page-signup">
+  <div class="auth-page">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="logo-icon" style="width:52px;height:52px;border-radius:14px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:28px;color:var(--dark);margin:0 auto 10px">N</div>
+        <h2 style="font-family:'Playfair Display',serif">Create Account</h2>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:4px">Join thousands of buyers and sellers</p>
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="signup-name" placeholder="Michael Ameh"/>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="signup-email" placeholder="you@email.com"/>
+      </div>
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" id="signup-phone" placeholder="+234…"/>
+      </div>
+      <div class="form-group">
+        <label>Account Type</label>
+        <select id="signup-role">
+          <option value="buyer">Buyer</option>
+          <option value="seller">Seller</option>
+          <option value="affiliate">Affiliate</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Min 8 characters"/>
+      </div>
+      <div id="signup-error" class="error-msg"></div>
+      <button class="auth-btn" onclick="handleSignUp()">Create Account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showPage('signin')">Sign In</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PROFILE PAGE ══════════════════ -->
+<div class="page" id="page-profile">
+  <div style="padding:100px 28px 80px;max-width:900px;margin:0 auto">
+    <div class="profile-header" id="profile-header">
+      <div class="profile-avatar-big" id="profile-avatar">M</div>
+      <div class="profile-info">
+        <h2 id="profile-name">Michael Ameh</h2>
+        <p id="profile-role-display">Buyer · Joined April 2025</p>
+        <p id="profile-email-display" style="margin-top:4px;font-size:.85rem;color:var(--gold)">user@email.com</p>
+      </div>
+    </div>
+    <div class="admin-section">
+      <h3>My Affiliate Dashboard</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px">
+        <div class="stat-card"><div class="label">Earnings</div><div class="value">₦0</div></div>
+        <div class="stat-card"><div class="label">Clicks</div><div class="value">0</div></div>
+        <div class="stat-card"><div class="label">Sales</div><div class="value">0</div></div>
+        <div class="stat-card"><div class="label">Pending</div><div class="value">₦0</div></div>
+      </div>
+      <div class="affiliate-link-box">
+        <label>Your Affiliate Link</label>
+        <div class="link-row">
+          <input class="link-input" id="aff-link" readonly value="https://neyomarket.com/?ref=USER123"/>
+          <button class="copy-btn" onclick="copyAffLink()">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section">
+      <h3>My Orders</h3>
+      <p style="color:var(--muted);font-size:.9rem">No orders yet. <a onclick="showPage('marketplace')" style="color:var(--gold);cursor:pointer">Browse products →</a></p>
+    </div>
+    <button onclick="handleSignOut()" style="background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.3);padding:11px 24px;border-radius:10px;font-weight:600;margin-top:10px">Sign Out</button>
+  </div>
+</div>
+
+<!-- ══════════════════ ADMIN PAGE ══════════════════ -->
+<div class="page" id="page-admin">
+  <div class="admin-layout">
+    <div class="admin-sidebar">
+      <h3>Overview</h3>
+      <button class="sidebar-btn active" onclick="showAdminTab('overview',this)"><span class="icon">📊</span> Dashboard</button>
+      <button class="sidebar-btn" onclick="showAdminTab('products',this)"><span class="icon">📦</span> Products</button>
+      <button class="sidebar-btn" onclick="showAdminTab('orders',this)"><span class="icon">🧾</span> Orders</button>
+      <h3>Users</h3>
+      <button class="sidebar-btn" onclick="showAdminTab('sellers',this)"><span class="icon">🏪</span> Sellers</button>
+      <button class="sidebar-btn" onclick="showAdminTab('buyers',this)"><span class="icon">👥</span> Buyers</button>
+      <button class="sidebar-btn" onclick="showAdminTab('affiliates',this)"><span class="icon">💸</span> Affiliates</button>
+      <h3>Finance</h3>
+      <button class="sidebar-btn" onclick="showAdminTab('payouts',this)"><span class="icon">💰</span> Payouts</button>
+      <button class="sidebar-btn" onclick="showAdminTab('splits',this)"><span class="icon">🔀</span> Split Payments</button>
+      <h3>System</h3>
+      <button class="sidebar-btn" onclick="showAdminTab('settings',this)"><span class="icon">⚙️</span> Settings</button>
+      <button class="sidebar-btn" onclick="showAdminTab('rules-admin',this)"><span class="icon">📜</span> Rules</button>
+      <div style="margin-top:20px;padding:0 8px">
+        <button onclick="handleSignOut()" style="width:100%;background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.2);padding:10px;border-radius:9px;font-size:.85rem;font-weight:600">Sign Out</button>
+      </div>
+    </div>
+    <div class="admin-main" id="admin-content">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ CART MODAL ═══════ -->
+<div class="modal-overlay" id="cart-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>🛒 Your Cart</h3>
+      <button class="modal-close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="modal-body" id="cart-body"></div>
+  </div>
+</div>
+
+<!-- ═══════ PRODUCT MODAL ═══════ -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="pm-title">Product Details</h3>
+      <button class="modal-close" onclick="closeProductModal()">✕</button>
+    </div>
+    <div class="modal-body product-modal" id="pm-body"></div>
+  </div>
+</div>
+
+<!-- ═══════ CHECKOUT MODAL ═══════ -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>💳 Checkout</h3>
+      <button class="modal-close" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pay-summary" id="checkout-summary"></div>
+      <div class="pay-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="co-name" placeholder="Your full name"/>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="co-email" placeholder="you@email.com"/>
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" id="co-phone" placeholder="+234…"/>
+        </div>
+        <button class="checkout-btn" onclick="payWithPaystack()">🔐 Pay Securely with Paystack</button>
+        <p style="text-align:center;font-size:.75rem;color:var(--muted);margin-top:10px">Your payment is secured by Paystack SSL encryption</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ NEYO AI CHATBOT ═══════ -->
+<button class="chatbot-trigger" onclick="toggleChat()" title="Chat with Neyo AI">🤖</button>
+<div class="chatbot-panel" id="chatbot-panel">
+  <div class="chat-header">
+    <div class="chat-avatar">N</div>
+    <div class="chat-header-info">
+      <h4>Neyo AI</h4>
+      <p>● Online — Here to help</p>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="Ask Neyo AI anything…"
+      onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PAYSTACK SCRIPT
+═══════════════════════════════════ -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
+<script>
+// ══════════════════════════════════
+//  STATE
+// ══════════════════════════════════
+const ADMIN_EMAIL = 'amehmichael0024@gmail.com';
+const PAYSTACK_KEY = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+const PLATFORM_SUBACCOUNT = ''; // Add your Paystack subaccount code here
+
+let currentUser = JSON.parse(localStorage.getItem('nm_user') || 'null');
+let cart = JSON.parse(localStorage.getItem('nm_cart') || '[]');
+let users = JSON.parse(localStorage.getItem('nm_users') || '[]');
+let products = JSON.parse(localStorage.getItem('nm_products') || 'null') || getSeedProducts();
+let orders = JSON.parse(localStorage.getItem('nm_orders') || '[]');
+let currentFilter = 'all';
+
+function saveData(){
+  localStorage.setItem('nm_cart', JSON.stringify(cart));
+  localStorage.setItem('nm_users', JSON.stringify(users));
+  localStorage.setItem('nm_products', JSON.stringify(products));
+  localStorage.setItem('nm_orders', JSON.stringify(orders));
+}
+
+// ══════════════════════════════════
+//  SEED PRODUCTS
+// ══════════════════════════════════
+function getSeedProducts(){
+  return [
+    {id:1,name:'Complete Web Development Bootcamp 2025',type:'digital',cat:'courses',price:8500,rating:4.9,reviews:312,seller:'Mic Dev',emoji:'🎓',desc:'Full-stack web dev course covering HTML, CSS, JS, React, Node.js and more. 120+ hours of content.',commission:20,badge:'Bestseller'},
+    {id:2,name:'Nigerian Business Plan Template',type:'digital',cat:'ebooks',price:2500,rating:4.7,reviews:98,seller:'BizNaija',emoji:'📋',desc:'Professional business plan template used by 1000+ entrepreneurs in Nigeria.',commission:15,badge:''},
+    {id:3,name:'Adobe Photoshop CC Full Course',type:'digital',cat:'courses',price:6000,rating:4.8,reviews:204,seller:'DesignPro',emoji:'🎨',desc:'Master Photoshop from beginner to advanced. Perfect for designers and content creators.',commission:20,badge:'Hot'},
+    {id:4,name:'Premium Agbada Outfit (Royal Blue)',type:'physical',cat:'fashion',price:25000,rating:4.6,reviews:67,seller:'NaijaFashion',emoji:'👘',desc:'Hand-embroidered royal blue agbada set. Available in all sizes. Ships within 3 days.',commission:10,badge:''},
+    {id:5,name:'Social Media Marketing Masterclass',type:'digital',cat:'courses',price:5000,rating:4.9,reviews:445,seller:'GrowthGuru',emoji:'📱',desc:'Learn Instagram, TikTok, and Facebook marketing. Grow your brand from 0 to 100K.',commission:25,badge:'Top Rated'},
+    {id:6,name:'Wireless Earbuds Pro Max',type:'physical',cat:'electronics',price:18000,rating:4.5,reviews:133,seller:'TechHub NG',emoji:'🎧',desc:'True wireless earbuds with 30hr battery life, ANC noise cancellation, and premium sound.',commission:8,badge:''},
+    {id:7,name:'Python for Beginners – eBook',type:'digital',cat:'ebooks',price:1500,rating:4.6,reviews:278,seller:'CodeNaija',emoji:'🐍',desc:'Learn Python programming from scratch. Perfect for complete beginners with no coding background.',commission:20,badge:''},
+    {id:8,name:'Smart Android Phone (6.5" 64GB)',type:'physical',cat:'electronics',price:85000,rating:4.4,reviews:52,seller:'GadgetKing',emoji:'📱',desc:'Brand new Android smartphone. 6.5" display, 64GB storage, 5000mAh battery. Comes with warranty.',commission:5,badge:'Limited'},
+    {id:9,name:'Forex Trading Strategy Guide',type:'digital',cat:'ebooks',price:4000,rating:4.3,reviews:189,seller:'FXNaija',emoji:'💹',desc:'Proven forex trading strategies for the Nigerian market. Includes risk management frameworks.',commission:30,badge:''},
+    {id:10,name:'Invoice & Proposal Templates (50-Pack)',type:'digital',cat:'software',price:3000,rating:4.8,reviews:321,seller:'FreelanceNG',emoji:'📄',desc:'50 professional invoice and proposal templates for freelancers. Editable in Word and Canva.',commission:25,badge:''},
+    {id:11,name:'Ankara Print Dress (Ladies)',type:'physical',cat:'fashion',price:12000,rating:4.7,reviews:87,seller:'AfrikaStyle',emoji:'👗',desc:'Beautiful Ankara print dress. Available in 3 patterns. Ships nationwide within 5 days.',commission:12,badge:''},
+    {id:12,name:'SEO Mastery Course 2025',type:'digital',cat:'courses',price:7500,rating:4.8,reviews:167,seller:'RankBoss',emoji:'🔍',desc:'Rank your website on Google page 1. Covers technical SEO, link building, and content strategy.',commission:20,badge:'New'},
+  ];
+}
+
+// ══════════════════════════════════
+//  PAGE ROUTING
+// ══════════════════════════════════
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-links button').forEach(b=>b.classList.remove('active'));
+  const pg = document.getElementById('page-'+name);
+  if(pg){ pg.classList.add('active'); window.scrollTo(0,0); }
+  const nb = document.getElementById('nav-'+name);
+  if(nb) nb.classList.add('active');
+
+  if(name==='home') renderProducts('home-products', products.slice(0,8));
+  if(name==='marketplace') renderProducts('marketplace-products', products);
+  if(name==='admin'){
+    if(!currentUser || currentUser.email !== ADMIN_EMAIL){
+      showToast('Access denied. Admin only.','error'); showPage('signin'); return;
+    }
+    renderAdminOverview();
+  }
+  if(name==='profile'){
+    if(!currentUser){ showPage('signin'); return; }
+    updateProfileUI();
+  }
+}
+
+// ══════════════════════════════════
+//  AUTH
+// ══════════════════════════════════
+function handleSignIn(){
+  const email = document.getElementById('signin-email').value.trim();
+  const pass = document.getElementById('signin-password').value;
+  const err = document.getElementById('signin-error');
+  err.textContent='';
+  if(!email||!pass){err.textContent='Please fill in all fields.';return;}
+
+  // Check registered users
+  const found = users.find(u=>u.email===email && u.password===pass);
+  // Allow admin to sign in even if not registered
+  if(!found && email !== ADMIN_EMAIL){
+    err.textContent='Invalid email or password.'; return;
+  }
+
+  currentUser = found || {name:'Admin',email,role:'admin',joined:new Date().toLocaleDateString()};
+  localStorage.setItem('nm_user', JSON.stringify(currentUser));
+  updateNavUI();
+  showToast('Welcome back, '+currentUser.name.split(' ')[0]+'! 👋','success');
+  if(email===ADMIN_EMAIL) showPage('admin');
+  else showPage('home');
+}
+
+function handleSignUp(){
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const phone = document.getElementById('signup-phone').value.trim();
+  const role = document.getElementById('signup-role').value;
+  const pass = document.getElementById('signup-password').value;
+  const err = document.getElementById('signup-error');
+  err.textContent='';
+  if(!name||!email||!pass){err.textContent='Please fill in all required fields.';return;}
+  if(pass.length<8){err.textContent='Password must be at least 8 characters.';return;}
+  if(users.find(u=>u.email===email)){err.textContent='Email already registered.';return;}
+
+  const user = {id:Date.now(),name,email,phone,role,password:pass,joined:new Date().toLocaleDateString(),affCode:'REF'+Math.random().toString(36).substr(2,6).toUpperCase()};
+  users.push(user);
+  currentUser = user;
+  localStorage.setItem('nm_user', JSON.stringify(currentUser));
+  saveData();
+  updateNavUI();
+  showToast('Account created! Welcome to NeyoMarket 🎉','success');
+  showPage('home');
+}
+
+function handleSignOut(){
+  currentUser = null;
+  localStorage.removeItem('nm_user');
+  updateNavUI();
+  showToast('Signed out successfully.','');
+  showPage('home');
+}
+
+function updateNavUI(){
+  const nr = document.getElementById('nav-right');
+  if(currentUser){
+    const initial = currentUser.name.charAt(0).toUpperCase();
+    nr.innerHTML = `
+      <button class="cart-btn" onclick="openCart()">🛒<span class="cart-badge" id="cart-count">0</span></button>
+      <div class="user-avatar" onclick="showPage('${currentUser.email===ADMIN_EMAIL?'admin':'profile'}')" title="${currentUser.name}">${initial}</div>
+    `;
+  } else {
+    nr.innerHTML = `
+      <button class="btn-outline" onclick="showPage('signin')">Sign In</button>
+      <button class="btn-gold" onclick="showPage('signup')">Sign Up</button>
+      <button class="cart-btn" onclick="openCart()">🛒<span class="cart-badge" id="cart-count">0</span></button>
+    `;
+  }
+  updateCartBadge();
+}
+
+function updateProfileUI(){
+  if(!currentUser) return;
+  document.getElementById('profile-name').textContent = currentUser.name;
+  document.getElementById('profile-role-display').textContent = `${currentUser.role||'Buyer'} · Joined ${currentUser.joined||'2025'}`;
+  document.getElementById('profile-email-display').textContent = currentUser.email;
+  document.getElementById('profile-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  const affLink = `https://neyomarket.com/?ref=${currentUser.affCode||'USER'}`;
+  const linkEl = document.getElementById('aff-link');
+  if(linkEl) linkEl.value = affLink;
+}
+
+// ══════════════════════════════════
+//  PRODUCTS
+// ══════════════════════════════════
+function renderProducts(containerId, prods){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!prods.length){el.innerHTML='<p style="color:var(--muted);text-align:center;grid-column:1/-1">No products found.</p>';return;}
+  el.innerHTML = prods.map(p=>`
+    <div class="product-card" onclick="openProduct(${p.id})">
+      <div class="product-img">
+        <span style="font-size:3.5rem">${p.emoji}</span>
+        ${p.badge?`<span class="product-badge">${p.badge}</span>`:''}
+        <span class="product-type-badge ${p.type==='digital'?'digital-badge':'physical-badge'}">${p.type==='digital'?'⚡ Digital':'📦 Physical'}</span>
+      </div>
+      <div class="product-info">
+        <h4>${p.name}</h4>
+        <div class="product-seller">by ${p.seller}</div>
+        <div class="product-meta">
+          <span class="product-price">₦${p.price.toLocaleString()}</span>
+          <span class="product-rating">⭐ ${p.rating} (${p.reviews})</span>
+        </div>
+        <button class="add-cart-btn" onclick="event.stopPropagation();addToCart(${p.id})">Add to Cart</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterProducts(cat, el){
+  currentFilter = cat;
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const filtered = cat==='all' ? products : products.filter(p=>p.type===cat||p.cat===cat);
+  const container = document.getElementById('page-marketplace').classList.contains('active')?'marketplace-products':'home-products';
+  renderProducts(container, filtered);
+}
+
+function searchProducts(q){
+  const filtered = products.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||p.seller.toLowerCase().includes(q.toLowerCase()));
+  renderProducts('marketplace-products', filtered);
+}
+
+function sortProducts(val){
+  let sorted = [...products];
+  if(val==='price-asc') sorted.sort((a,b)=>a.price-b.price);
+  else if(val==='price-desc') sorted.sort((a,b)=>b.price-a.price);
+  else if(val==='rating') sorted.sort((a,b)=>b.rating-a.rating);
+  renderProducts('marketplace-products', sorted);
+}
+
+function openProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('pm-title').textContent = p.name;
+  document.getElementById('pm-body').innerHTML = `
+    <div class="product-modal-img">${p.emoji}</div>
+    <div class="product-modal-meta">
+      <span class="meta-tag">${p.type==='digital'?'⚡ Digital':'📦 Physical'}</span>
+      <span class="meta-tag">🏷 ${p.cat}</span>
+      <span class="meta-tag">⭐ ${p.rating} (${p.reviews} reviews)</span>
+      <span class="meta-tag">💸 ${p.commission}% affiliate</span>
+    </div>
+    <div class="product-modal-price">₦${p.price.toLocaleString()}</div>
+    <p>${p.desc}</p>
+    <p style="font-size:.82rem">Sold by: <strong style="color:var(--gold)">${p.seller}</strong></p>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="add-cart-btn" style="flex:1" onclick="addToCart(${p.id});closeProductModal()">🛒 Add to Cart</button>
+      <button onclick="copyAffProductLink(${p.id})" style="flex:1;background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:10px;border-radius:9px;font-weight:700;font-size:.88rem;cursor:pointer">🔗 Get Affiliate Link</button>
+    </div>
+  `;
+  document.getElementById('product-modal').classList.add('open');
+}
+function closeProductModal(){document.getElementById('product-modal').classList.remove('open')}
+
+function copyAffProductLink(id){
+  const code = currentUser ? currentUser.affCode||'GUEST' : 'GUEST';
+  const link = `https://neyomarket.com/product/${id}?ref=${code}`;
+  navigator.clipboard.writeText(link).then(()=>showToast('Affiliate link copied! 🔗','success'));
+}
+
+// ══════════════════════════════════
+//  CART
+// ══════════════════════════════════
+function addToCart(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  const existing = cart.find(x=>x.id===id);
+  if(existing) existing.qty=(existing.qty||1)+1;
+  else cart.push({...p,qty:1});
+  saveData();
+  updateCartBadge();
+  showToast(p.name.substring(0,30)+'… added to cart ✓','success');
+}
+
+function updateCartBadge(){
+  const el = document.getElementById('cart-count');
+  if(el) el.textContent = cart.reduce((s,i)=>s+(i.qty||1),0);
+}
+
+function openCart(){
+  const body = document.getElementById('cart-body');
+  if(!cart.length){
+    body.innerHTML=`<div class="empty-cart"><p>🛒</p><p style="font-size:1rem">Your cart is empty</p><button class="btn-gold" style="margin-top:16px;padding:10px 24px" onclick="closeCart();showPage('marketplace')">Shop Now</button></div>`;
+  } else {
+    const total = cart.reduce((s,i)=>s+(i.price*(i.qty||1)),0);
+    body.innerHTML = cart.map(i=>`
+      <div class="cart-item">
+        <div class="cart-item-icon">${i.emoji}</div>
+        <div class="cart-item-info">
+          <h4>${i.name.substring(0,36)}…</h4>
+          <p>Qty: ${i.qty||1} · by ${i.seller}</p>
+        </div>
+        <span class="cart-item-price">₦${(i.price*(i.qty||1)).toLocaleString()}</span>
+        <button class="remove-item" onclick="removeFromCart(${i.id})">🗑</button>
+      </div>
+    `).join('') +
+    `<div class="cart-total"><span>Total</span><span class="total-price">₦${total.toLocaleString()}</span></div>
+     <button class="checkout-btn" onclick="closeCart();openCheckout()">Proceed to Checkout →</button>`;
+  }
+  document.getElementById('cart-modal').classList.add('open');
+}
+
+function removeFromCart(id){
+  cart = cart.filter(i=>i.id!==id);
+  saveData(); updateCartBadge(); openCart();
+}
+
+function closeCart(){document.getElementById('cart-modal').classList.remove('open')}
+
+// ══════════════════════════════════
+//  CHECKOUT & PAYSTACK
+// ══════════════════════════════════
+function openCheckout(){
+  if(!cart.length){showToast('Cart is empty','error');return;}
+  const total = cart.reduce((s,i)=>s+(i.price*(i.qty||1)),0);
+  const platformFee = Math.round(total*0.10);
+  const sellerPayout = total - platformFee;
+  document.getElementById('checkout-summary').innerHTML=`
+    <div class="pay-summary-row"><span>Subtotal</span><span>₦${total.toLocaleString()}</span></div>
+    <div class="pay-summary-row"><span>Platform Fee (10%)</span><span>₦${platformFee.toLocaleString()}</span></div>
+    <div class="pay-summary-row"><span>Seller Receives (90%)</span><span style="color:var(--green)">₦${sellerPayout.toLocaleString()}</span></div>
+    <div class="pay-summary-total"><span>You Pay</span><span style="color:var(--gold)">₦${total.toLocaleString()}</span></div>
+  `;
+  if(currentUser){
+    document.getElementById('co-name').value = currentUser.name||'';
+    document.getElementById('co-email').value = currentUser.email||'';
+    document.getElementById('co-phone').value = currentUser.phone||'';
+  }
+  document.getElementById('checkout-modal').classList.add('open');
+}
+function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open')}
+
+function payWithPaystack(){
+  const email = document.getElementById('co-email').value.trim();
+  const name = document.getElementById('co-name').value.trim();
+  const phone = document.getElementById('co-phone').value.trim();
+  if(!email||!name){showToast('Please fill in your name and email','error');return;}
+  const total = cart.reduce((s,i)=>s+(i.price*(i.qty||1)),0);
+
+  const config = {
+    key: PAYSTACK_KEY,
+    email: email,
+    amount: total * 100, // kobo
+    currency: 'NGN',
+    ref: 'NM_'+Date.now(),
+    metadata: {
+      custom_fields:[
+        {display_name:'Customer',variable_name:'customer',value:name},
+        {display_name:'Phone',variable_name:'phone',value:phone},
+        {display_name:'Items',variable_name:'items',value:cart.map(i=>i.name).join(', ')}
+      ]
+    },
+    callback: function(response){
+      const order = {
+        id:response.reference,
+        customer:{name,email,phone},
+        items:[...cart],
+        total,
+        status:'completed',
+        date:new Date().toLocaleDateString()
+      };
+      orders.push(order);
+      cart=[];
+      saveData(); updateCartBadge();
+      closeCheckout();
+      showToast('Payment successful! Order #'+response.reference.slice(-8)+' confirmed 🎉','success');
+      if(currentUser) showPage('profile');
+    },
+    onClose: function(){ showToast('Payment cancelled',''); }
+  };
+
+  // Add split payment if subaccount is configured
+  // config.subaccount = 'ACCT_xxx'; // seller subaccount
+  // config.bearer = 'account'; // platform bears fees
+  // config.transaction_charge = Math.round(total*0.10*100); // 10% to platform
+
+  const handler = PaystackPop.setup(config);
+  handler.openIframe();
+}
+
+// ══════════════════════════════════
+//  SELL FORM
+// ══════════════════════════════════
+function submitProduct(){
+  const name=document.getElementById('sell-name').value.trim();
+  const type=document.getElementById('sell-type').value;
+  const cat=document.getElementById('sell-cat').value;
+  const price=parseFloat(document.getElementById('sell-price').value);
+  const commission=parseFloat(document.getElementById('sell-commission').value)||15;
+  const desc=document.getElementById('sell-desc').value.trim();
+  const email=document.getElementById('sell-email').value.trim();
+  if(!name||!type||!cat||!price||!desc||!email){showToast('Please fill all required fields','error');return;}
+  if(!currentUser){showToast('Please sign in to list a product','error');showPage('signin');return;}
+  const emojis={'courses':'🎓','ebooks':'📖','software':'💻','fashion':'👗','electronics':'📱','other':'📦'};
+  const newP={
+    id:Date.now(),name,type,cat,price,commission,desc,seller:currentUser.name,
+    email,rating:0,reviews:0,emoji:emojis[cat]||'📦',badge:'Pending Review',status:'pending'
+  };
+  products.push(newP); saveData();
+  showToast('Product submitted for admin review! ✅','success');
+  document.querySelectorAll('#page-sell input,#page-sell select,#page-sell textarea').forEach(el=>el.value='');
+  showPage('marketplace');
+}
+
+// ══════════════════════════════════
+//  AFFILIATE
+// ══════════════════════════════════
+function joinAffiliate(){
+  if(!currentUser){showToast('Please create an account first','error');showPage('signup');return;}
+  currentUser.role='affiliate';
+  localStorage.setItem('nm_user',JSON.stringify(currentUser));
+  showToast('You are now an affiliate! Check your profile for your link 💸','success');
+  showPage('profile');
+}
+function copyAffLink(){
+  const val=document.getElementById('aff-link').value;
+  navigator.clipboard.writeText(val).then(()=>showToast('Affiliate link copied! 🔗','success'));
+}
+
+// ══════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════
+function showAdminTab(tab, btn){
+  document.querySelectorAll('.sidebar-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const c=document.getElementById('admin-content');
+  const totalRevenue = orders.reduce((s,o)=>s+o.total,0);
+  const platformEarnings = Math.round(totalRevenue*0.10);
+
+  if(tab==='overview'){
+    c.innerHTML=`
+      <div class="admin-header"><h1>Dashboard Overview</h1><p>Welcome back, Admin. Here's what's happening on NeyoMarket.</p></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Total Products</div><div class="value">${products.length}</div><div class="change">↑ Active listings</div></div>
+        <div class="stat-card"><div class="label">Registered Users</div><div class="value">${users.length}</div><div class="change">↑ Growing community</div></div>
+        <div class="stat-card"><div class="label">Total Orders</div><div class="value">${orders.length}</div><div class="change">Processed</div></div>
+        <div class="stat-card"><div class="label">Platform Earnings</div><div class="value">₦${platformEarnings.toLocaleString()}</div><div class="change">10% of total sales</div></div>
+      </div>
+      <div class="admin-section">
+        <h3>Recent Orders</h3>
+        ${orders.length?`<table class="admin-table">
+          <tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+          ${orders.slice(-8).reverse().map(o=>`
+            <tr>
+              <td style="color:var(--gold);font-size:.82rem">${o.id.slice(-10)}</td>
+              <td>${o.customer.name}</td>
+              <td>₦${o.total.toLocaleString()}</td>
+              <td><span class="status-badge active-badge">Completed</span></td>
+              <td>${o.date}</td>
+            </tr>
+          `).join('')}
+        </table>`:`<p style="color:var(--muted)">No orders yet.</p>`}
+      </div>
+      <div class="admin-section">
+        <h3>Pending Product Reviews</h3>
+        ${products.filter(p=>p.status==='pending').length?
+          products.filter(p=>p.status==='pending').map(p=>`
+            <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:1.8rem">${p.emoji}</span>
+              <div style="flex:1"><div style="font-weight:600">${p.name}</div><div style="font-size:.8rem;color:var(--muted)">by ${p.seller} · ₦${p.price.toLocaleString()}</div></div>
+              <div class="action-btns">
+                <button class="btn-sm btn-approve" onclick="approveProduct(${p.id})">Approve</button>
+                <button class="btn-sm btn-ban" onclick="removeProduct(${p.id})">Remove</button>
+              </div>
+            </div>
+          `).join('')
+          :`<p style="color:var(--muted)">No pending products.</p>`}
+      </div>
+    `;
+  } else if(tab==='products'){
+    renderAdminProducts(c);
+  } else if(tab==='sellers'){
+    renderAdminUsers(c,'seller');
+  } else if(tab==='buyers'){
+    renderAdminUsers(c,'buyer');
+  } else if(tab==='affiliates'){
+    renderAdminUsers(c,'affiliate');
+  } else if(tab==='orders'){
+    c.innerHTML=`<div class="admin-header"><h1>Orders</h1></div>
+      <div class="admin-section"><h3>All Orders</h3>
+      ${orders.length?`<table class="admin-table">
+        <tr><th>Order ID</th><th>Customer</th><th>Email</th><th>Items</th><th>Amount</th><th>Date</th></tr>
+        ${orders.map(o=>`<tr>
+          <td style="color:var(--gold);font-size:.78rem">${o.id.slice(-12)}</td>
+          <td>${o.customer.name}</td><td>${o.customer.email}</td>
+          <td>${o.items.length} item(s)</td>
+          <td>₦${o.total.toLocaleString()}</td>
+          <td>${o.date}</td>
+        </tr>`).join('')}
+      </table>`:`<p style="color:var(--muted)">No orders yet.</p>`}
+      </div>`;
+  } else if(tab==='payouts'){
+    c.innerHTML=`<div class="admin-header"><h1>Payouts</h1></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Total Paid Out</div><div class="value">₦${(orders.reduce((s,o)=>s+o.total,0)*0.9).toLocaleString()}</div></div>
+        <div class="stat-card"><div class="label">Platform Revenue</div><div class="value">₦${(orders.reduce((s,o)=>s+o.total,0)*0.1).toLocaleString()}</div></div>
+        <div class="stat-card"><div class="label">Affiliate Payouts</div><div class="value">₦0</div></div>
+      </div>
+      <div class="admin-section"><h3>Payout Summary</h3><p style="color:var(--muted)">Paystack split payments automatically route 90% to sellers and 10% to the platform on every transaction. Configure your Paystack subaccount in settings.</p></div>`;
+  } else if(tab==='splits'){
+    c.innerHTML=`<div class="admin-header"><h1>Split Payment Config</h1></div>
+      <div class="admin-section"><h3>Paystack Split Configuration</h3>
+        <p style="color:var(--muted);margin-bottom:20px;font-size:.9rem">Configure how payments are split between sellers and the platform.</p>
+        <div class="form-group"><label>Platform Cut (%)</label><input type="number" value="10" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px;border-radius:9px;outline:none;width:200px"/></div>
+        <div class="form-group"><label>Seller Receives (%)</label><input type="number" value="90" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px;border-radius:9px;outline:none;width:200px"/></div>
+        <div class="form-group"><label>Paystack Public Key</label><input type="text" value="${PAYSTACK_KEY}" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px;border-radius:9px;outline:none;width:100%;max-width:500px"/></div>
+        <button class="btn-gold" style="margin-top:8px;padding:10px 24px" onclick="showToast('Settings saved ✓','success')">Save Settings</button>
+      </div>`;
+  } else if(tab==='settings'){
+    c.innerHTML=`<div class="admin-header"><h1>Settings</h1></div>
+      <div class="admin-section"><h3>Site Settings</h3>
+        <div class="form-group"><label>Site Name</label><input type="text" value="NeyoMarket" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px;border-radius:9px;outline:none;width:300px"/></div>
+        <div class="form-group"><label>Support Phone</label><input type="text" value="+2349072212496" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:10px;border-radius:9px;outline:none;width:300px"/></div>
+        <div class="form-group"><label>Admin Email</label><input type="text" value="${ADMIN_EMAIL}" readonly style="background:var(--surface);border:1.5px solid var(--border);color:var(--muted);padding:10px;border-radius:9px;outline:none;width:300px"/></div>
+        <button class="btn-gold" style="margin-top:8px;padding:10px 24px" onclick="showToast('Settings saved ✓','success')">Save Settings</button>
+      </div>`;
+  } else if(tab==='rules-admin'){
+    c.innerHTML=`<div class="admin-header"><h1>Rules & Regulations</h1></div>
+      <div class="admin-section"><h3>Marketplace Rules (Admin View)</h3>
+        <p style="color:var(--muted);font-size:.9rem;margin-bottom:16px">These rules are displayed publicly on the Rules page. Violations result in warnings, suspensions, or permanent bans.</p>
+        <table class="admin-table">
+          <tr><th>Rule</th><th>Category</th><th>Consequence</th></tr>
+          <tr><td>Selling prohibited items</td><td>Products</td><td><span class="status-badge inactive-badge">Permanent Ban</span></td></tr>
+          <tr><td>Fake product descriptions</td><td>Products</td><td><span class="status-badge pending-badge">Listing Removed</span></td></tr>
+          <tr><td>Self-referral abuse</td><td>Affiliate</td><td><span class="status-badge pending-badge">Commission Void</span></td></tr>
+          <tr><td>User harassment</td><td>Conduct</td><td><span class="status-badge inactive-badge">Permanent Ban</span></td></tr>
+          <tr><td>Payment fraud</td><td>Finance</td><td><span class="status-badge inactive-badge">Legal Action</span></td></tr>
+        </table>
+      </div>`;
+  }
+}
+
+function renderAdminOverview(){ showAdminTab('overview',null); }
+
+function renderAdminProducts(c){
+  c.innerHTML=`<div class="admin-header"><h1>Products</h1></div>
+    <div class="admin-section"><h3>All Products (${products.length})</h3>
+      <table class="admin-table">
+        <tr><th>#</th><th>Product</th><th>Seller</th><th>Type</th><th>Price</th><th>Status</th><th>Actions</th></tr>
+        ${products.map(p=>`<tr>
+          <td style="color:var(--muted)">${p.id}</td>
+          <td><span style="font-size:1.2rem">${p.emoji}</span> ${p.name.substring(0,30)}…</td>
+          <td>${p.seller}</td>
+          <td>${p.type}</td>
+          <td>₦${p.price.toLocaleString()}</td>
+          <td><span class="status-badge ${p.status==='pending'?'pending-badge':'active-badge'}">${p.status||'active'}</span></td>
+          <td class="action-btns">
+            ${p.status==='pending'?`<button class="btn-sm btn-approve" onclick="approveProduct(${p.id})">Approve</button>`:''}
+            <button class="btn-sm btn-ban" onclick="removeProduct(${p.id})">Remove</button>
+          </td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+}
+
+function renderAdminUsers(c, role){
+  const filtered = users.filter(u=>u.role===role||(!u.role&&role==='buyer'));
+  c.innerHTML=`<div class="admin-header"><h1>${role.charAt(0).toUpperCase()+role.slice(1)}s</h1></div>
+    <div class="admin-section"><h3>All ${role}s (${filtered.length})</h3>
+      ${filtered.length?`<table class="admin-table">
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Actions</th></tr>
+        ${filtered.map(u=>`<tr>
+          <td>${u.name}</td><td>${u.email}</td><td>${u.phone||'—'}</td><td>${u.joined||'—'}</td>
+          <td class="action-btns">
+            <button class="btn-sm btn-ban" onclick="showToast('User suspended','')">Suspend</button>
+          </td>
+        </tr>`).join('')}
+      </table>`:`<p style="color:var(--muted)">No ${role}s registered yet.</p>`}
+    </div>`;
+}
+
+function approveProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(p){ p.status='active'; p.badge=''; saveData(); renderAdminOverview(); showToast('Product approved ✓','success'); }
+}
+function removeProduct(id){
+  products = products.filter(x=>x.id!==id); saveData();
+  showAdminTab('products', null); renderAdminOverview();
+  showToast('Product removed','');
+}
+
+// ══════════════════════════════════
+//  NEYO AI CHATBOT
+// ══════════════════════════════════
+const NEYO_SYSTEM = `You are Neyo AI, the friendly and knowledgeable assistant for NeyoMarket — a Nigerian digital and physical product marketplace. You help users with: finding products, understanding how to sell, explaining the affiliate program, payment questions, shipping info, rules and policies, and general marketplace guidance. Be concise, warm, and professional. Use emojis occasionally. Always encourage users to explore the marketplace.`;
+
+let chatHistory = [];
+let chatOpen = false;
+
+function toggleChat(){
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatbot-panel');
+  panel.classList.toggle('open', chatOpen);
+  if(chatOpen && chatHistory.length===0){
+    addBotMessage("Hi! I'm **Neyo AI** 👋 I'm here to help you navigate NeyoMarket. You can ask me about products, selling, the affiliate program, payments, or anything else. How can I help you today?");
+  }
+}
+
+function addBotMessage(text){
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className='chat-bubble bot';
+  div.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function addUserMessage(text){
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className='chat-bubble user';
+  div.textContent=text;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function addTyping(){
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className='typing';div.id='typing-indicator';
+  div.innerHTML='<span></span><span></span><span></span>';
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text) return;
+  input.value='';
+  addUserMessage(text);
+  chatHistory.push({role:'user',content:text});
+  const typing=addTyping();
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:400,
+        system:NEYO_SYSTEM,
+        messages:chatHistory
+      })
+    });
+    const data = await resp.json();
+    typing.remove();
+    const reply = data.content?.[0]?.text || "Sorry, I couldn't process that. Please try again!";
+    chatHistory.push({role:'assistant',content:reply});
+    addBotMessage(reply);
+  } catch(e){
+    typing.remove();
+    addBotMessage("Oops! I'm having a connection issue. Please try again in a moment. 🔄");
+  }
+}
+
+// ══════════════════════════════════
+//  TOAST
+// ══════════════════════════════════
+function showToast(msg, type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast '+(type||'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════
+//  INIT
+// ══════════════════════════════════
+(function init(){
+  updateNavUI();
+  renderProducts('home-products', products.slice(0,8));
+  // check URL for affiliate ref
+  const url=new URLSearchParams(window.location.search);
+  if(url.get('ref')) localStorage.setItem('nm_ref', url.get('ref'));
+})();
+</script>
 </body>
 </html>
-<section id="appointment">
-  <h2>Book an Appointment</h2>
-  <form>
-    <label>Name:</label>
-    <input type="text" name="name"><br><br>
-    <label>Email:</label>
-    <input type="email" name="email"><br><br>
-    <label>Department:</label>
-    <select name="department">
-      <option value="cardiology">Cardiology</option>
-      <option value="oncology">Oncology</option>
-      <option value="neurology">Neurology</option>
-    </select><br><br>
-    <label>Date:</label>
-    <input type="date" name="date"><br><br>
-    <label>Time:</label>
-    <input type="time" name="time"><br><br>
-    <button>Book Appointment</button>
-  </form>
-</section>
