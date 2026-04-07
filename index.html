@@ -648,7 +648,7 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
       </div>
 
       <!-- DIGITAL FILE ZONE -->
-      <div class="fg" id="digital-file-fg" style="display:none">
+      <div class="fg" id="digital-file-fg" style="display:block">
         <label>Product File <span class="req">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:.78rem">(PDF/ZIP/MP4 required for digital/course)</span></label>
         <div class="digital-file-zone" id="dfile-zone" onclick="document.getElementById('d-file-input').click()">
           <div style="font-size:2rem">📁</div>
@@ -669,8 +669,8 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
         <label for="sell-terms">I confirm all product information is accurate and I agree to the <a onclick="go('rules')">Marketplace Rules & Terms of Service</a>. I understand that fraudulent listings result in permanent account ban and potential legal action.</label>
       </div>
 
-      <button class="submit-btn" id="sell-submit-btn" disabled onclick="submitProduct()">
-        <span class="lock-icon">🔒</span> Submit for Review
+      <button class="submit-btn" id="sell-submit-btn" onclick="submitProduct()">
+       <span class="lock-icon">🔒</span> Submit for Review
       </button>
       <div class="v-msg bad show" id="sell-global-msg" style="text-align:center;margin-top:10px">Complete all fields and upload at least 4 images to unlock submission.</div>
     </div>
