@@ -1088,25 +1088,38 @@ let currentFilter='all';
   if(s){const u=dec(s);if(u){currentUser=u;}}
 })();
 
-// --- MOBILE STEALTH ADMIN TRIGGER ---
+// --- MOBILE STEALTH ADMIN TRIGGER (FINAL VERSION) ---
 let adminTaps = 0;
 document.addEventListener('click', (e) => {
-    // Check if the thing you clicked is your Logo
     if (e.target.closest('.nav-logo') || e.target.closest('img')) {
         adminTaps++;
         if (adminTaps === 5) {
             let masterKey = prompt("ENTER SYSTEM KEY:");
-            if (masterKey === "NEYO2026") {
-                go('admin-gate');
+            if (masterKey && masterKey.toUpperCase() === "NEYO2026") {
+                // 1. Hide the Login Page
+                const loginPage = document.getElementById('page-login');
+                if (loginPage) loginPage.style.display = 'none';
+                
+                // 2. Open the REAL Dashboard (using ID from your photo)
+                const dashboard = document.getElementById('page-admin');
+                if (dashboard) {
+                    dashboard.style.display = 'block';
+                    dashboard.classList.add('active'); 
+                }
+                
+                // 3. Force the internal system to load the view
+                if (typeof go === "function") {
+                    go('page-admin');
+                }
             } else {
                 alert("ACCESS DENIED");
             }
             adminTaps = 0;
         }
-        // Reset taps if you wait too long
         setTimeout(() => { adminTaps = 0; }, 3000);
     }
 });
+
 
 
 // ══════════════════════════════════════════════════
