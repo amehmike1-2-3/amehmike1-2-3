@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
 <title>NeyoMarket — Secure Digital & Physical Marketplace</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a0a1a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='40' font-family='serif' font-weight='900' fill='%23f0c040'%3EN%3C/text%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -767,7 +766,11 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
       </div>
       <button class="auth-btn" id="si-btn" onclick="doSignIn()">Sign In Securely 🔐</button>
       <div class="auth-switch">No account? <a onclick="go('signup')">Sign Up</a></div>
-      
+      <div class="divider">or access admin</div>
+      <div style="text-align:center;font-size:.78rem;color:var(--muted)">Admin access via secure token only.<br/>Use <code style="color:var(--gold)">NEYO_ADMIN</code> command in browser console.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════ SIGN UP ══════════ -->
 <div class="page" id="page-signup">
@@ -1088,64 +1091,11 @@ let currentFilter='all';
   if(s){const u=dec(s);if(u){currentUser=u;}}
 })();
 
-  // --- BUTTON FIXER ---
-function go(pageId) {
-    // 1. Hide all pages
-    document.querySelectorAll('.page').forEach(p => {
-        p.style.display = 'none';
-        p.classList.remove('active');
-    });
-
-    // 2. Show the page the button is asking for
-    let target = document.getElementById(pageId);
-    
-    // 3. If it can't find it, try adding 'page-' to the front automatically
-    if (!target) target = document.getElementById('page-' + pageId);
-
-    if (target) {
-        target.style.display = 'block';
-        target.classList.add('active');
-    } else {
-        console.log("Could not find page: " + pageId);
-    }
-}
-
-
-// --- MOBILE STEALTH ADMIN TRIGGER (POWER VERSION) ---
-let adminTaps = 0;
-document.addEventListener('click', (e) => {
-    // This looks for your logo or any image in the navigation
-    if (e.target.closest('.nav-logo') || e.target.closest('img')) {
-        adminTaps++;
-        if (adminTaps === 5) {
-            let masterKey = prompt("ENTER SYSTEM KEY:");
-            if (masterKey && masterKey.toUpperCase() === "NEYO2026") {
-                
-                // 1. HIDE EVERY SINGLE PAGE (Force Clear)
-                document.querySelectorAll('.page').forEach(p => {
-                    p.style.display = 'none';
-                    p.classList.remove('active');
-                });
-
-                // 2. SHOW THE DASHBOARD (Using the ID from your photo)
-                const dashboard = document.getElementById('page-admin');
-                if (dashboard) {
-                    dashboard.style.display = 'block';
-                    dashboard.classList.add('active');
-                    console.log("Admin Dashboard Loaded");
-                } else {
-                    alert("Error: page-admin not found in code.");
-                }
-
-            } else {
-                alert("ACCESS DENIED");
-            }
-            adminTaps = 0;
-        }
-        setTimeout(() => { adminTaps = 0; }, 3000);
-    }
-});
-
+// ── CONSOLE ADMIN TRIGGER (Ghost Admin) ──
+window.NEYO_ADMIN=function(){go('admin-gate');};
+// Suppress console in production-feel
+const origLog=console.log,origWarn=console.warn,origErr=console.error;
+console.log=function(){};console.warn=function(){};console.error=function(){};
 
 // ══════════════════════════════════════════════════
 //  IMAGE SLOTS
