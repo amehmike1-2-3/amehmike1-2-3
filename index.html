@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -81,6 +81,9 @@
 
 <!-- ═══ PAYSTACK ═══ -->
 <script src="https://js.paystack.co/v1/inline.js"></script>
+
+<!-- ═══ EMAILJS — sends real password reset emails from the browser ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
 /* ══════════════════════════════════════════
@@ -664,17 +667,46 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
 <div class="page" id="page-signin">
   <div class="aw">
     <div class="acard">
-      <div class="alo">
-        <div class="lm" style="width:46px;height:46px;border-radius:12px;margin:0 auto 10px;font-size:24px">N</div>
-        <h2>Welcome Back</h2><p>Sign in to your NeyoMarket account</p>
+
+      <!-- ── LOGIN PANEL ── -->
+      <div id="signin-panel">
+        <div class="alo">
+          <div class="lm" style="width:46px;height:46px;border-radius:12px;margin:0 auto 10px;font-size:24px">N</div>
+          <h2>Welcome Back</h2><p>Sign in to your NeyoMarket account</p>
+        </div>
+        <div class="fg"><label>Email</label><input class="fi" type="email" id="si-email" placeholder="you@email.com" autocomplete="email"/></div>
+        <div class="fg"><label>Password</label><input class="fi" type="password" id="si-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+        <a class="fl" onclick="showForgotPanel()">Forgot password?</a>
+        <div class="em" id="si-err"></div>
+        <div class="tr2"><input type="checkbox" id="si-cb"/><label for="si-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a></label></div>
+        <button class="abtn" onclick="doSignIn()">Sign In Securely 🔐</button>
+        <div class="asw">No account? <a onclick="go('signup')">Sign Up Free</a></div>
       </div>
-      <div class="fg"><label>Email</label><input class="fi" type="email" id="si-email" placeholder="you@email.com" autocomplete="email"/></div>
-      <div class="fg"><label>Password</label><input class="fi" type="password" id="si-pass" placeholder="••••••••" autocomplete="current-password"/></div>
-      <a class="fl" onclick="forgotPassword()">Forgot password?</a>
-      <div class="em" id="si-err"></div>
-      <div class="tr2"><input type="checkbox" id="si-cb"/><label for="si-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a></label></div>
-      <button class="abtn" onclick="doSignIn()">Sign In Securely 🔐</button>
-      <div class="asw">No account? <a onclick="go('signup')">Sign Up Free</a></div>
+
+      <!-- ── FORGOT PASSWORD PANEL (hidden by default) ── -->
+      <div id="forgot-panel" style="display:none">
+        <div class="alo">
+          <div style="font-size:2rem;margin-bottom:8px">🔑</div>
+          <h2>Reset Password</h2>
+          <p>We'll email you a reset link instantly</p>
+        </div>
+        <div class="fg">
+          <label>Your Registered Email</label>
+          <input class="fi" type="email" id="fp-email" placeholder="you@email.com" autocomplete="email"/>
+        </div>
+        <div class="em" id="fp-err" style="min-height:18px"></div>
+        <div id="fp-success" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px">
+          <div style="font-size:1.6rem;margin-bottom:6px">✅</div>
+          <div style="font-weight:700;color:var(--green);margin-bottom:4px">Reset Email Sent!</div>
+          <div id="fp-sent-to" style="font-size:.8rem;color:var(--muted)"></div>
+          <div style="font-size:.76rem;color:var(--muted);margin-top:6px">Check your inbox and spam folder.</div>
+        </div>
+        <button class="abtn" id="fp-btn" onclick="sendResetEmail()">📧 Send Reset Link</button>
+        <div style="text-align:center;margin-top:14px">
+          <a onclick="hideForgotPanel()" style="color:var(--muted);font-size:.83rem;cursor:pointer">← Back to Sign In</a>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1574,19 +1606,134 @@ function doSignOut() {
 }
 window.doSignOut = doSignOut;
 
-/* ═══ 6. forgotPassword ═══ */
-function forgotPassword() {
-  var email = prompt("Enter your registered email address and we'll send a reset link:");
-  if (email === null) return;
-  email = email.trim();
-  if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
-  var found = usrs.some(function (u) { return u.email.toLowerCase() === email.toLowerCase(); });
-  if (found) {
-    alert('✅ Reset Link Sent!\n\nA password reset link has been sent to:\n' + email + '\n\nCheck your inbox within 5 minutes.');
-  } else {
-    alert('No account found with that email address.\n\nDouble-check your spelling or create a new account.');
+/* ═══════════════════════════════════════════════════════════════
+   EMAILJS PASSWORD RESET — sends a real email via EmailJS
+   ───────────────────────────────────────────────────────────────
+   SETUP (one-time, 5 minutes):
+   1. Go to https://www.emailjs.com → sign up FREE
+   2. Add Email Service → connect your Gmail (or any email)
+      → copy the Service ID → paste below as EJ_SERVICE
+   3. Create Email Template with these variables:
+        To Email  : {{to_email}}
+        Subject   : Password Reset — NeyoMarket
+        Body      : Hi {{user_name}},
+                    Here is your temporary password: {{temp_password}}
+                    Login at: {{login_url}}
+                    This code expires in 1 hour.
+      → copy Template ID → paste below as EJ_TEMPLATE
+   4. Go to Account → copy Public Key → paste below as EJ_PUBLIC
+   ═══════════════════════════════════════════════════════════════ */
+var EJ_SERVICE  = 'YOUR_EMAILJS_SERVICE_ID';   // e.g. 'service_abc123'
+var EJ_TEMPLATE = 'YOUR_EMAILJS_TEMPLATE_ID';  // e.g. 'template_xyz789'
+var EJ_PUBLIC   = 'YOUR_EMAILJS_PUBLIC_KEY';   // e.g. 'abcDEFghiJKL'
+
+/* ── Panel toggle helpers ── */
+function showForgotPanel() {
+  var sp = document.getElementById('signin-panel');
+  var fp = document.getElementById('forgot-panel');
+  var fe = document.getElementById('fp-err');
+  var fs = document.getElementById('fp-success');
+  var fb = document.getElementById('fp-btn');
+  if (sp) sp.style.display = 'none';
+  if (fp) fp.style.display = 'block';
+  if (fe) fe.textContent = '';
+  if (fs) fs.style.display = 'none';
+  if (fb) { fb.disabled = false; fb.textContent = '📧 Send Reset Link'; }
+  var fi = document.getElementById('fp-email'); if (fi) { fi.value = ''; fi.focus(); }
+}
+window.showForgotPanel = showForgotPanel;
+
+function hideForgotPanel() {
+  var sp = document.getElementById('signin-panel');
+  var fp = document.getElementById('forgot-panel');
+  if (fp) fp.style.display = 'none';
+  if (sp) sp.style.display = 'block';
+}
+window.hideForgotPanel = hideForgotPanel;
+
+/* ── sendResetEmail — the real email sender ── */
+function sendResetEmail() {
+  var emailEl = document.getElementById('fp-email');
+  var errEl   = document.getElementById('fp-err');
+  var sucEl   = document.getElementById('fp-success');
+  var sentEl  = document.getElementById('fp-sent-to');
+  var btn     = document.getElementById('fp-btn');
+
+  if (errEl) errEl.textContent = '';
+
+  var email = emailEl ? emailEl.value.trim().toLowerCase() : '';
+  if (!email || !email.includes('@')) {
+    if (errEl) errEl.textContent = 'Please enter a valid email address.';
+    return;
+  }
+
+  // Always reload users to guarantee master admin is present
+  usrs = loadUsers();
+  var user = usrs.find(function (u) { return u.email.trim().toLowerCase() === email; });
+
+  if (!user) {
+    if (errEl) errEl.textContent = 'No account found with that email. Check spelling or sign up.';
+    return;
+  }
+
+  // Generate a secure temporary password
+  var chars    = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  var tempPass = '';
+  for (var i = 0; i < 10; i++) { tempPass += chars.charAt(Math.floor(Math.random() * chars.length)); }
+
+  // Save temp password to the user account
+  user.password = tempPass;
+  var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === email; });
+  if (idx > -1) { usrs[idx] = user; sv('nm_users', usrs); }
+
+  // Update button to loading state
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+
+  // Check if EmailJS keys have been configured
+  if (EJ_SERVICE === 'YOUR_EMAILJS_SERVICE_ID') {
+    // Demo mode — show the temp password on screen since EmailJS isn't set up yet
+    if (errEl) errEl.style.color = 'var(--orange)';
+    if (errEl) errEl.textContent = '⚠ EmailJS not configured yet. Your temp password: ' + tempPass + ' (use it to sign in now, then change it in Profile)';
+    if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
+    return;
+  }
+
+  // Initialize EmailJS and send
+  try {
+    emailjs.init(EJ_PUBLIC);
+    emailjs.send(EJ_SERVICE, EJ_TEMPLATE, {
+      to_email:      email,
+      user_name:     user.name || 'User',
+      temp_password: tempPass,
+      login_url:     'https://amehmike1-2-3.github.io/Neyo-Market/'
+    }).then(
+      function () {
+        // SUCCESS
+        if (sucEl) {
+          sucEl.style.display = 'block';
+          if (sentEl) sentEl.textContent = 'Sent to: ' + maskEmail(email);
+        }
+        if (btn)   { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
+        if (errEl) errEl.textContent = '';
+        toast('Reset email sent! Check your inbox 📧', 'ok');
+      },
+      function (error) {
+        // EMAILJS ERROR
+        if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
+        var msg = (error && error.text) ? error.text : JSON.stringify(error);
+        if (errEl) errEl.textContent = 'Email failed: ' + msg + '. Try again or contact support.';
+        toast('Email send failed. Check your EmailJS config.', 'fail');
+      }
+    );
+  } catch (e) {
+    if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
+    if (errEl) errEl.textContent = 'EmailJS error: ' + (e.message || e) + '. Make sure you are online.';
   }
 }
+window.sendResetEmail = sendResetEmail;
+
+/* ── Keep the old forgotPassword() alias so nothing breaks ── */
+function forgotPassword() { showForgotPanel(); }
 window.forgotPassword = forgotPassword;
 
 /* ═══ PROFILE ═══ */
