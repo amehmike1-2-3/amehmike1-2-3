@@ -9,4 +9,4 @@ Disallow: /#admin
 Disallow: /#admin-gate
 
 # Sitemap location
-Sitemap: https://neyomarket.com/sitemap.xml
+Sitemap: https://amehmike1-2-3.github.io/Neyo-Market/
