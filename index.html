@@ -30,7 +30,8 @@
 <meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
+
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
 {
@@ -717,6 +718,7 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
       <div class="avb" id="pav">U</div>
       <div class="pi"><h2 id="p-name">User</h2><p id="p-role">Buyer</p><p class="pe" id="p-email"></p></div>
     </div>
+    <div class="dc" id="seller-dash" style="display:none"></div>
     <div class="dc"><h3>💸 Affiliate Dashboard</h3>
       <div class="smini">
         <div class="sm"><div class="sl">Earnings</div><div class="sv">₦0</div></div>
@@ -1229,12 +1231,28 @@ function swImg(el, src) {
 }
 window.swImg = swImg;
 
+/* ═══ AFFILIATE LINK — product-specific, uses real GitHub Pages base URL ═══ */
+var SITE_BASE = 'https://amehmike1-2-3.github.io/Neyo-Market/';
+
 function cpyAffProd(id) {
   var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
-  var link = 'https://neyomarket.com/product/' + id + '?ref=' + code;
-  navigator.clipboard.writeText(link).then(function () { toast('Affiliate link copied! 🔗', 'ok'); }).catch(function () { toast('Link: ' + link, 'ok'); });
+  // Format: ?ref=AFFILIATE_ID&p=PRODUCT_ID  — deep-links directly to the product
+  var link = SITE_BASE + '?ref=' + code + '&p=' + id;
+  navigator.clipboard.writeText(link)
+    .then(function () { toast('Affiliate link copied! 🔗', 'ok'); })
+    .catch(function () {
+      // Mobile fallback when clipboard API is blocked
+      prompt('Copy your affiliate link:', link);
+    });
 }
 window.cpyAffProd = cpyAffProd;
+
+// Also expose as generateAffiliateLink() for any external calls
+function generateAffiliateLink(id) {
+  var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
+  return SITE_BASE + '?ref=' + code + '&p=' + id;
+}
+window.generateAffiliateLink = generateAffiliateLink;
 
 /* ═══ CART ═══ */
 function addCart(id) {
@@ -1578,12 +1596,93 @@ function refreshProf() {
   var pn = document.getElementById('p-name'); if (pn) pn.textContent = CU.name;
   var pr = document.getElementById('p-role'); if (pr) pr.textContent = (CU.role || 'Buyer') + ' · Joined ' + (CU.joined || '2025');
   var pe = document.getElementById('p-email'); if (pe) pe.textContent = maskEmail(CU.email);
-  var al = document.getElementById('aff-l'); if (al) al.value = 'https://neyomarket.com/?ref=' + (CU.affCode || 'USER');
+  var al = document.getElementById('aff-l'); if (al) al.value = SITE_BASE + '?ref=' + (CU.affCode || 'USER');
   if (CU.payoutBank)  sval('po-bank', CU.payoutBank);
   if (CU.payoutAcct)  sval('po-acct', CU.payoutAcct);
   if (CU.payoutAname) sval('po-aname', CU.payoutAname);
   renderOrders();
+  renderSellerDash();
 }
+
+/* ── Seller Dashboard: shows seller's own products with Delete button ── */
+function renderSellerDash() {
+  var wrap = document.getElementById('seller-dash'); if (!wrap) return;
+  if (!CU) { wrap.style.display = 'none'; return; }
+
+  // Only show this panel to sellers and admins
+  if (CU.role !== 'seller' && CU.role !== 'admin') { wrap.style.display = 'none'; return; }
+
+  var myProds = prods.filter(function (p) {
+    // Match by seller name OR masked sellerEmail
+    return p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+  });
+
+  wrap.style.display = 'block';
+  var h3 = '<h3>🏪 My Products (' + myProds.length + ')</h3>';
+
+  if (!myProds.length) {
+    wrap.innerHTML = h3 + '<p style="color:var(--muted);font-size:.84rem">You have no listed products yet. <a onclick="go(\'sell\')" style="color:var(--gold);cursor:pointer">List one now →</a></p>';
+    return;
+  }
+
+  wrap.innerHTML = h3 + myProds.map(function (p) {
+    var img = (p.imgs && p.imgs[0])
+      ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0"/>'
+      : '<div style="width:44px;height:44px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">' + p.emoji + '</div>';
+    var statusColor = p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--orange)' : 'var(--red)';
+    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      + img
+      + '<div style="flex:1;min-width:130px">'
+      + '<div style="font-weight:600;font-size:.86rem;margin-bottom:2px">' + p.name.substring(0, 38) + (p.name.length > 38 ? '…' : '') + '</div>'
+      + '<div style="font-size:.74rem;color:var(--muted)">₦' + p.price.toLocaleString() + ' · <span style="color:' + statusColor + '">' + p.status + '</span></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 11px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🔗 Link</button>'
+      + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 11px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ── deleteProduct — seller can only delete their OWN product ── */
+function deleteProduct(productId) {
+  if (!CU) { toast('Please sign in first', 'fail'); return; }
+
+  var p = prods.find(function (x) { return x.id === productId; });
+  if (!p) { toast('Product not found', 'fail'); return; }
+
+  // Security check: email must match OR user is admin
+  var ownsIt = p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+  var isAdmin = CU.role === 'admin';
+
+  if (!ownsIt && !isAdmin) {
+    toast('You can only delete your own products', 'fail');
+    return;
+  }
+
+  if (!confirm('Delete "' + p.name.substring(0, 40) + '"?\n\nThis cannot be undone.')) return;
+
+  // Remove from array and persist
+  prods = prods.filter(function (x) { return x.id !== productId; });
+  saveAll();
+
+  toast('Product deleted successfully ✓', 'ok');
+
+  // Refresh whichever view is currently visible
+  if (document.getElementById('page-profile').classList.contains('active')) {
+    renderSellerDash();
+  }
+  if (document.getElementById('page-admin').classList.contains('active')) {
+    aTab('pr', null);
+  }
+  if (document.getElementById('page-market').classList.contains('active')) {
+    rGrid('mkt-grid', getActive());
+  }
+  // Refresh home grid too
+  rGrid('home-grid', getActive().slice(0, 8));
+  var hc = document.getElementById('hero-cnt'); if (hc) hc.textContent = getActive().length;
+}
+window.deleteProduct = deleteProduct;
 
 function savePayout() {
   var bank = gv('po-bank'), acct = gv('po-acct'), aname = gv('po-aname');
@@ -1749,25 +1848,93 @@ function toast(msg, type) {
 }
 window.toast = toast;
 
-/* ═══ 5. NEYO AI — LOCAL SWITCH-CASE (no API calls) ═══ */
+/* ═══ NEYO AI — LOCAL SWITCH-CASE, always uses live product data ═══ */
 var chatOpen2 = false;
 
 function getChatReply(input) {
   var q = input.toLowerCase().trim();
-  if (q.includes('sell') || q.includes('list'))                        return "To sell on NeyoMarket, go to the **Sell** page, upload at least 2 product images, fill in all details, and submit. Admin approves within 24 hours! 🏪";
-  if (q.includes('buy') || q.includes('purchase') || q.includes('cart')) return "Browse the **Marketplace**, add items to your cart, then checkout. 🛒 Your payment is held in escrow — only released after you confirm receipt!";
-  if (q.includes('affiliate') || q.includes('earn') || q.includes('commission')) return "Our **Affiliate Program** pays 15–30% commission per sale! 💸 Go to your Profile for your unique link. Share anywhere, earn every Monday.";
-  if (q.includes('safehaven') || q.includes('safe haven') || q.includes('shelter')) return "SafeHaven is a children's shelter we're proud to support. 🏠 Their donation platform runs on NeyoMarket. Contact us at " + SUPPORT_PHONE + ".";
-  if (q.includes('escrow') || q.includes('scam') || q.includes('fraud') || q.includes('safe')) return "🛡️ **Zero Scam Guarantee:** Payments are held in escrow via Paystack. Money is NEVER sent directly to sellers until you confirm receipt.";
-  if (q.includes('refund') || q.includes('return') || q.includes('dispute')) return "Refund Policy: Physical = 3-day window. Digital = 24hr if not as described. Open a dispute from your Orders page. Full refund if seller is at fault. ⚖️";
-  if (q.includes('pay') || q.includes('paystack'))                      return "All payments use **Paystack** — Nigeria's most trusted gateway. 🔐 Every transaction is escrow-protected.";
-  if (q.includes('shipping') || q.includes('delivery'))                 return "Physical products need a delivery address at checkout. 📦 Tap **Mark as Collected** when it arrives to release escrow. Avg delivery: 3–7 days.";
-  if (q.includes('payout') || q.includes('withdraw') || q.includes('bank')) return "Add bank details in **Profile → Payout Settings**. 🏦 Payouts every Monday. Min withdrawal: ₦500.";
-  if (q.includes('forgot') || q.includes('password') || q.includes('reset')) return "Use the **'Forgot password?'** link on the Sign In page to request a reset link. 🔑";
-  if (q.includes('contact') || q.includes('support') || q.includes('help')) return "📞 Reach us at **" + SUPPORT_PHONE + "** (WhatsApp or call). Real humans — 8am–8pm daily.";
-  if (q.includes('hi') || q.includes('hello') || q.includes('hey'))     return "Hello! 👋 I'm **Neyo AI**, NeyoMarket's assistant. Ask me about buying, selling, affiliates, payments, or refunds!";
-  if (q.includes('thank'))                                               return "You're welcome! 😊 Happy shopping on NeyoMarket! 🛒";
-  return "I'm not sure about that. 🤔 Try: **sell, buy, affiliate, escrow, refund, payment, shipping, support**. Or call " + SUPPORT_PHONE + ".";
+
+  // ── Product deletion — NeyoLady's answer ──
+  if (q.includes('delete') || q.includes('remove') || q.includes('delist') || q.includes('take down') || q.includes('take it down')) {
+    return "To remove your product, just go to your **Profile → My Products** section. Find the item you want to take down and tap the **Delete** button next to it — it's removed instantly! 🗑 Only you (the seller) can delete your own listings.";
+  }
+
+  // ── Affiliate link / referral ──
+  if (q.includes('affiliate') || q.includes('earn') || q.includes('commission') || q.includes('referral') || q.includes('refer')) {
+    return "Our **Affiliate Program** pays 15–30% commission per sale! 💸 Open any product, tap **🔗 Affiliate Link**, and you'll get a link like:\n`?ref=YOUR_CODE&p=PRODUCT_ID`\nShare it — when someone buys through your link, you earn automatically. Check your Profile for your code.";
+  }
+
+  // ── How many products / what's available ──
+  if (q.includes('how many product') || q.includes('what product') || q.includes('available product') || q.includes('list of product')) {
+    var activeCount = prods.filter(function(p){ return p.status === 'active'; }).length;
+    if (activeCount === 0) return "No products are live right now, but new listings go up daily! 🛍 Check back soon, or be the first to list one on the **Sell** page.";
+    var sample = prods.filter(function(p){ return p.status === 'active'; }).slice(0,3).map(function(p){ return '**' + p.name + '** (₦' + p.price.toLocaleString() + ')'; }).join(', ');
+    return "There are currently **" + activeCount + " active product(s)** on NeyoMarket! 🛒 Some examples: " + sample + ". Browse them all on the **Marketplace** page.";
+  }
+
+  // ── Sell / list ──
+  if (q.includes('sell') || q.includes('list') || q.includes('upload product')) {
+    return "To sell on NeyoMarket, go to the **Sell** page, upload at least 2 product images, fill in all details, and submit for review. Admin approves within 24 hours! 🏪 Once live, your product appears in the Marketplace.";
+  }
+
+  // ── Buy / purchase ──
+  if (q.includes('buy') || q.includes('purchase') || q.includes('cart') || q.includes('order')) {
+    return "Browse the **Marketplace**, add items to your cart, then checkout. 🛒 Your payment is held in **escrow** — only released to the seller after you confirm receipt. You're always protected!";
+  }
+
+  // ── SafeHaven ──
+  if (q.includes('safehaven') || q.includes('safe haven') || q.includes('shelter') || q.includes('donate')) {
+    return "SafeHaven is a children's shelter we proudly support. 🏠 Their donation platform is powered by NeyoMarket's payment system. Contact us at " + SUPPORT_PHONE + " to donate or learn more.";
+  }
+
+  // ── Escrow / scam / fraud ──
+  if (q.includes('escrow') || q.includes('scam') || q.includes('fraud') || q.includes('safe') || q.includes('protect')) {
+    return "🛡️ **Zero Scam Guarantee:** All payments are held in escrow via Paystack. Your money is NEVER sent directly to sellers — it's only released after you confirm receipt. Full refund if anything goes wrong.";
+  }
+
+  // ── Refund / dispute ──
+  if (q.includes('refund') || q.includes('return') || q.includes('dispute') || q.includes('wrong')) {
+    return "**Refund Policy:** Physical = 3-day window. Digital = 24hr if not as described. Open a dispute from your **My Orders** page — our team reviews within 24 hours. Full refund if seller is at fault. ⚖️";
+  }
+
+  // ── Payment / Paystack ──
+  if (q.includes('pay') || q.includes('paystack') || q.includes('transfer') || q.includes('payment')) {
+    return "All payments use **Paystack** — Nigeria's most trusted payment gateway. 🔐 Every transaction is escrow-protected. Digital products go straight to payment; physical items ask for your shipping address first.";
+  }
+
+  // ── Shipping / delivery ──
+  if (q.includes('shipping') || q.includes('delivery') || q.includes('address') || q.includes('collect')) {
+    return "Physical products need your delivery address at checkout. 📦 Enter your WhatsApp number so the seller can reach you. Tap **Mark as Collected** when your item arrives to release the escrow funds. Avg delivery: 3–7 days.";
+  }
+
+  // ── Payout / bank ──
+  if (q.includes('payout') || q.includes('withdraw') || q.includes('bank') || q.includes('withdrawal')) {
+    return "Add your bank details in **Profile → Payout Settings**. 🏦 Payouts are processed every Monday. Minimum withdrawal: ₦500. Make sure your account name matches your identity for smooth processing.";
+  }
+
+  // ── Password / forgot ──
+  if (q.includes('forgot') || q.includes('password') || q.includes('reset') || q.includes('login problem')) {
+    return "Tap **Sign In**, then use the **'Forgot password?'** link. Enter your email and a reset link will be sent to your inbox. 🔑 If you used a capital letter on mobile, try typing your email in lowercase — mobile auto-caps can break logins!";
+  }
+
+  // ── Support / contact ──
+  if (q.includes('contact') || q.includes('support') || q.includes('help') || q.includes('whatsapp') || q.includes('call') || q.includes('phone')) {
+    return "📞 Reach our support team at **" + SUPPORT_PHONE + "** (WhatsApp or call). Real humans — no bots. We handle every complaint personally. Available 8am–8pm daily (WAT).";
+  }
+
+  // ── Greeting ──
+  if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('good morning') || q.includes('good afternoon') || q.includes('good evening')) {
+    return "Hello! 👋 I'm **Neyo AI**, NeyoMarket's assistant. I can help you with buying, selling, deleting products, affiliate links, escrow, payments, and more. What would you like to know?";
+  }
+
+  if (q.includes('thank')) return "You're welcome! 😊 Happy selling and shopping on NeyoMarket! 🛒";
+
+  if (q.includes('how') && q.includes('work')) {
+    return "NeyoMarket works in 3 steps: 1️⃣ Browse &amp; buy — payment is held in escrow. 2️⃣ Seller delivers your product. 3️⃣ You confirm receipt and the seller gets paid. Simple, safe, and fast! 🎯";
+  }
+
+  // ── Default ──
+  return "Hmm, I'm not sure about that one. 🤔 Try asking: **sell, buy, delete product, affiliate link, escrow, refund, payment, shipping**, or **support**. Or call us at " + SUPPORT_PHONE + ".";
 }
 
 function addBotMsg(text) {
@@ -1806,8 +1973,32 @@ updNav();
 rGrid('home-grid', getActive().slice(0, 8));
 var hc = document.getElementById('hero-cnt'); if (hc) hc.textContent = getActive().length;
 validateSell();
-var ref = new URLSearchParams(window.location.search).get('ref');
-if (ref) sessionStorage.setItem('nm_ref', ref);
+
+// ── Deep-link & affiliate URL param handling ──
+(function handleURLParams() {
+  var params = new URLSearchParams(window.location.search);
+
+  // Save affiliate referral code
+  var ref = params.get('ref');
+  if (ref) sessionStorage.setItem('nm_ref', ref);
+
+  // Deep-link: ?p=PRODUCT_ID  — open the product immediately
+  var pid = params.get('p');
+  if (pid) {
+    var numId = parseInt(pid, 10);
+    // Show marketplace first so the modal has context
+    go('market');
+    // Small delay to let the page render before opening the modal
+    setTimeout(function () {
+      var found = prods.find(function (x) { return x.id === numId; });
+      if (found) {
+        opn(numId);
+      } else {
+        toast('Product not found or has been removed.', 'warn');
+      }
+    }, 250);
+  }
+})();
 
 })();
 </script>
