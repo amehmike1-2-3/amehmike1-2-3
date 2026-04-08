@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -937,20 +937,23 @@ function gv(id) { var e = document.getElementById(id); return e ? e.value.trim()
 function sval(id, v) { var e = document.getElementById(id); if (e) e.value = v; }
 function maskEmail(e) { if (!e || !e.includes('@')) return '***'; var p = e.split('@'); return p[0][0] + '***@' + p[1]; }
 
-/* ═══ 1. loadUsers — MASTER ADMIN ALWAYS INJECTED ═══ */
+/* ═══ 1. loadUsers — MASTER ADMIN ALWAYS RE-INJECTED ON EVERY DEVICE ═══ */
 function loadUsers() {
   var stored = ld('nm_users', []);
   if (!Array.isArray(stored)) stored = [];
-  var hasAdmin = stored.some(function (u) { return u.email === MASTER_ADMIN.email; });
-  if (!hasAdmin) { stored.unshift(MASTER_ADMIN); sv('nm_users', stored); }
+  // Always remove any stale master admin entry and re-inject fresh at top
+  stored = stored.filter(function (u) { return u.id !== MASTER_ADMIN.id; });
+  stored.unshift(MASTER_ADMIN);
+  sv('nm_users', stored);
   return stored;
 }
 
 function loadAll() {
-  usrs = loadUsers();
+  usrs  = loadUsers();
   prods = ld('nm_products', []);
   ords  = ld('nm_orders', []);
-  var s = sessionStorage.getItem('nm_session');
+  // Check localStorage first (persists after refresh), then sessionStorage
+  var s = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
   if (s) { try { CU = JSON.parse(s); } catch (e) { CU = null; } }
 }
 function saveAll() { sv('nm_users', usrs); sv('nm_products', prods); sv('nm_orders', ords); }
@@ -998,7 +1001,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (pw === null) return;
       if (pw === ADMIN_PASS) {
         CU = { id: 'master_admin_001', name: 'NeyoMarket Admin', email: ADMIN_EMAIL, role: 'admin' };
-        sessionStorage.setItem('nm_session', JSON.stringify(CU));
+        var uStr = JSON.stringify(CU);
+        localStorage.setItem('nm_current_user', uStr);
+        sessionStorage.setItem('nm_session', uStr);
         updNav(); toast('Admin access granted 🔐', 'ok'); go('admin');
       } else {
         alert('❌ Incorrect password.\n\nThis access attempt has been logged.');
@@ -1013,7 +1018,9 @@ function vGate() {
   if (v === ADMIN_PASS) {
     cM('m-gate');
     CU = { id: 'master_admin_001', name: 'NeyoMarket Admin', email: ADMIN_EMAIL, role: 'admin' };
-    sessionStorage.setItem('nm_session', JSON.stringify(CU));
+    var uStr = JSON.stringify(CU);
+    localStorage.setItem('nm_current_user', uStr);
+    sessionStorage.setItem('nm_session', uStr);
     updNav(); toast('Admin access granted 🔐', 'ok'); go('admin');
   } else {
     document.getElementById('gate-err').textContent = 'Incorrect password. Try again.';
@@ -1268,20 +1275,54 @@ window.openCart = openCart;
 function rmCart(id) { cart = cart.filter(function (i) { return i.id !== id; }); updBadge(); openCart(); }
 window.rmCart = rmCart;
 
-/* ═══ 4. CHECKOUT ROUTING ═══ */
-function startCheckout() {
-  if (!cart.length) { toast('Cart is empty', 'fail'); return; }
-  if (!CU) { toast('Please sign in to checkout', 'fail'); go('signin'); return; }
-  var hasPhysical = cart.some(function (i) { return i.type === 'physical'; });
-  startPurchase(hasPhysical);
+/* ═══ CHECKOUT ROUTING — digital skips shipping, goes straight to Paystack ═══ */
+
+// Digital type identifiers — extend this list freely
+var DIGITAL_TYPES = ['digital', 'course', 'ebook', 'ebooks', 'software', 'art'];
+
+function isDigitalItem(item) {
+  if (!item) return false;
+  var t = (item.type || '').toLowerCase();
+  var c = (item.cat  || '').toLowerCase();
+  return DIGITAL_TYPES.indexOf(t) !== -1 || DIGITAL_TYPES.indexOf(c) !== -1;
 }
 
+function startCheckout() {
+  if (!cart.length) { toast('Your cart is empty', 'fail'); return; }
+  if (!CU) { toast('Please sign in to checkout', 'fail'); go('signin'); return; }
+
+  // Cart is fully digital if EVERY item is a digital type
+  var allDigital = cart.every(function (i) { return isDigitalItem(i); });
+
+  // Pre-fill known user data into both forms
+  if (CU.name)  { sval('sh-name', CU.name);  sval('co-name', CU.name); }
+  if (CU.email) { sval('sh-email', CU.email); sval('co-email', CU.email); }
+  if (CU.phone) { sval('sh-wa', CU.phone);    sval('co-wa', CU.phone); }
+
+  if (allDigital) {
+    // Skip shipping form — go to checkout then fire Paystack immediately
+    go('checkout');
+    // Short delay so the page renders before Paystack iframe opens
+    setTimeout(function () { processPaystack('digital'); }, 350);
+  } else {
+    // Physical or mixed cart — collect shipping address first
+    go('shipping');
+  }
+}
+window.startCheckout = startCheckout;
+
+// Kept for backward-compat with any onclick="startPurchase(...)"
 function startPurchase(isPhysical) {
   if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
-  if (CU.name)  { sval('sh-name', CU.name);   sval('co-name', CU.name); }
-  if (CU.email) { sval('sh-email', CU.email);  sval('co-email', CU.email); }
-  if (CU.phone) { sval('sh-wa', CU.phone);     sval('co-wa', CU.phone); }
-  if (isPhysical) go('shipping'); else go('checkout');
+  if (CU.name)  { sval('sh-name', CU.name);  sval('co-name', CU.name); }
+  if (CU.email) { sval('sh-email', CU.email); sval('co-email', CU.email); }
+  if (CU.phone) { sval('sh-wa', CU.phone);    sval('co-wa', CU.phone); }
+  if (isPhysical) {
+    go('shipping');
+  } else {
+    go('checkout');
+    setTimeout(function () { processPaystack('digital'); }, 350);
+  }
 }
 window.startPurchase = startPurchase;
 
@@ -1311,48 +1352,108 @@ function vCo() {
 }
 window.vCo = vCo;
 
-/* ═══ 4. processPaystack ═══ */
+/* ═══ processPaystack — works for both auto-fired digital and manual physical ═══ */
 function processPaystack(mode) {
-  var isPhys  = mode === 'physical';
-  var email   = gv(isPhys ? 'sh-email'  : 'co-email');
-  var name    = gv(isPhys ? 'sh-name'   : 'co-name');
-  var wa      = gv(isPhys ? 'sh-wa'     : 'co-wa');
-  var addr    = isPhys ? gv('sh-addr')  : 'Digital Delivery';
-  if (!email || !name) { alert('Please fill in all required fields.'); return; }
-  var total = 0; cart.forEach(function (i) { total += i.price * (i.qty || 1); });
+  var isPhys = (mode === 'physical');
+
+  // For digital auto-fire, fall back to the logged-in user's email if form is empty
+  var emailEl = document.getElementById(isPhys ? 'sh-email' : 'co-email');
+  var nameEl  = document.getElementById(isPhys ? 'sh-name'  : 'co-name');
+  var waEl    = document.getElementById(isPhys ? 'sh-wa'    : 'co-wa');
+  var addrEl  = document.getElementById('sh-addr');
+
+  var email = (emailEl && emailEl.value.trim()) || (CU ? CU.email : '');
+  var name  = (nameEl  && nameEl.value.trim())  || (CU ? CU.name  : '');
+  var wa    = (waEl    && waEl.value.trim())    || (CU ? (CU.phone || '') : '');
+  var addr  = isPhys ? ((addrEl && addrEl.value.trim()) || '') : 'Digital Delivery';
+
+  // Pre-fill fields so the form looks filled (UX)
+  if (emailEl && !emailEl.value) emailEl.value = email;
+  if (nameEl  && !nameEl.value)  nameEl.value  = name;
+  if (waEl    && !waEl.value)    waEl.value     = wa;
+
+  if (!email) { alert('Please enter your email address to continue.'); return; }
+  if (!name)  { alert('Please enter your full name to continue.'); return; }
+  if (isPhys && !addr) { alert('Please enter your delivery address.'); return; }
+
+  var total = 0;
+  cart.forEach(function (i) { total += i.price * (i.qty || 1); });
   if (total <= 0) { alert('Your cart is empty.'); return; }
+
   var trackId = 'NYO-' + Math.floor(1000 + Math.random() * 9000);
+
   var cfg = {
-    key: PK, email: email, amount: total * 100, currency: 'NGN', ref: trackId,
-    metadata: { custom_fields: [
-      { display_name: 'Customer',    variable_name: 'customer', value: name },
-      { display_name: 'WhatsApp',    variable_name: 'whatsapp', value: wa },
-      { display_name: 'Address',     variable_name: 'address',  value: addr },
-      { display_name: 'Tracking ID', variable_name: 'tracking', value: trackId }
-    ]},
+    key:      PK,
+    email:    email,
+    amount:   Math.round(total * 100), // kobo, must be integer
+    currency: 'NGN',
+    ref:      trackId,
+    metadata: {
+      custom_fields: [
+        { display_name: 'Customer',    variable_name: 'customer', value: name },
+        { display_name: 'WhatsApp',    variable_name: 'whatsapp', value: wa || 'N/A' },
+        { display_name: 'Address',     variable_name: 'address',  value: addr },
+        { display_name: 'Tracking ID', variable_name: 'tracking', value: trackId }
+      ]
+    },
+
     callback: function (resp) {
+      // Build and save order
       var order = {
-        id: trackId, ref: resp.reference,
-        customer: { name: name, email: maskEmail(email), whatsapp: wa, address: addr },
-        items: cart.map(function (i) { return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji }; }),
-        total: total, status: 'escrow_held', mode: mode,
-        date: new Date().toLocaleDateString(), collected: false, downloadLog: []
+        id:         trackId,
+        ref:        resp.reference,
+        customer:   { name: name, email: maskEmail(email), whatsapp: wa, address: addr },
+        items:      cart.map(function (i) {
+          return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji };
+        }),
+        total:      total,
+        status:     'escrow_held',
+        mode:       mode,
+        date:       new Date().toLocaleDateString(),
+        collected:  false,
+        downloadLog: []
       };
-      ords.push(order); saveAll();
-      cart = []; updBadge();
+      ords.push(order);
+      saveAll();
+
+      // Clear cart
+      cart = [];
+      updBadge();
+
+      // Show receipt modal
       var ri = document.getElementById('rec-id');
       var rf = document.getElementById('rec-info');
       if (ri) ri.textContent = trackId;
-      if (rf) rf.innerHTML = '<div>Name: ' + name + '</div><div>WhatsApp: ' + wa + '</div>'
-        + '<div>Amount: ₦' + total.toLocaleString() + '</div><div>Date: ' + new Date().toLocaleDateString() + '</div>'
-        + '<div style="margin-top:8px;color:var(--green)">🛡️ Funds held in escrow until you confirm receipt.</div>';
+      if (rf) rf.innerHTML =
+        '<div>Name: '       + name  + '</div>' +
+        '<div>WhatsApp: '   + (wa || 'N/A') + '</div>' +
+        '<div>Amount: ₦'    + total.toLocaleString() + '</div>' +
+        '<div>Date: '       + new Date().toLocaleDateString() + '</div>' +
+        '<div style="margin-top:8px;color:var(--green)">🛡️ Funds held in escrow. Confirm receipt to release payment.</div>';
+
+      // Close any open modal then show receipt
+      cM('m-cart'); cM('m-pd');
       oM('m-rec');
-      toast('Payment successful! ' + trackId, 'ok');
+      toast('✅ Payment successful! Order ' + trackId, 'ok');
     },
-    onClose: function () { toast('Payment cancelled.', 'warn'); }
+
+    onClose: function () {
+      toast('Payment window closed. Your cart is still intact.', 'warn');
+    }
   };
-  try { PaystackPop.setup(cfg).openIframe(); }
-  catch (err) { alert('Paystack could not load. Check your internet connection.'); }
+
+  // Guard: PaystackPop must be loaded
+  if (typeof PaystackPop === 'undefined') {
+    alert('Paystack did not load. Please check your internet connection and refresh the page.');
+    return;
+  }
+
+  try {
+    var handler = PaystackPop.setup(cfg);
+    handler.openIframe();
+  } catch (err) {
+    alert('Paystack error: ' + (err.message || 'Unknown error') + '\n\nPlease refresh and try again.');
+  }
 }
 window.processPaystack = processPaystack;
 
@@ -1393,15 +1494,38 @@ window.markDL = markDL;
 
 /* ═══ AUTH ═══ */
 function doSignIn() {
-  var email = gv('si-email'), pass = document.getElementById('si-pass').value;
-  var cb = document.getElementById('si-cb'), err = document.getElementById('si-err');
-  err.textContent = '';
-  if (!cb || !cb.checked) { err.textContent = 'Please accept the Terms of Service.'; return; }
-  if (!email || !pass)     { err.textContent = 'All fields are required.'; return; }
-  var u = usrs.find(function (x) { return x.email === email && x.password === pass; });
-  if (!u) { err.textContent = 'Incorrect email or password.'; return; }
-  CU = u; sessionStorage.setItem('nm_session', JSON.stringify(u));
-  updNav(); toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
+  // .trim().toLowerCase() fixes mobile auto-capitalisation
+  var rawEmail = (document.getElementById('si-email') || {}).value || '';
+  var email    = rawEmail.trim().toLowerCase();
+  var passEl   = document.getElementById('si-pass');
+  var pass     = passEl ? passEl.value : '';
+  var cb       = document.getElementById('si-cb');
+  var err      = document.getElementById('si-err');
+  if (err) err.textContent = '';
+
+  if (!cb || !cb.checked) { if (err) err.textContent = 'Please accept the Terms of Service.'; return; }
+  if (!email || !pass)    { if (err) err.textContent = 'All fields are required.'; return; }
+
+  // Reload users fresh so master admin is guaranteed present
+  usrs = loadUsers();
+
+  var u = usrs.find(function (x) {
+    return x.email.trim().toLowerCase() === email && x.password === pass;
+  });
+
+  if (!u) {
+    if (err) err.textContent = 'Incorrect email or password. Check caps lock & spacing.';
+    return;
+  }
+
+  CU = u;
+  // Save to BOTH storages: localStorage survives refresh, sessionStorage survives tab
+  var uStr = JSON.stringify(u);
+  localStorage.setItem('nm_current_user', uStr);
+  sessionStorage.setItem('nm_session', uStr);
+
+  updNav();
+  toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
   go(u.role === 'admin' ? 'admin' : 'home');
 }
 window.doSignIn = doSignIn;
@@ -1417,13 +1541,18 @@ function doSignUp() {
   if (usrs.find(function (x) { return x.email === email; })) { err.textContent = 'Email already registered.'; return; }
   var u = { id: Date.now(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase() };
   usrs.push(u); saveAll();
-  CU = u; sessionStorage.setItem('nm_session', JSON.stringify(u));
+  CU = u;
+  var uStr = JSON.stringify(u);
+  localStorage.setItem('nm_current_user', uStr);
+  sessionStorage.setItem('nm_session', uStr);
   updNav(); toast('Welcome to NeyoMarket! 🎉', 'ok'); go('home');
 }
 window.doSignUp = doSignUp;
 
 function doSignOut() {
-  CU = null; sessionStorage.removeItem('nm_session');
+  CU = null;
+  sessionStorage.removeItem('nm_session');
+  localStorage.removeItem('nm_current_user');
   updNav(); toast('Signed out.', ''); go('home');
 }
 window.doSignOut = doSignOut;
