@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
 <title>NeyoMarket — Secure Digital & Physical Marketplace</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a0a1a'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='40' font-family='serif' font-weight='900' fill='%23f0c040'%3EN%3C/text%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -647,20 +646,8 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
         <textarea class="fi" id="s-desc" rows="4" placeholder="Describe your product clearly. What does the buyer get? What's included?" oninput="validateSell()"></textarea>
       </div>
 
-      <div class="page" id="page-shipping" style="display:none; padding:100px 20px;">
-    <h2>Delivery Information</h2>
-    <div class="auth-card">
-        <input type="text" id="ship-name" class="fi" placeholder="Full Name">
-        <input type="tel" id="ship-phone" class="fi" placeholder="WhatsApp Number">
-        <input type="text" id="ship-address" class="fi" placeholder="Address & City">
-        <button class="auth-btn" onclick="processPaystack()">Proceed to Payment 💳</button>
-        <button class="auth-btn" style="background:#444;" onclick="go('market')">Cancel</button>
-    </div>
-</div>
-
-
       <!-- DIGITAL FILE ZONE -->
-      <div class="fg" id="digital-file-fg" style="display:block">
+      <div class="fg" id="digital-file-fg" style="display:none">
         <label>Product File <span class="req">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:.78rem">(PDF/ZIP/MP4 required for digital/course)</span></label>
         <div class="digital-file-zone" id="dfile-zone" onclick="document.getElementById('d-file-input').click()">
           <div style="font-size:2rem">📁</div>
@@ -681,8 +668,8 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
         <label for="sell-terms">I confirm all product information is accurate and I agree to the <a onclick="go('rules')">Marketplace Rules & Terms of Service</a>. I understand that fraudulent listings result in permanent account ban and potential legal action.</label>
       </div>
 
-      <button class="submit-btn" id="sell-submit-btn" onclick="submitProduct()">
-       <span class="lock-icon">🔒</span> Submit for Review
+      <button class="submit-btn" id="sell-submit-btn" disabled onclick="submitProduct()">
+        <span class="lock-icon">🔒</span> Submit for Review
       </button>
       <div class="v-msg bad show" id="sell-global-msg" style="text-align:center;margin-top:10px">Complete all fields and upload at least 4 images to unlock submission.</div>
     </div>
@@ -779,7 +766,6 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:50px 28
       </div>
       <button class="auth-btn" id="si-btn" onclick="doSignIn()">Sign In Securely 🔐</button>
       <div class="auth-switch">No account? <a onclick="go('signup')">Sign Up</a></div>
-      <p style="text-align:center; margin-top:10px;"><a href="#" onclick="forgotPassword()" style="color:#ffcc00; font-size:12px; text-decoration:none;">Forgot Password?</a></p>
       <div class="divider">or access admin</div>
       <div style="text-align:center;font-size:.78rem;color:var(--muted)">Admin access via secure token only.<br/>Use <code style="color:var(--gold)">NEYO_ADMIN</code> command in browser console.</div>
     </div>
@@ -1310,80 +1296,6 @@ function doSignUp(){
     joined:new Date().toLocaleDateString(),
     affCode:'REF'+Math.random().toString(36).substr(2,7).toUpperCase()
   };
-
-function forgotPassword() {
-    let email = prompt("Enter email for reset:");
-    if (email) alert("📩 Reset link sent to " + email);
-}
-
-function triggerFileUpload() {
-    document.getElementById('d-file-input').click();
-}
-
-function handleFile(event) {
-    const file = event.target.files[0];
-    const status = document.getElementById('dfile-name');
-    if (file && status) { status.innerText = "📁 " + file.name; status.style.color = "#4CAF50"; }
-}
-
-function startPurchase(price) {
-    window.currentPrice = price;
-    go('page-shipping');
-}
-
-function processPaystack() {
-    const email = prompt("Confirm Email:");
-    if (!email) return;
-    alert("🚀 Redirecting to Paystack... (Tracking ID: NYO-" + Math.floor(Math.random()*9999) + ")");
-    go('home');
-}
-
-
-
-  // --- DIGITAL FILE & SUBMIT LOGIC ---
-function triggerFileUpload() {
-    document.getElementById('d-file-input').click();
-}
-
-function handleFile(event) {
-    const file = event.target.files[0];
-    const statusText = document.getElementById('dfile-name');
-    if (file && statusText) {
-        statusText.innerText = "📁 Selected: " + file.name;
-        statusText.style.color = "#4CAF50"; // Green for success
-    }
-}
-
-function submitProduct() {
-    const name = document.getElementById('s-name').value;
-    const price = document.getElementById('s-price').value;
-    const fileInput = document.getElementById('d-file-input');
-
-    // Simple check to make sure they filled the basics
-    if (!name || !price) {
-        alert("Please enter the Product Name and Price!");
-        return;
-    }
-
-    if (fileInput.files.length === 0) {
-        alert("Please upload the product file first!");
-        return;
-    }
-
-    // Success Message
-    alert("✅ Sent to Admin! Your product is now under review.");
-    
-    // Take the seller back to the dashboard
-    setTimeout(() => {
-        if (typeof go === "function") {
-            go('page-admin'); 
-        } else {
-            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-            document.getElementById('page-admin').style.display = 'block';
-        }
-    }, 1500);
-}
-
   users.push(u);saveUsers(users);
   currentUser=u;
   sessionStorage.setItem('nm_session',enc(u));
@@ -1392,18 +1304,6 @@ function submitProduct() {
   go('home');
 }
 
-  // --- FORGOT PASSWORD FUNCTION ---
-function forgotPassword() {
-    let email = prompt("Please enter your registered email address:");
-    if (email) {
-        // This simulates a reset link being sent for your launch today
-        alert("📩 A password reset link has been sent to: " + email);
-    } else if (email === "") {
-        alert("Please enter a valid email.");
-    }
-}
-
-  
 function doSignOut(){
   currentUser=null;
   sessionStorage.removeItem('nm_session');
