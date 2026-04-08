@@ -1,0 +1,12 @@
+# NeyoMarket — robots.txt
+# https://neyomarket.com
+
+User-agent: *
+Allow: /
+
+# Block admin pages from indexing
+Disallow: /#admin
+Disallow: /#admin-gate
+
+# Sitemap location
+Sitemap: https://neyomarket.com/sitemap.xml
