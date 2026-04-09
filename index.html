@@ -12,14 +12,14 @@
 <meta name="author" content="NeyoMarket"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#f0c040"/>
-<link rel="canonical" href="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<link rel="canonical" href="https://neyomarket.com/"/>
 
 <!-- ═══ OPEN GRAPH (Facebook / WhatsApp previews) ═══ -->
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<meta property="og:url" content="https://neyomarket.com/"/>
 <meta property="og:title" content="NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace"/>
 <meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers, 15–30% affiliate commissions. Zero scam guarantee."/>
-<meta property="og:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta property="og:image" content="https://neyomarket.com/og-image.png"/>
 <meta property="og:site_name" content="NeyoMarket"/>
 <meta property="og:locale" content="en_NG"/>
 
@@ -27,23 +27,24 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="NeyoMarket — Nigeria's Secure Marketplace"/>
 <meta name="twitter:description" content="Buy, sell, and earn. Escrow-protected. Verified sellers. Zero scam guarantee."/>
-<meta name="twitter:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
+
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
+  "url": "https://neyomarket.com",
   "description": "Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://amehmike1-2-3.github.io/Neyo-Market/?q={search_term_string}"
+      "urlTemplate": "https://neyomarket.com/?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }
@@ -54,8 +55,8 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
-  "logo": "https://amehmike1-2-3.github.io/Neyo-Market/logo.png",
+  "url": "https://neyomarket.com",
+  "logo": "https://neyomarket.com/logo.png",
   "contactPoint": {
     "@type": "ContactPoint",
     "telephone": "+2349072212496",
@@ -279,6 +280,18 @@ textarea.fi{resize:vertical;min-height:84px}
 .dl-btn{background:rgba(77,166,255,.1);border:1.5px solid rgba(77,166,255,.25);color:var(--blue);padding:7px 14px;border-radius:8px;font-weight:700;font-size:.78rem;cursor:pointer}
 .so-btn{background:rgba(255,58,92,.07);color:var(--red);border:1.5px solid rgba(255,58,92,.2);padding:9px 18px;border-radius:9px;font-weight:700;cursor:pointer;margin-top:5px}
 
+/* ── PROFILE DASHBOARD TABS ── */
+.dash-tab{
+  background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  padding:9px 16px;border-radius:50px;font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:var(--tr);white-space:nowrap;flex-shrink:0;
+}
+.dash-tab:active,.dash-tab.on{
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--dark);border-color:var(--gold);
+}
+.dash-panel{animation:pin .2s ease}
+
 /* ADMIN */
 .adl{display:flex;min-height:calc(100vh - var(--nh))}
 .ads{width:210px;background:var(--dark);border-right:1px solid var(--border);padding:18px 10px;flex-shrink:0}
@@ -424,6 +437,8 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
     <button class="nb"    id="nb-sell"   onclick="go('sell')">Sell</button>
     <button class="nb"    id="nb-aff"    onclick="go('aff')">Affiliate</button>
     <button class="nb"    id="nb-rules"  onclick="go('rules')">Rules</button>
+    <!-- shown only when a seller / admin is logged in -->
+    <button class="nb" id="nb-seller" style="display:none;color:var(--gold)" onclick="go('seller')">🏪 Dashboard</button>
   </div>
   <div class="nav-r" id="nav-r"></div>
 </nav>
@@ -745,76 +760,235 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
 ═══════════════════════════════════════ -->
 <div class="page" id="page-profile">
   <div class="dw">
-    <div class="phd">
+
+    <!-- ── PROFILE HEADER ── -->
+    <div class="phd" id="phd-wrap">
       <div class="avb" id="pav">U</div>
-      <div class="pi"><h2 id="p-name">User</h2><p id="p-role">Buyer</p><p class="pe" id="p-email"></p></div>
+      <div class="pi">
+        <h2 id="p-name">User</h2>
+        <p id="p-role">Buyer</p>
+        <p class="pe" id="p-email"></p>
+      </div>
+      <!-- Become a Seller badge (shown to non-sellers) -->
+      <div id="become-seller-badge" style="display:none;margin-left:auto">
+        <button onclick="upgradeToSeller()" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:9px 16px;border-radius:9px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap">
+          🏪 Become a Seller
+        </button>
+      </div>
     </div>
-    <div class="dc" id="seller-dash" style="display:none"></div>
-    <div class="dc"><h3>💸 Affiliate Dashboard</h3>
-      <div class="smini">
+
+    <!-- ── DASHBOARD TABS ── -->
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;scrollbar-width:none">
+      <button class="dash-tab on" id="tab-seller"   onclick="switchDashTab('seller',this)">🏪 Seller</button>
+      <button class="dash-tab"    id="tab-orders"   onclick="switchDashTab('orders',this)">📦 My Orders</button>
+      <button class="dash-tab"    id="tab-affiliate" onclick="switchDashTab('affiliate',this)">💸 Affiliate</button>
+      <button class="dash-tab"    id="tab-settings"  onclick="switchDashTab('settings',this)">⚙️ Settings</button>
+    </div>
+
+    <!-- ══ TAB: SELLER DASHBOARD ══ -->
+    <div id="panel-seller" class="dash-panel">
+      <!-- Upgrade prompt for non-sellers -->
+      <div id="upgrade-prompt" style="display:none">
+        <div style="background:linear-gradient(135deg,rgba(240,192,64,.1),rgba(240,192,64,.04));border:1px solid rgba(240,192,64,.25);border-radius:14px;padding:28px;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:12px">🏪</div>
+          <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:8px">Start Selling on NeyoMarket</h3>
+          <p style="color:var(--muted);font-size:.86rem;line-height:1.65;max-width:340px;margin:0 auto 20px">
+            Reach thousands of buyers. List digital products, physical goods, courses and more. Activate your seller account for free in one tap.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button onclick="upgradeToSeller()" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer">
+              ✅ Activate Seller Account — Free
+            </button>
+            <button onclick="go('sell')" style="background:var(--surface);border:1.5px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-weight:600;font-size:.88rem;cursor:pointer">
+              Preview Sell Form
+            </button>
+          </div>
+          <p style="color:var(--muted);font-size:.76rem;margin-top:14px">Already a seller? Your products appear here automatically.</p>
+        </div>
+      </div>
+
+      <!-- Active seller products (shown to sellers/admins) -->
+      <div id="seller-dash-inner" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          <h3 style="font-size:1rem;font-weight:700">🏪 My Products</h3>
+          <button onclick="go('sell')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">
+            ＋ List New Product
+          </button>
+        </div>
+        <!-- Stats row -->
+        <div id="seller-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-bottom:18px"></div>
+        <!-- Products list -->
+        <div id="seller-products-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ TAB: MY ORDERS ══ -->
+    <div id="panel-orders" class="dash-panel" style="display:none">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">📦 My Orders</h3>
+      <div id="ord-list"></div>
+    </div>
+
+    <!-- ══ TAB: AFFILIATE ══ -->
+    <div id="panel-affiliate" class="dash-panel" style="display:none">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">💸 Affiliate Dashboard</h3>
+      <div class="smini" style="margin-bottom:16px">
         <div class="sm"><div class="sl">Earnings</div><div class="sv">₦0</div></div>
         <div class="sm"><div class="sl">Clicks</div><div class="sv">0</div></div>
         <div class="sm"><div class="sl">Sales</div><div class="sv">0</div></div>
         <div class="sm"><div class="sl">Pending</div><div class="sv">₦0</div></div>
       </div>
-      <div class="fg"><label>Your Affiliate Link</label>
-        <div class="ar"><input class="ai" id="aff-l" readonly/><button class="ac2" onclick="cpyAff()">Copy</button></div>
+      <div class="dc">
+        <h3>Your General Affiliate Link</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px;line-height:1.55">Share this link anywhere. When someone signs up or buys through it, you earn commission.</p>
+        <div class="fg"><label>Your Link</label>
+          <div class="ar"><input class="ai" id="aff-l" readonly/><button class="ac2" onclick="cpyAff()">Copy</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:.78rem;margin-top:10px">💡 For product-specific links: go to Marketplace → tap a product → tap <strong style="color:var(--gold)">🔗 Affiliate Link</strong></p>
       </div>
-    </div>
-    <div class="dc"><h3>🏦 Payout Settings</h3>
-      <div class="fg"><label>Bank Name</label><input class="fi" type="text" id="po-bank" placeholder="e.g. GTBank, Opay, Palmpay"/></div>
-      <div class="fg"><label>Account Number</label><input class="fi" type="text" id="po-acct" placeholder="10-digit account number" maxlength="10"/></div>
-      <div class="fg"><label>Account Name</label><input class="fi" type="text" id="po-aname" placeholder="Account holder name"/></div>
-      <button class="bg" style="padding:9px 20px" onclick="savePayout()">Save Payout Details</button>
-    </div>
-
-    <!-- ── CHANGE PASSWORD CARD ── -->
-    <div class="dc">
-      <h3>🔒 Change Password</h3>
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
-        Got a temporary password? Set your own personal password here.
-      </p>
-      <div class="fg">
-        <label>Current Password <span style="color:var(--red)">*</span></label>
-        <div style="position:relative">
-          <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
-          <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+      <div style="margin-top:14px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <h4 style="font-size:.88rem;font-weight:700;margin-bottom:8px">How to earn</h4>
+          <div style="font-size:.82rem;color:var(--muted);line-height:1.9">
+            1. Copy your affiliate link above<br/>
+            2. Share on WhatsApp, TikTok, Instagram<br/>
+            3. Earn <strong style="color:var(--gold)">15–30%</strong> commission on every sale<br/>
+            4. Get paid every <strong style="color:var(--gold)">Monday</strong> to your bank
+          </div>
         </div>
       </div>
-      <div class="fg">
-        <label>New Password <span style="color:var(--red)">*</span></label>
-        <div style="position:relative">
-          <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
-          <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
-        </div>
-        <!-- strength bar -->
-        <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
-          <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-          <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-          <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-          <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-        </div>
-        <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
-      </div>
-      <div class="fg">
-        <label>Confirm New Password <span style="color:var(--red)">*</span></label>
-        <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
-      </div>
-      <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
-      <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
-        ✅ Password changed successfully! Use your new password next time you sign in.
-      </div>
-      <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
     </div>
 
-    <div class="dc"><h3>📦 My Orders</h3><div id="ord-list"></div></div>
-    <button class="so-btn" onclick="doSignOut()">Sign Out</button>
+    <!-- ══ TAB: SETTINGS ══ -->
+    <div id="panel-settings" class="dash-panel" style="display:none">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">⚙️ Account Settings</h3>
+
+      <!-- Payout Settings -->
+      <div class="dc">
+        <h3>🏦 Payout Settings</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Where to send your earnings and affiliate commissions.</p>
+        <div class="fg"><label>Bank Name</label><input class="fi" type="text" id="po-bank" placeholder="e.g. GTBank, Opay, Palmpay"/></div>
+        <div class="fg"><label>Account Number</label><input class="fi" type="text" id="po-acct" placeholder="10-digit account number" maxlength="10"/></div>
+        <div class="fg"><label>Account Name</label><input class="fi" type="text" id="po-aname" placeholder="Account holder name"/></div>
+        <button class="bg" style="padding:9px 20px" onclick="savePayout()">Save Payout Details</button>
+      </div>
+
+      <!-- Change Password -->
+      <div class="dc" style="margin-top:14px">
+        <h3>🔒 Change Password</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
+          Got a temporary password? Set your own personal password here.
+        </p>
+        <div class="fg">
+          <label>Current Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label>New Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
+            <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          </div>
+          <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
+        </div>
+        <div class="fg">
+          <label>Confirm New Password <span style="color:var(--red)">*</span></label>
+          <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
+        </div>
+        <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+        <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
+          ✅ Password changed successfully! Use your new password next time you sign in.
+        </div>
+        <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
+      </div>
+
+      <!-- Sign out -->
+      <button class="so-btn" onclick="doSignOut()" style="margin-top:6px">Sign Out</button>
+    </div>
+
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════
-     ADMIN
+     SELLER DASHBOARD PAGE
 ═══════════════════════════════════════ -->
+<div class="page" id="page-seller">
+  <div class="dw">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:900">🏪 Seller Dashboard</h1>
+        <p style="color:var(--muted);font-size:.84rem;margin-top:3px">Manage your listings, track earnings, and grow your store</p>
+      </div>
+      <button class="bg" style="padding:10px 20px" onclick="go('sell')">＋ List New Product</button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="smini" id="sel-stats" style="margin-bottom:20px">
+      <div class="sm"><div class="sl">My Products</div><div class="sv" id="sel-count">0</div></div>
+      <div class="sm"><div class="sl">Active</div><div class="sv" id="sel-active">0</div></div>
+      <div class="sm"><div class="sl">Pending</div><div class="sv" id="sel-pending" style="color:var(--orange)">0</div></div>
+      <div class="sm"><div class="sl">Total Sales</div><div class="sv" id="sel-sales">₦0</div></div>
+    </div>
+
+    <!-- Status guide -->
+    <div style="background:rgba(240,192,64,.06);border:1px solid rgba(240,192,64,.18);border-radius:11px;padding:14px 16px;margin-bottom:18px;font-size:.82rem;line-height:1.8;color:var(--muted)">
+      <strong style="color:var(--gold)">📋 How it works:</strong><br/>
+      ① List your product on the <strong style="color:var(--text)">Sell</strong> page →
+      ② Admin reviews &amp; approves it →
+      ③ It goes <strong style="color:var(--green)">Live</strong> on the marketplace →
+      ④ Buyers purchase → funds held in <strong style="color:var(--text)">Escrow</strong> →
+      ⑤ Buyer confirms receipt → <strong style="color:var(--green)">You get paid (90%)</strong>
+    </div>
+
+    <!-- My Products List -->
+    <div class="dc">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <h3 style="border:none;padding:0;margin:0">📦 My Products</h3>
+        <button class="bg" style="padding:7px 16px;font-size:.78rem" onclick="go('sell')">＋ Add New</button>
+      </div>
+      <div id="sel-products-list">
+        <p style="color:var(--muted);font-size:.84rem;text-align:center;padding:24px 0">Loading your products…</p>
+      </div>
+    </div>
+
+    <!-- Payout Settings -->
+    <div class="dc">
+      <h3>🏦 Payout Settings</h3>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Add your bank details so you receive your 90% share after every confirmed sale.</p>
+      <div class="fg"><label>Bank Name</label><input class="fi" type="text" id="sel-bank" placeholder="e.g. GTBank, Opay, Palmpay, First Bank"/></div>
+      <div class="fg"><label>Account Number</label><input class="fi" type="text" id="sel-acct" placeholder="10-digit account number" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"/></div>
+      <div class="fg"><label>Account Name</label><input class="fi" type="text" id="sel-aname" placeholder="Must match your bank account name"/></div>
+      <div id="sel-payout-ok" style="display:none;color:var(--green);font-size:.82rem;margin-bottom:8px">✅ Payout details saved!</div>
+      <button class="bg" style="padding:10px 22px;width:100%" onclick="saveSellerPayout()">Save Bank Details</button>
+    </div>
+
+    <!-- Affiliate Links for own products -->
+    <div class="dc">
+      <h3>🔗 Promote Your Products</h3>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Share affiliate links to your own products and earn an extra commission on top of your seller earnings.</p>
+      <div id="sel-aff-links">
+        <p style="color:var(--muted);font-size:.84rem">Your products will appear here once they are approved.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+      <button class="bg" style="padding:10px 20px" onclick="go('sell')">＋ List Another Product</button>
+      <button onclick="go('profile')" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:9px;font-size:.84rem;cursor:pointer">👤 My Profile</button>
+      <button class="so-btn" style="margin-top:0" onclick="doSignOut()">Sign Out</button>
+    </div>
+
+  </div>
+</div>
 <div class="page" id="page-admin">
   <div class="adl">
     <div class="ads">
@@ -1054,6 +1228,13 @@ function go(pageId) {
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
   if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); }
+  if (pageId === 'seller')   {
+    if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
+    if (CU.role !== 'seller' && CU.role !== 'admin') {
+      toast('Seller account required. Update your account type in Profile.', 'warn'); go('profile'); return;
+    }
+    renderSellerPage();
+  }
   if (pageId === 'shipping') bSum('shipping');
   if (pageId === 'checkout') bSum('checkout');
 }
@@ -1549,8 +1730,17 @@ window.processPaystack = processPaystack;
 function renderOrders() {
   var list = document.getElementById('ord-list'); if (!list) return;
   if (!CU) { list.innerHTML = ''; return; }
-  var myOrders = ords.filter(function (o) { return o.customer && o.customer.email === maskEmail(CU.email); });
-  if (!myOrders.length) { list.innerHTML = '<p style="color:var(--muted);font-size:.84rem">No orders yet. <a onclick="go(\'market\')" style="color:var(--gold);cursor:pointer">Shop now →</a></p>'; return; }
+  var myOrders = ords.filter(function (o) {
+    return o.customer && o.customer.email === maskEmail(CU.email);
+  });
+  if (!myOrders.length) {
+    list.innerHTML = '<div style="text-align:center;padding:28px 0;color:var(--muted)">'
+      + '<div style="font-size:2rem;margin-bottom:10px">🛒</div>'
+      + '<p style="font-size:.86rem;margin-bottom:14px">No orders yet.</p>'
+      + '<button onclick="go(\'market\')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:10px 22px;border-radius:9px;font-weight:700;font-size:.85rem;cursor:pointer">Browse Marketplace</button>'
+      + '</div>';
+    return;
+  }
   list.innerHTML = myOrders.map(function (o) {
     var allDig = o.items.every(function (i) { return i.type === 'digital' || i.type === 'course'; });
     var btn = o.collected
@@ -1633,7 +1823,13 @@ function doSignUp() {
   var uStr = JSON.stringify(u);
   localStorage.setItem('nm_current_user', uStr);
   sessionStorage.setItem('nm_session', uStr);
-  updNav(); toast('Welcome to NeyoMarket! 🎉', 'ok'); go('home');
+  updNav(); toast('Welcome to NeyoMarket! 🎉', 'ok');
+  if (role === 'seller') {
+    toast('Welcome, Seller! Your dashboard is ready 🏪', 'ok');
+    go('seller');
+  } else {
+    go('home');
+  }
 }
 window.doSignUp = doSignUp;
 
@@ -1800,51 +1996,133 @@ function refreshProf() {
   if (!CU) return;
   var av = document.getElementById('pav'); if (av) av.textContent = CU.name.charAt(0).toUpperCase();
   var pn = document.getElementById('p-name'); if (pn) pn.textContent = CU.name;
-  var pr = document.getElementById('p-role'); if (pr) pr.textContent = (CU.role || 'Buyer') + ' · Joined ' + (CU.joined || '2025');
+  var pr = document.getElementById('p-role'); if (pr) {
+    var roleLabel = CU.role === 'admin' ? '🛡 Admin' : CU.role === 'seller' ? '🏪 Seller' : CU.role === 'affiliate' ? '💸 Affiliate' : '🛒 Buyer';
+    pr.textContent = roleLabel + ' · Joined ' + (CU.joined || '2025');
+  }
   var pe = document.getElementById('p-email'); if (pe) pe.textContent = maskEmail(CU.email);
   var al = document.getElementById('aff-l'); if (al) al.value = SITE_BASE + '?ref=' + (CU.affCode || 'USER');
   if (CU.payoutBank)  sval('po-bank', CU.payoutBank);
   if (CU.payoutAcct)  sval('po-acct', CU.payoutAcct);
   if (CU.payoutAname) sval('po-aname', CU.payoutAname);
-  renderOrders();
+
+  /* default to Seller tab, render all panels */
+  switchDashTab('seller', document.getElementById('tab-seller'));
   renderSellerDash();
+  renderOrders();
 }
 
-/* ── Seller Dashboard: shows seller's own products with Delete button ── */
-function renderSellerDash() {
-  var wrap = document.getElementById('seller-dash'); if (!wrap) return;
-  if (!CU) { wrap.style.display = 'none'; return; }
+/* ═══ PROFILE DASHBOARD TABS ═══ */
 
-  // Only show this panel to sellers and admins
-  if (CU.role !== 'seller' && CU.role !== 'admin') { wrap.style.display = 'none'; return; }
-
-  var myProds = prods.filter(function (p) {
-    // Match by seller name OR masked sellerEmail
-    return p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+function switchDashTab(name, btn) {
+  /* hide all panels */
+  ['seller','orders','affiliate','settings'].forEach(function (t) {
+    var p = document.getElementById('panel-' + t);
+    if (p) p.style.display = 'none';
   });
+  /* deactivate all tab buttons */
+  document.querySelectorAll('.dash-tab').forEach(function (b) { b.classList.remove('on'); });
+  /* show chosen panel */
+  var target = document.getElementById('panel-' + name);
+  if (target) target.style.display = 'block';
+  if (btn) btn.classList.add('on');
+}
+window.switchDashTab = switchDashTab;
 
-  wrap.style.display = 'block';
-  var h3 = '<h3>🏪 My Products (' + myProds.length + ')</h3>';
+/* ── upgradeToSeller: any user can activate seller mode in one tap ── */
+function upgradeToSeller() {
+  if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
 
-  if (!myProds.length) {
-    wrap.innerHTML = h3 + '<p style="color:var(--muted);font-size:.84rem">You have no listed products yet. <a onclick="go(\'sell\')" style="color:var(--gold);cursor:pointer">List one now →</a></p>';
+  CU.role = 'seller';
+  var uStr = JSON.stringify(CU);
+  localStorage.setItem('nm_current_user', uStr);
+  sessionStorage.setItem('nm_session', uStr);
+
+  var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
+  if (idx > -1) { usrs[idx] = CU; saveAll(); }
+
+  toast('🏪 Seller account activated! You can now list products.', 'ok');
+  refreshProf(); /* re-render profile with seller view */
+}
+window.upgradeToSeller = upgradeToSeller;
+
+/* ── renderSellerDash — fills the seller tab for any role ── */
+function renderSellerDash() {
+  var upgradePrompt   = document.getElementById('upgrade-prompt');
+  var sellerInner     = document.getElementById('seller-dash-inner');
+  var becomeBadge     = document.getElementById('become-seller-badge');
+
+  if (!CU) return;
+
+  var isSeller = (CU.role === 'seller' || CU.role === 'admin');
+
+  /* show/hide the "Become a Seller" button in the header */
+  if (becomeBadge) becomeBadge.style.display = isSeller ? 'none' : 'flex';
+
+  if (!isSeller) {
+    /* show upgrade prompt */
+    if (upgradePrompt) upgradePrompt.style.display = 'block';
+    if (sellerInner)   sellerInner.style.display   = 'none';
     return;
   }
 
-  wrap.innerHTML = h3 + myProds.map(function (p) {
+  /* seller view */
+  if (upgradePrompt) upgradePrompt.style.display = 'none';
+  if (sellerInner)   sellerInner.style.display   = 'block';
+
+  var myProds = prods.filter(function (p) {
+    return p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+  });
+
+  var active  = myProds.filter(function (p) { return p.status === 'active'; }).length;
+  var pending = myProds.filter(function (p) { return p.status === 'pending'; }).length;
+  var totalRevenue = ords.reduce(function (sum, o) {
+    var mine = o.items && o.items.some(function (i) { return i.sellerId && prods.find(function(p){ return p.id === i.sellerId && (p.seller === CU.name || p.sellerEmail === maskEmail(CU.email)); }); });
+    return mine ? sum + Math.round(o.total * 0.9) : sum;
+  }, 0);
+
+  /* stats row */
+  var statsEl = document.getElementById('seller-stats');
+  if (statsEl) {
+    statsEl.innerHTML =
+      '<div class="sm"><div class="sl">Total Listed</div><div class="sv">' + myProds.length + '</div></div>' +
+      '<div class="sm"><div class="sl">Live</div><div class="sv" style="color:var(--green)">' + active + '</div></div>' +
+      '<div class="sm"><div class="sl">Pending</div><div class="sv" style="color:var(--orange)">' + pending + '</div></div>' +
+      '<div class="sm"><div class="sl">Earnings</div><div class="sv">₦' + totalRevenue.toLocaleString() + '</div></div>';
+  }
+
+  /* products list */
+  var listEl = document.getElementById('seller-products-list');
+  if (!listEl) return;
+
+  if (!myProds.length) {
+    listEl.innerHTML =
+      '<div style="text-align:center;padding:32px 16px;color:var(--muted)">' +
+      '<div style="font-size:2.2rem;margin-bottom:10px">📦</div>' +
+      '<p style="font-size:.88rem;margin-bottom:16px">You haven\'t listed any products yet.</p>' +
+      '<button onclick="go(\'sell\')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:11px 24px;border-radius:9px;font-weight:700;font-size:.88rem;cursor:pointer">＋ List Your First Product</button>' +
+      '</div>';
+    return;
+  }
+
+  listEl.innerHTML = myProds.map(function (p) {
     var img = (p.imgs && p.imgs[0])
-      ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0"/>'
-      : '<div style="width:44px;height:44px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">' + p.emoji + '</div>';
-    var statusColor = p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--orange)' : 'var(--red)';
-    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+      ? '<img src="' + p.imgs[0] + '" style="width:48px;height:48px;border-radius:9px;object-fit:cover;flex-shrink:0"/>'
+      : '<div style="width:48px;height:48px;border-radius:9px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">' + p.emoji + '</div>';
+
+    var statusCol = p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--orange)' : 'var(--red)';
+    var statusLabel = p.status === 'active' ? '● Live' : p.status === 'pending' ? '⏳ Under Review' : '✕ Rejected';
+
+    return '<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
       + img
-      + '<div style="flex:1;min-width:130px">'
-      + '<div style="font-weight:600;font-size:.86rem;margin-bottom:2px">' + p.name.substring(0, 38) + (p.name.length > 38 ? '…' : '') + '</div>'
-      + '<div style="font-size:.74rem;color:var(--muted)">₦' + p.price.toLocaleString() + ' · <span style="color:' + statusColor + '">' + p.status + '</span></div>'
+      + '<div style="flex:1;min-width:120px">'
+      + '<div style="font-weight:600;font-size:.87rem;margin-bottom:3px">' + p.name.substring(0, 36) + (p.name.length > 36 ? '…' : '') + '</div>'
+      + '<div style="font-size:.76rem;color:var(--muted)">₦' + p.price.toLocaleString() + ' · ' + p.commission + '% commission</div>'
+      + '<div style="font-size:.74rem;color:' + statusCol + ';margin-top:2px;font-weight:600">' + statusLabel + '</div>'
       + '</div>'
-      + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
-      + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 11px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🔗 Link</button>'
-      + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 11px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
+      + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
+      + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
+      + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -1889,6 +2167,120 @@ function deleteProduct(productId) {
   var hc = document.getElementById('hero-cnt'); if (hc) hc.textContent = getActive().length;
 }
 window.deleteProduct = deleteProduct;
+
+/* ═══ SELLER DASHBOARD PAGE RENDERER ═══ */
+function renderSellerPage() {
+  if (!CU) return;
+
+  /* Stats */
+  var myProds = prods.filter(function (p) {
+    return p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+  });
+  var activeP  = myProds.filter(function (p) { return p.status === 'active'; });
+  var pendingP = myProds.filter(function (p) { return p.status === 'pending'; });
+
+  /* Calculate total sales from orders */
+  var totalSales = 0;
+  ords.forEach(function (o) {
+    o.items.forEach(function (item) {
+      var isMyProduct = myProds.some(function (p) { return p.id === item.id; });
+      if (isMyProduct) totalSales += item.price * (item.qty || 1);
+    });
+  });
+  var myEarnings = Math.round(totalSales * 0.9); // seller gets 90%
+
+  var sc = document.getElementById('sel-count');   if (sc) sc.textContent = myProds.length;
+  var sa = document.getElementById('sel-active');  if (sa) sa.textContent = activeP.length;
+  var sp = document.getElementById('sel-pending'); if (sp) sp.textContent = pendingP.length;
+  var ss = document.getElementById('sel-sales');   if (ss) ss.textContent = '₦' + myEarnings.toLocaleString();
+
+  /* Pre-fill payout fields */
+  if (CU.payoutBank)  sval('sel-bank',  CU.payoutBank);
+  if (CU.payoutAcct)  sval('sel-acct',  CU.payoutAcct);
+  if (CU.payoutAname) sval('sel-aname', CU.payoutAname);
+
+  /* Products list */
+  var pl = document.getElementById('sel-products-list');
+  if (pl) {
+    if (!myProds.length) {
+      pl.innerHTML = '<div style="text-align:center;padding:28px 0">'
+        + '<div style="font-size:2.2rem;margin-bottom:10px">📦</div>'
+        + '<p style="color:var(--muted);font-size:.86rem;margin-bottom:14px">You have no products listed yet.</p>'
+        + '<button class="bg" style="padding:10px 22px" onclick="go(\'sell\')">＋ List Your First Product</button>'
+        + '</div>';
+    } else {
+      pl.innerHTML = myProds.map(function (p) {
+        var imgH = (p.imgs && p.imgs[0])
+          ? '<img src="' + p.imgs[0] + '" style="width:52px;height:52px;border-radius:9px;object-fit:cover;flex-shrink:0"/>'
+          : '<div style="width:52px;height:52px;border-radius:9px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">' + p.emoji + '</div>';
+
+        var statusStyle = p.status === 'active'
+          ? 'color:var(--green);background:rgba(30,216,128,.1);border:1px solid rgba(30,216,128,.2)'
+          : p.status === 'pending'
+            ? 'color:var(--orange);background:rgba(255,157,61,.1);border:1px solid rgba(255,157,61,.2)'
+            : 'color:var(--red);background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.2)';
+
+        var statusMsg = p.status === 'active'
+          ? '✅ Live on marketplace'
+          : p.status === 'pending'
+            ? '⏳ Waiting for admin approval'
+            : '❌ Rejected — contact support';
+
+        return '<div style="display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+          + imgH
+          + '<div style="flex:1;min-width:140px">'
+          + '<div style="font-weight:600;font-size:.88rem;margin-bottom:3px">' + p.name + '</div>'
+          + '<div style="font-size:.77rem;color:var(--muted);margin-bottom:6px">₦' + p.price.toLocaleString() + ' · ' + p.type + ' · ' + p.commission + '% affiliate</div>'
+          + '<span style="font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:50px;' + statusStyle + '">' + statusMsg + '</span>'
+          + '</div>'
+          + '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
+          + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
+          + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
+          + '</div></div>';
+      }).join('');
+    }
+  }
+
+  /* Affiliate links panel */
+  var al = document.getElementById('sel-aff-links');
+  if (al) {
+    if (!activeP.length) {
+      al.innerHTML = '<p style="color:var(--muted);font-size:.84rem">No active products yet. Once your listing is approved, your promo links will appear here.</p>';
+    } else {
+      al.innerHTML = activeP.map(function (p) {
+        var link = SITE_BASE + '?ref=' + (CU.affCode || 'USER') + '&p=' + p.id;
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:9px">'
+          + '<div style="font-size:.82rem;font-weight:600;margin-bottom:7px">' + p.emoji + ' ' + p.name.substring(0, 40) + '</div>'
+          + '<div style="display:flex;gap:7px">'
+          + '<input readonly value="' + link + '" style="flex:1;background:var(--dark);border:1px solid var(--border);color:var(--muted);padding:7px 10px;border-radius:7px;font-size:.72rem;outline:none;min-width:0"/>'
+          + '<button onclick="navigator.clipboard.writeText(\'' + link + '\').then(function(){toast(\'Link copied! 🔗\',\'ok\')})" style="background:var(--gold);color:var(--dark);border:none;padding:7px 13px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">Copy</button>'
+          + '</div></div>';
+      }).join('');
+    }
+  }
+}
+window.renderSellerPage = renderSellerPage;
+
+/* Save payout from seller dashboard */
+function saveSellerPayout() {
+  var bank  = gv('sel-bank');
+  var acct  = gv('sel-acct');
+  var aname = gv('sel-aname');
+  if (!bank || !acct || !aname) { toast('Please fill in all bank details', 'fail'); return; }
+  if (acct.length !== 10)       { toast('Account number must be exactly 10 digits', 'fail'); return; }
+  if (CU) {
+    CU.payoutBank = bank; CU.payoutAcct = acct; CU.payoutAname = aname;
+    var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
+    if (idx > -1) { usrs[idx] = CU; saveAll(); }
+    var uStr = JSON.stringify(CU);
+    localStorage.setItem('nm_current_user', uStr);
+    sessionStorage.setItem('nm_session', uStr);
+    var ok = document.getElementById('sel-payout-ok');
+    if (ok) { ok.style.display = 'block'; setTimeout(function(){ ok.style.display='none'; }, 3000); }
+    toast('Bank details saved ✓', 'ok');
+  }
+}
+window.saveSellerPayout = saveSellerPayout;
 
 function savePayout() {
   var bank = gv('po-bank'), acct = gv('po-acct'), aname = gv('po-aname');
@@ -2018,14 +2410,35 @@ window.joinAff = joinAff;
 
 /* ═══ NAV UPDATE ═══ */
 function updNav() {
-  var nr = document.getElementById('nav-r'); if (!nr) return;
+  var nr  = document.getElementById('nav-r');
+  var nbs = document.getElementById('nb-seller');
+
+  /* Show/hide the 🏪 Dashboard nav button */
+  if (nbs) {
+    nbs.style.display = (CU && (CU.role === 'seller' || CU.role === 'admin')) ? 'block' : 'none';
+  }
+
+  if (!nr) return;
+
   if (CU) {
-    var init = CU.name.charAt(0).toUpperCase();
-    var dest = CU.role === 'admin' ? "'admin'" : "'profile'";
-    nr.innerHTML = '<button class="ci" onclick="openCart()">🛒<span class="cib" id="cart-badge">0</span></button>'
-      + '<div class="uc" onclick="go(' + dest + ')"><div class="uav">' + init + '</div><span>' + CU.name.split(' ')[0] + '</span></div>';
+    var init    = CU.name.charAt(0).toUpperCase();
+    var isSeller = CU.role === 'seller';
+    var isAdmin  = CU.role === 'admin';
+    var dest     = isAdmin ? "'admin'" : isSeller ? "'seller'" : "'profile'";
+    var label    = isAdmin ? '⚙ Admin' : isSeller ? '🏪 Dashboard' : CU.name.split(' ')[0];
+    var chipStyle = (isSeller || isAdmin)
+      ? 'display:flex;align-items:center;gap:6px;background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);padding:4px 12px 4px 4px;border-radius:50px;cursor:pointer'
+      : 'display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);padding:4px 10px 4px 4px;border-radius:50px;cursor:pointer';
+
+    nr.innerHTML =
+      '<button class="ci" onclick="openCart()">🛒<span class="cib" id="cart-badge">0</span></button>'
+      + '<div style="' + chipStyle + '" onclick="go(' + dest + ')">'
+      + '<div class="uav">' + init + '</div>'
+      + '<span style="font-size:.78rem;font-weight:' + (isSeller||isAdmin?'700':'500') + ';color:' + (isSeller||isAdmin?'var(--gold)':'var(--text)') + ';max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      + label + '</span></div>';
   } else {
-    nr.innerHTML = '<button class="bo" onclick="go(\'signin\')">Sign In</button>'
+    nr.innerHTML =
+      '<button class="bo" onclick="go(\'signin\')">Sign In</button>'
       + '<button class="bg" onclick="go(\'signup\')">Sign Up</button>'
       + '<button class="ci" onclick="openCart()">🛒<span class="cib" id="cart-badge">0</span></button>';
   }
@@ -2159,7 +2572,13 @@ function getChatReply(input) {
 
   // ── Product deletion — NeyoLady's answer ──
   if (q.includes('delete') || q.includes('remove') || q.includes('delist') || q.includes('take down') || q.includes('take it down')) {
-    return "To remove your product, just go to your **Profile → My Products** section. Find the item you want to take down and tap the **Delete** button next to it — it's removed instantly! 🗑 Only you (the seller) can delete your own listings.";
+    return "Go to your **Profile → Seller tab** (the 🏪 tab). Find your product in the list and tap the **🗑 Delete** button. It's removed instantly! Only you can delete your own listings.";
+  }
+  if (q.includes('seller dashboard') || q.includes('my products') || q.includes('seller tab') || q.includes('where') && q.includes('sell') || q.includes('access seller') || q.includes('find seller')) {
+    return "Your Seller Dashboard is right in your **Profile**! Tap your avatar/name in the top bar → you'll see 4 tabs. The first one **🏪 Seller** shows all your listings.\n\nNot a seller yet? Just tap **✅ Activate Seller Account** — it's free and instant! Then go to the **Sell** page in the nav to list your first product.";
+  }
+  if (q.includes('become seller') || q.includes('activate seller') || q.includes('how to sell') || q.includes('start selling')) {
+    return "It's easy! Go to your **Profile → 🏪 Seller tab** and tap **'Activate Seller Account'** — it's free and takes one second. Then tap **Sell** in the navigation bar to list your product. Upload 2+ photos, fill in the details, and submit. Admin approves within 24 hours. 🏪";
   }
 
   // ── Affiliate link / referral ──
@@ -2177,7 +2596,10 @@ function getChatReply(input) {
 
   // ── Sell / list ──
   if (q.includes('sell') || q.includes('list') || q.includes('upload product')) {
-    return "To sell on NeyoMarket, go to the **Sell** page, upload at least 2 product images, fill in all details, and submit for review. Admin approves within 24 hours! 🏪 Once live, your product appears in the Marketplace.";
+    return "To sell on NeyoMarket: ① Sign up and select **Seller** as your account type. ② Go to the **Sell** page in the nav menu. ③ Upload at least 2 product images and fill in all details. ④ Submit for review — admin approves within 24 hours. ⑤ Once live, manage everything from your **🏪 Dashboard** in the nav bar! 🏪";
+  }
+  if (q.includes('seller dashboard') || q.includes('my dashboard') || q.includes('manage') || q.includes('my product') || q.includes('my listing') || q.includes('how do i access') || q.includes('where is my dashboard') || q.includes('seller access')) {
+    return "To access your **Seller Dashboard**: \n\n① Sign in to your account (must be registered as a **Seller**).\n② Look for the **🏪 Dashboard** button in the top navigation bar — it appears automatically when you're logged in as a seller.\n③ Tap it to see all your products, approval status, earnings, bank details, and promo links! 🎯\n\nIf you don't see the Dashboard button, go to **Profile** and check that your account type is set to **Seller**.";
   }
 
   // ── Buy / purchase ──
