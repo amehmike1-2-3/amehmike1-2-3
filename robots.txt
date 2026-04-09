@@ -1,5 +1,5 @@
 # NeyoMarket — robots.txt
-# https://neyomarket.com
+# amehmike1-2-3.github.io
 
 User-agent: *
 Allow: /
@@ -9,4 +9,4 @@ Disallow: /#admin
 Disallow: /#admin-gate
 
 # Sitemap location
-Sitemap: https://amehmike1-2-3.github.io/Neyo-Market/
+Sitemap: https://amehmike1-2-3.github.io/Neyo-Market/sitemap.xml
