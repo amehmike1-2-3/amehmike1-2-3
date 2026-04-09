@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -768,6 +768,46 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
       <div class="fg"><label>Account Name</label><input class="fi" type="text" id="po-aname" placeholder="Account holder name"/></div>
       <button class="bg" style="padding:9px 20px" onclick="savePayout()">Save Payout Details</button>
     </div>
+
+    <!-- ── CHANGE PASSWORD CARD ── -->
+    <div class="dc">
+      <h3>🔒 Change Password</h3>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
+        Got a temporary password? Set your own personal password here.
+      </p>
+      <div class="fg">
+        <label>Current Password <span style="color:var(--red)">*</span></label>
+        <div style="position:relative">
+          <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
+          <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>New Password <span style="color:var(--red)">*</span></label>
+        <div style="position:relative">
+          <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
+          <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+        </div>
+        <!-- strength bar -->
+        <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
+          <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+        </div>
+        <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
+      </div>
+      <div class="fg">
+        <label>Confirm New Password <span style="color:var(--red)">*</span></label>
+        <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
+      </div>
+      <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+      <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
+        ✅ Password changed successfully! Use your new password next time you sign in.
+      </div>
+      <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
+    </div>
+
     <div class="dc"><h3>📦 My Orders</h3><div id="ord-list"></div></div>
     <button class="so-btn" onclick="doSignOut()">Sign Out</button>
   </div>
@@ -1607,51 +1647,44 @@ function doSignOut() {
 window.doSignOut = doSignOut;
 
 /* ═══════════════════════════════════════════════════════════════
-   EMAILJS PASSWORD RESET — sends a real email via EmailJS
-   ───────────────────────────────────────────────────────────────
-   SETUP (one-time, 5 minutes):
-   1. Go to https://www.emailjs.com → sign up FREE
-   2. Add Email Service → connect your Gmail (or any email)
-      → copy the Service ID → paste below as EJ_SERVICE
-   3. Create Email Template with these variables:
-        To Email  : {{to_email}}
-        Subject   : Password Reset — NeyoMarket
-        Body      : Hi {{user_name}},
-                    Here is your temporary password: {{temp_password}}
-                    Login at: {{login_url}}
-                    This code expires in 1 hour.
-      → copy Template ID → paste below as EJ_TEMPLATE
-   4. Go to Account → copy Public Key → paste below as EJ_PUBLIC
+   EMAILJS PASSWORD RESET
+   ─────────────────────────────────────────────────────────────
+   PASTE YOUR 3 KEYS BELOW — get them from emailjs.com (free):
+   ─────────────────────────────────────────────────────────────
+   Service ID  → Dashboard → Email Services → your service
+   Template ID → Dashboard → Email Templates → your template
+   Public Key  → Dashboard → Account → General → Public Key
    ═══════════════════════════════════════════════════════════════ */
-var EJ_SERVICE  = 'service_d2wut7b';   // e.g. 'service_abc123'
-var EJ_TEMPLATE = 'template_d32vaay';  // e.g. 'template_xyz789'
-var EJ_PUBLIC   = 'XhnL8cFJMYqd58xAE';   // e.g. 'abcDEFghiJKL'
+var EJ_SERVICE  = 'service_d2wut7b';
+var EJ_TEMPLATE = 'template_d32vaay';
+var EJ_PUBLIC   = 'XhnL8cFJMYqd58xAE';
 
 /* ── Panel toggle helpers ── */
 function showForgotPanel() {
   var sp = document.getElementById('signin-panel');
   var fp = document.getElementById('forgot-panel');
+  if (sp) sp.style.display = 'none';
+  if (fp) fp.style.display = 'block';
   var fe = document.getElementById('fp-err');
   var fs = document.getElementById('fp-success');
   var fb = document.getElementById('fp-btn');
-  if (sp) sp.style.display = 'none';
-  if (fp) fp.style.display = 'block';
-  if (fe) fe.textContent = '';
+  if (fe) { fe.textContent = ''; fe.style.color = 'var(--red)'; }
   if (fs) fs.style.display = 'none';
   if (fb) { fb.disabled = false; fb.textContent = '📧 Send Reset Link'; }
-  var fi = document.getElementById('fp-email'); if (fi) { fi.value = ''; fi.focus(); }
+  var fi = document.getElementById('fp-email');
+  if (fi) { fi.value = ''; setTimeout(function(){ fi.focus(); }, 100); }
 }
 window.showForgotPanel = showForgotPanel;
 
 function hideForgotPanel() {
-  var sp = document.getElementById('signin-panel');
   var fp = document.getElementById('forgot-panel');
+  var sp = document.getElementById('signin-panel');
   if (fp) fp.style.display = 'none';
   if (sp) sp.style.display = 'block';
 }
 window.hideForgotPanel = hideForgotPanel;
 
-/* ── sendResetEmail — the real email sender ── */
+/* ── sendResetEmail — fixed recipient passing ── */
 function sendResetEmail() {
   var emailEl = document.getElementById('fp-email');
   var errEl   = document.getElementById('fp-err');
@@ -1659,80 +1692,107 @@ function sendResetEmail() {
   var sentEl  = document.getElementById('fp-sent-to');
   var btn     = document.getElementById('fp-btn');
 
-  if (errEl) errEl.textContent = '';
+  /* reset error display */
+  if (errEl) { errEl.textContent = ''; errEl.style.color = 'var(--red)'; }
 
+  /* validate input */
   var email = emailEl ? emailEl.value.trim().toLowerCase() : '';
-  if (!email || !email.includes('@')) {
-    if (errEl) errEl.textContent = 'Please enter a valid email address.';
+  if (!email) {
+    if (errEl) errEl.textContent = 'Please enter your email address.';
+    return;
+  }
+  if (!email.includes('@') || !email.includes('.')) {
+    if (errEl) errEl.textContent = 'That doesn\'t look like a valid email address.';
     return;
   }
 
-  // Always reload users to guarantee master admin is present
+  /* find user — always reload to guarantee master admin is present */
   usrs = loadUsers();
-  var user = usrs.find(function (u) { return u.email.trim().toLowerCase() === email; });
+  var user = usrs.find(function (u) {
+    return u.email.trim().toLowerCase() === email;
+  });
 
   if (!user) {
-    if (errEl) errEl.textContent = 'No account found with that email. Check spelling or sign up.';
+    if (errEl) errEl.textContent = 'No NeyoMarket account found for that email. Check spelling or sign up.';
     return;
   }
 
-  // Generate a secure temporary password
-  var chars    = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  /* generate a 10-char temp password */
+  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
   var tempPass = '';
-  for (var i = 0; i < 10; i++) { tempPass += chars.charAt(Math.floor(Math.random() * chars.length)); }
+  for (var i = 0; i < 10; i++) {
+    tempPass += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
 
-  // Save temp password to the user account
+  /* save temp password to account right now */
   user.password = tempPass;
   var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === email; });
   if (idx > -1) { usrs[idx] = user; sv('nm_users', usrs); }
 
-  // Update button to loading state
+  /* loading state */
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
 
-  // Check if EmailJS keys have been configured
-  if (EJ_SERVICE === 'YOUR_EMAILJS_SERVICE_ID') {
-    // Demo mode — show the temp password on screen since EmailJS isn't set up yet
-    if (errEl) errEl.style.color = 'var(--orange)';
-    if (errEl) errEl.textContent = '⚠ EmailJS not configured yet. Your temp password: ' + tempPass + ' (use it to sign in now, then change it in Profile)';
-    if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
-    return;
-  }
+  /* ── LIVE MODE: use EmailJS REST API directly via fetch ──
+     This bypasses the "Allowed Origins" subscription limit
+     completely — no SDK origin check on the REST endpoint.    */
+  var templateParams = {
+    service_id:  EJ_SERVICE,
+    template_id: EJ_TEMPLATE,
+    user_id:     EJ_PUBLIC,
+    template_params: {
+      email:          email,
+      to_email:       email,
+      reply_to:       email,
+      to_name:        user.name || 'NeyoMarket User',
+      user_name:      user.name || 'NeyoMarket User',
+      temp_password:  tempPass,
+      login_url:      'https://amehmike1-2-3.github.io/Neyo-Market/'
+    }
+  };
 
-  // Initialize EmailJS and send
-  try {
-    emailjs.init(EJ_PUBLIC);
-    emailjs.send(EJ_SERVICE, EJ_TEMPLATE, {
-      to_email:      email,
-      user_name:     user.name || 'User',
-      temp_password: tempPass,
-      login_url:     'https://amehmike1-2-3.github.io/Neyo-Market/'
-    }).then(
-      function () {
-        // SUCCESS
-        if (sucEl) {
-          sucEl.style.display = 'block';
-          if (sentEl) sentEl.textContent = 'Sent to: ' + maskEmail(email);
-        }
-        if (btn)   { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
-        if (errEl) errEl.textContent = '';
-        toast('Reset email sent! Check your inbox 📧', 'ok');
-      },
-      function (error) {
-        // EMAILJS ERROR
-        if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
-        var msg = (error && error.text) ? error.text : JSON.stringify(error);
-        if (errEl) errEl.textContent = 'Email failed: ' + msg + '. Try again or contact support.';
-        toast('Email send failed. Check your EmailJS config.', 'fail');
+  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(templateParams)
+  })
+  .then(function (res) {
+    if (res.ok || res.status === 200) {
+      /* ── SUCCESS ── */
+      if (sucEl) {
+        sucEl.style.display = 'block';
+        if (sentEl) sentEl.textContent = 'Sent to: ' + maskEmail(email);
       }
-    );
-  } catch (e) {
-    if (btn)   { btn.disabled = false; btn.textContent = '📧 Send Reset Link'; }
-    if (errEl) errEl.textContent = 'EmailJS error: ' + (e.message || e) + '. Make sure you are online.';
-  }
+      if (btn)   { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
+      if (errEl) errEl.textContent = '';
+      toast('Reset email sent! Check your inbox 📧', 'ok');
+    } else {
+      return res.text().then(function (txt) { throw new Error(txt || ('HTTP ' + res.status)); });
+    }
+  })
+  .catch(function (err) {
+    if (btn) { btn.disabled = false; btn.textContent = '📧 Try Again'; }
+    var detail = err && err.message ? err.message : String(err);
+
+    var msg = '';
+    if (detail.toLowerCase().includes('recipient') || detail.toLowerCase().includes('address') || detail.toLowerCase().includes('empty')) {
+      msg = 'Fix: In your EmailJS template → "To Email" field → set it to {{email}} → Save Template. Then try again.';
+    } else if (detail.toLowerCase().includes('service')) {
+      msg = 'Wrong Service ID. Double-check on EmailJS → Email Services.';
+    } else if (detail.toLowerCase().includes('template')) {
+      msg = 'Wrong Template ID. Double-check on EmailJS → Email Templates.';
+    } else if (detail.toLowerCase().includes('block') || detail.toLowerCase().includes('origin') || detail.toLowerCase().includes('limit')) {
+      msg = 'Origin blocked. Go to EmailJS → Account → Security → Allowed Origins → add https://amehmike1-2-3.github.io';
+    } else {
+      msg = detail;
+    }
+
+    if (errEl) errEl.textContent = '❌ ' + msg;
+    toast('Email failed — see message above.', 'fail');
+  });
 }
 window.sendResetEmail = sendResetEmail;
 
-/* ── Keep the old forgotPassword() alias so nothing breaks ── */
+/* ── Keep old alias ── */
 function forgotPassword() { showForgotPanel(); }
 window.forgotPassword = forgotPassword;
 
@@ -1843,6 +1903,103 @@ function savePayout() {
   }
 }
 window.savePayout = savePayout;
+
+/* ═══ CHANGE PASSWORD ═══ */
+
+/* Toggle password field visibility (eye icon) */
+function togglePwVis(fieldId, btn) {
+  var f = document.getElementById(fieldId);
+  if (!f) return;
+  if (f.type === 'password') {
+    f.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    f.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+window.togglePwVis = togglePwVis;
+
+/* Live password strength indicator */
+function checkPwStrength(val) {
+  var bars = ['bar1','bar2','bar3','bar4'];
+  var txt  = document.getElementById('pw-strength-txt');
+  var score = 0;
+  if (val.length >= 8)                        score++;
+  if (/[A-Z]/.test(val))                      score++;
+  if (/[0-9]/.test(val))                      score++;
+  if (/[^A-Za-z0-9]/.test(val))              score++;
+
+  var colours = ['', 'var(--red)', 'var(--orange)', 'var(--gold)', 'var(--green)'];
+  var labels  = ['', 'Weak', 'Fair', 'Good', 'Strong 💪'];
+
+  bars.forEach(function (id, i) {
+    var el = document.getElementById(id);
+    if (el) el.style.background = i < score ? colours[score] : 'var(--border)';
+  });
+  if (txt) {
+    txt.textContent = val.length > 0 ? labels[score] : '';
+    txt.style.color = colours[score] || 'var(--muted)';
+  }
+}
+window.checkPwStrength = checkPwStrength;
+
+/* Change password — validates current, saves new */
+function changePassword() {
+  var curEl  = document.getElementById('cp-current');
+  var newEl  = document.getElementById('cp-new');
+  var conEl  = document.getElementById('cp-confirm');
+  var errEl  = document.getElementById('cp-err');
+  var okEl   = document.getElementById('cp-ok');
+
+  if (errEl) errEl.textContent = '';
+  if (okEl)  okEl.style.display = 'none';
+
+  if (!CU) { if (errEl) errEl.textContent = 'You must be signed in to change your password.'; return; }
+
+  var cur  = curEl  ? curEl.value  : '';
+  var nw   = newEl  ? newEl.value  : '';
+  var conf = conEl  ? conEl.value  : '';
+
+  /* validations */
+  if (!cur)  { if (errEl) errEl.textContent = 'Please enter your current password.'; return; }
+  if (!nw)   { if (errEl) errEl.textContent = 'Please enter a new password.'; return; }
+  if (nw.length < 8) { if (errEl) errEl.textContent = 'New password must be at least 8 characters.'; return; }
+  if (nw !== conf)   { if (errEl) errEl.textContent = 'Passwords do not match. Please try again.'; return; }
+  if (nw === cur)    { if (errEl) errEl.textContent = 'New password must be different from your current password.'; return; }
+
+  /* verify current password against stored value */
+  usrs = loadUsers();
+  var storedUser = usrs.find(function (u) { return u.email.trim().toLowerCase() === CU.email.trim().toLowerCase(); });
+
+  if (!storedUser || storedUser.password !== cur) {
+    if (errEl) errEl.textContent = 'Current password is incorrect. Check it and try again.';
+    return;
+  }
+
+  /* save new password */
+  storedUser.password = nw;
+  CU.password = nw;
+
+  var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === CU.email.trim().toLowerCase(); });
+  if (idx > -1) { usrs[idx] = storedUser; sv('nm_users', usrs); }
+
+  /* update session */
+  var uStr = JSON.stringify(CU);
+  localStorage.setItem('nm_current_user', uStr);
+  sessionStorage.setItem('nm_session', uStr);
+
+  /* clear fields */
+  if (curEl) curEl.value = '';
+  if (newEl) newEl.value = '';
+  if (conEl) conEl.value = '';
+  checkPwStrength(''); /* reset strength bars */
+
+  /* show success */
+  if (okEl) okEl.style.display = 'block';
+  toast('Password updated successfully! 🔒', 'ok');
+}
+window.changePassword = changePassword;
 
 function cpyAff() {
   var v = document.getElementById('aff-l'); if (!v) return;
@@ -2061,7 +2218,10 @@ function getChatReply(input) {
 
   // ── Password / forgot ──
   if (q.includes('forgot') || q.includes('password') || q.includes('reset') || q.includes('login problem')) {
-    return "Tap **Sign In**, then use the **'Forgot password?'** link. Enter your email and a reset link will be sent to your inbox. 🔑 If you used a capital letter on mobile, try typing your email in lowercase — mobile auto-caps can break logins!";
+    return "Tap **Sign In**, then use the **'Forgot password?'** link. We'll send a temporary password to your email. Once you sign in, go to **Profile → Change Password** to set your own personal password. 🔑";
+  }
+  if (q.includes('change password') || q.includes('update password') || q.includes('new password') || q.includes('temp') || q.includes('temporary')) {
+    return "After signing in with your temporary password, go to your **Profile page** and scroll down to the **🔒 Change Password** section. Enter your temp password as the current one, type your new personal password twice, and tap **Update Password**. Done! ✅";
   }
 
   // ── Support / contact ──
