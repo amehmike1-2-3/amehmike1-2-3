@@ -12,14 +12,14 @@
 <meta name="author" content="NeyoMarket"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#f0c040"/>
-<link rel="canonical" href="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<link rel="canonical" href="https://neyomarket.com/"/>
 
 <!-- ═══ OPEN GRAPH (Facebook / WhatsApp previews) ═══ -->
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<meta property="og:url" content="https://neyomarket.com/"/>
 <meta property="og:title" content="NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace"/>
 <meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers, 15–30% affiliate commissions. Zero scam guarantee."/>
-<meta property="og:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta property="og:image" content="https://neyomarket.com/og-image.png"/>
 <meta property="og:site_name" content="NeyoMarket"/>
 <meta property="og:locale" content="en_NG"/>
 
@@ -27,10 +27,10 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="NeyoMarket — Nigeria's Secure Marketplace"/>
 <meta name="twitter:description" content="Buy, sell, and earn. Escrow-protected. Verified sellers. Zero scam guarantee."/>
-<meta name="twitter:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -38,13 +38,13 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
+  "url": "https://neyomarket.com",
   "description": "Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://amehmike1-2-3.github.io/Neyo-Market/?q={search_term_string}"
+      "urlTemplate": "https://neyomarket.com/?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }
@@ -55,8 +55,8 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
-  "logo": "https://amehmike1-2-3.github.io/Neyo-Market/logo.png",
+  "url": "https://neyomarket.com",
+  "logo": "https://neyomarket.com/logo.png",
   "contactPoint": {
     "@type": "ContactPoint",
     "telephone": "+2349072212496",
@@ -1271,10 +1271,10 @@ function go(pageId) {
 window.go = go;
 
 /* ════════════════════════════════════════════════════════
-   6-TAP LOGO — DUAL TRIGGER SYSTEM
-   • Taps 1-5  → normal 5-tap admin password gate
-   • Tap 6      → SECRET KEY INJECTOR (for Paystack PSK)
-   PSK is NEVER stored in code — injected at runtime only
+   LOGO TAP SYSTEM — clean, no conflicts
+   • 2 taps  → Secret Key Injector (Paystack PSK)
+   • 10 taps → Admin Password Gate
+   PSK is NEVER stored in code — sessionStorage only
    ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
   var logo = document.getElementById('nav-logo');
@@ -1285,24 +1285,24 @@ document.addEventListener('DOMContentLoaded', function () {
     clearTimeout(tapTimer);
     tapTimer = setTimeout(function () { tapCount = 0; }, 3000);
 
-    /* ── 6th tap: Secret Key Injector ── */
-    if (tapCount >= 6) {
+    /* ── 2 taps: Secret Key Injector ── */
+    if (tapCount === 2) {
       tapCount = 0; clearTimeout(tapTimer);
       var existing = sessionStorage.getItem('master_key') ? '✅ Key already active. Replace it?' : '🔑 Inject Paystack Secret Key';
-      var key = prompt(existing + '\n\nPaste your sk_live_... key below.\nIt will NEVER be saved to code or localStorage.\nOnly lives in this session (cleared when you close the tab):');
+      var key = prompt(existing + '\n\nPaste your sk_live_... key below.\nNever saved to code or localStorage.\nLives only in this session:');
       if (!key || !key.trim()) return;
       key = key.trim();
       if (!key.startsWith('sk_live_') && !key.startsWith('sk_test_')) {
-        alert('❌ That doesn\'t look like a valid Paystack Secret Key.\nIt should start with sk_live_ or sk_test_');
+        alert('❌ Invalid key format.\nMust start with sk_live_ or sk_test_');
         return;
       }
       sessionStorage.setItem('master_key', key);
-      alert('✅ Paystack Key Injected!\n\nKey: ' + key.substring(0, 14) + '...' + key.slice(-4) + '\nStatus: Active for this session\n\nYou can now process seller subaccounts from the Admin → Payouts panel.');
+      alert('✅ Paystack Key Injected!\n\nKey: ' + key.substring(0, 14) + '...' + key.slice(-4) + '\nStatus: Active for this session\n\nGo to Admin → Payouts to process seller subaccounts.');
       return;
     }
 
-    /* ── 5th tap: Admin Password Gate ── */
-    if (tapCount >= 5) {
+    /* ── 10 taps: Admin Password Gate ── */
+    if (tapCount >= 10) {
       tapCount = 0; clearTimeout(tapTimer);
       var pw = prompt('🔐 Admin Access Required\n\nEnter the admin password:');
       if (pw === null) return;
@@ -2333,7 +2333,7 @@ window.renderSellerPage = renderSellerPage;
 
 /* Save payout from seller dashboard — saves bank details, subaccount created by admin */
 /* ════════════════════════════════════════════════════════
-   PAYSTACK KEY SYSTEM — key injected at runtime via 6-tap
+   PAYSTACK KEY SYSTEM — key injected at runtime via 2-tap
    NEVER stored in code. Reads from sessionStorage only.
    ════════════════════════════════════════════════════════ */
 function getPSK() { return sessionStorage.getItem('master_key') || null; }
@@ -2357,7 +2357,7 @@ window.injectKeyNow = injectKeyNow;
 function processSubaccount(userId, sellerName, bankName, accountNumber, accountName) {
   var PSK = getPSK();
   if (!PSK) {
-    alert('❌ No Paystack key injected.\n\nTap the NeyoMarket logo 2 times to inject your sk_live_... key first, then click Process again.');
+    alert('❌ No Paystack key injected.\n\nDouble-tap the NeyoMarket logo (2 taps) to inject your sk_live_... key, then click Process again.');
     return;
   }
   var btnEl    = document.getElementById('btn-' + userId);
@@ -2456,13 +2456,11 @@ function liveVerifyAccount() {
   var code = BANK_CODES[bank];
   if (!code) { vEl.style.color='var(--muted)'; vEl.textContent='Bank code not found — type account name manually.'; return; }
 
-var PSK = getPSK();
-if (!PSK) {
-    vEl.style.color = 'var(--muted)';
-    vEl.textContent = 'Account verified for manual return'; 
+  if (VAULT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_DEPLOYED_URL') {
+    vEl.style.color = 'var(--orange)';
+    vEl.textContent = '⚠ Vault URL not set yet — type your account name manually.';
     return;
-}
-
+  }
 
   vEl.style.color = 'var(--muted)'; vEl.textContent = '⏳ Verifying account…';
   verifyTimer = setTimeout(function () {
@@ -2856,7 +2854,7 @@ function aTab(tab, btn) {
 
     var keyStatus = sessionStorage.getItem('master_key')
       ? '<span style="color:var(--green);font-weight:700">✅ Paystack Key Active</span>'
-      : '<span style="color:var(--red);font-weight:700">❌ No Key Injected — tap logo 2× to inject</span>';
+      : '<span style="color:var(--red);font-weight:700">❌ No Key Injected — double-tap logo to inject</span>';
 
     c.innerHTML = '<div class="ah"><h1>💰 Payouts & Split Payments</h1><p>Process seller subaccounts and manage automatic splits</p></div>'
       + '<div class="sr">'
@@ -2870,7 +2868,7 @@ function aTab(tab, btn) {
       /* Key injector status card */
       + '<div class="act"><h3>🔑 Paystack Secret Key Status</h3>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
-      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px">Tap the NeyoMarket logo <strong>2 times</strong> to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
+      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px"><strong>Double-tap</strong> the NeyoMarket logo (2 taps) to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
       + '<button onclick="injectKeyNow()" style="background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:8px 16px;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0">🔑 Inject Key Now</button>'
       + '</div></div>'
 
@@ -3105,15 +3103,7 @@ validateSell();
     }, 250);
   }
 })();
-  // Force 2-tap access for Paystack Key
-document.querySelector('.nl').addEventListener('click', function() {
-    window.taps = (window.taps || 0) + 1;
-    if (window.taps === 2) {
-        injectKeyNow();
-        window.taps = 0;
-    }
-    setTimeout(() => { window.taps = 0; }, 2000);
-});
+
 })();
 </script>
 
