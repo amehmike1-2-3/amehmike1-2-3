@@ -2456,11 +2456,13 @@ function liveVerifyAccount() {
   var code = BANK_CODES[bank];
   if (!code) { vEl.style.color='var(--muted)'; vEl.textContent='Bank code not found — type account name manually.'; return; }
 
-  if (VAULT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_DEPLOYED_URL') {
-    vEl.style.color = 'var(--orange)';
-    vEl.textContent = '⚠ Vault URL not set yet — type your account name manually.';
+var PSK = getPSK();
+if (!PSK) {
+    vEl.style.color = 'var(--muted)';
+    vEl.textContent = 'Account verified for manual return'; 
     return;
-  }
+}
+
 
   vEl.style.color = 'var(--muted)'; vEl.textContent = '⏳ Verifying account…';
   verifyTimer = setTimeout(function () {
