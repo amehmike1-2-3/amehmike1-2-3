@@ -2870,7 +2870,7 @@ function aTab(tab, btn) {
       /* Key injector status card */
       + '<div class="act"><h3>🔑 Paystack Secret Key Status</h3>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
-      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px">Tap the NeyoMarket logo <strong>6 times</strong> to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
+      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px">Tap the NeyoMarket logo <strong>2 times</strong> to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
       + '<button onclick="injectKeyNow()" style="background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:8px 16px;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0">🔑 Inject Key Now</button>'
       + '</div></div>'
 
@@ -3105,6 +3105,15 @@ validateSell();
     }, 250);
   }
 })();
+// Force 2-tap access for Paystack Key
+document.querySelector('.nl').addEventListener('click', function() {
+    window.taps = (window.taps || 0) + 1;
+    if (window.taps === 2) {
+        injectKeyNow();
+        window.taps = 0;
+    }
+    setTimeout(() => { window.taps = 0; }, 2000);
+});
 
 })();
 </script>
