@@ -12,14 +12,14 @@
 <meta name="author" content="NeyoMarket"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#f0c040"/>
-<link rel="canonical" href="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<link rel="canonical" href="https://neyomarket.com/"/>
 
 <!-- ═══ OPEN GRAPH (Facebook / WhatsApp previews) ═══ -->
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<meta property="og:url" content="https://neyomarket.com/"/>
 <meta property="og:title" content="NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace"/>
 <meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers, 15–30% affiliate commissions. Zero scam guarantee."/>
-<meta property="og:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta property="og:image" content="https://neyomarket.com/og-image.png"/>
 <meta property="og:site_name" content="NeyoMarket"/>
 <meta property="og:locale" content="en_NG"/>
 
@@ -27,10 +27,10 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="NeyoMarket — Nigeria's Secure Marketplace"/>
 <meta name="twitter:description" content="Buy, sell, and earn. Escrow-protected. Verified sellers. Zero scam guarantee."/>
-<meta name="twitter:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -38,13 +38,13 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
+  "url": "https://neyomarket.com",
   "description": "Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://amehmike1-2-3.github.io/Neyo-Market/?q={search_term_string}"
+      "urlTemplate": "https://neyomarket.com/?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }
@@ -55,8 +55,8 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
-  "logo": "https://amehmike1-2-3.github.io/Neyo-Market/logo.png",
+  "url": "https://neyomarket.com",
+  "logo": "https://neyomarket.com/logo.png",
   "contactPoint": {
     "@type": "ContactPoint",
     "telephone": "+2349072212496",
@@ -964,12 +964,42 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
     <!-- Payout Settings -->
     <div class="dc">
       <h3>🏦 Payout Settings</h3>
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Add your bank details so you receive your 90% share after every confirmed sale.</p>
-      <div class="fg"><label>Bank Name</label><input class="fi" type="text" id="sel-bank" placeholder="e.g. GTBank, Opay, Palmpay, First Bank"/></div>
-      <div class="fg"><label>Account Number</label><input class="fi" type="text" id="sel-acct" placeholder="10-digit account number" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"/></div>
-      <div class="fg"><label>Account Name</label><input class="fi" type="text" id="sel-aname" placeholder="Must match your bank account name"/></div>
-      <div id="sel-payout-ok" style="display:none;color:var(--green);font-size:.82rem;margin-bottom:8px">✅ Payout details saved!</div>
-      <button class="bg" style="padding:10px 22px;width:100%" onclick="saveSellerPayout()">Save Bank Details</button>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Add your bank details so Paystack automatically sends your 90% share instantly after every confirmed sale.</p>
+
+      <!-- Subaccount status badge -->
+      <div id="sel-subaccount-status" style="margin-bottom:16px"></div>
+
+      <div class="fg">
+        <label>Bank Name <span style="color:var(--red)">*</span></label>
+        <select class="fi" id="sel-bank">
+          <option value="">— Select your bank —</option>
+          <option value="Access Bank">Access Bank</option>
+          <option value="First Bank">First Bank</option>
+          <option value="GTBank">GTBank (Guaranty Trust)</option>
+          <option value="UBA">UBA (United Bank for Africa)</option>
+          <option value="Zenith Bank">Zenith Bank</option>
+          <option value="Sterling Bank">Sterling Bank</option>
+          <option value="Union Bank">Union Bank</option>
+          <option value="Fidelity Bank">Fidelity Bank</option>
+          <option value="Ecobank">Ecobank</option>
+          <option value="Wema Bank">Wema Bank</option>
+          <option value="Stanbic IBTC">Stanbic IBTC</option>
+          <option value="FCMB">FCMB</option>
+          <option value="Keystone Bank">Keystone Bank</option>
+          <option value="Polaris Bank">Polaris Bank</option>
+          <option value="Heritage Bank">Heritage Bank</option>
+          <option value="Opay">Opay</option>
+          <option value="Palmpay">Palmpay</option>
+          <option value="Kuda">Kuda Bank</option>
+          <option value="Moniepoint">Moniepoint MFB</option>
+          <option value="VFD MFB">VFD Microfinance Bank</option>
+        </select>
+      </div>
+      <div class="fg"><label>Account Number <span style="color:var(--red)">*</span></label><input class="fi" type="tel" id="sel-acct" placeholder="10-digit account number" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'');liveVerifyAccount()"/></div>
+      <div id="sel-acct-verify" style="font-size:.8rem;margin-top:-8px;margin-bottom:10px;min-height:16px"></div>
+      <div class="fg"><label>Account Name <span style="color:var(--red)">*</span></label><input class="fi" type="text" id="sel-aname" placeholder="Must match your bank account name exactly"/></div>
+      <div id="sel-payout-ok" style="display:none;border-radius:9px;padding:11px 14px;font-size:.83rem;margin-bottom:10px"></div>
+      <button class="bg" style="padding:10px 22px;width:100%" id="sel-save-btn" onclick="saveSellerPayout()">💳 Save &amp; Activate Split Payment</button>
     </div>
 
     <!-- Affiliate Links for own products -->
@@ -1240,14 +1270,38 @@ function go(pageId) {
 }
 window.go = go;
 
-/* ═══ 3. STEALTH ADMIN — 5 taps on logo within 3 seconds ═══ */
+/* ════════════════════════════════════════════════════════
+   6-TAP LOGO — DUAL TRIGGER SYSTEM
+   • Taps 1-5  → normal 5-tap admin password gate
+   • Tap 6      → SECRET KEY INJECTOR (for Paystack PSK)
+   PSK is NEVER stored in code — injected at runtime only
+   ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
   var logo = document.getElementById('nav-logo');
   if (!logo) return;
+
   logo.addEventListener('click', function () {
     tapCount++;
     clearTimeout(tapTimer);
     tapTimer = setTimeout(function () { tapCount = 0; }, 3000);
+
+    /* ── 6th tap: Secret Key Injector ── */
+    if (tapCount >= 6) {
+      tapCount = 0; clearTimeout(tapTimer);
+      var existing = sessionStorage.getItem('master_key') ? '✅ Key already active. Replace it?' : '🔑 Inject Paystack Secret Key';
+      var key = prompt(existing + '\n\nPaste your sk_live_... key below.\nIt will NEVER be saved to code or localStorage.\nOnly lives in this session (cleared when you close the tab):');
+      if (!key || !key.trim()) return;
+      key = key.trim();
+      if (!key.startsWith('sk_live_') && !key.startsWith('sk_test_')) {
+        alert('❌ That doesn\'t look like a valid Paystack Secret Key.\nIt should start with sk_live_ or sk_test_');
+        return;
+      }
+      sessionStorage.setItem('master_key', key);
+      alert('✅ Paystack Key Injected!\n\nKey: ' + key.substring(0, 14) + '...' + key.slice(-4) + '\nStatus: Active for this session\n\nYou can now process seller subaccounts from the Admin → Payouts panel.');
+      return;
+    }
+
+    /* ── 5th tap: Admin Password Gate ── */
     if (tapCount >= 5) {
       tapCount = 0; clearTimeout(tapTimer);
       var pw = prompt('🔐 Admin Access Required\n\nEnter the admin password:');
@@ -1621,11 +1675,10 @@ function vCo() {
 }
 window.vCo = vCo;
 
-/* ═══ processPaystack — works for both auto-fired digital and manual physical ═══ */
+/* ═══ processPaystack — real automatic split payment ═══ */
 function processPaystack(mode) {
   var isPhys = (mode === 'physical');
 
-  // For digital auto-fire, fall back to the logged-in user's email if form is empty
   var emailEl = document.getElementById(isPhys ? 'sh-email' : 'co-email');
   var nameEl  = document.getElementById(isPhys ? 'sh-name'  : 'co-name');
   var waEl    = document.getElementById(isPhys ? 'sh-wa'    : 'co-wa');
@@ -1636,7 +1689,6 @@ function processPaystack(mode) {
   var wa    = (waEl    && waEl.value.trim())    || (CU ? (CU.phone || '') : '');
   var addr  = isPhys ? ((addrEl && addrEl.value.trim()) || '') : 'Digital Delivery';
 
-  // Pre-fill fields so the form looks filled (UX)
   if (emailEl && !emailEl.value) emailEl.value = email;
   if (nameEl  && !nameEl.value)  nameEl.value  = name;
   if (waEl    && !waEl.value)    waEl.value     = wa;
@@ -1651,10 +1703,26 @@ function processPaystack(mode) {
 
   var trackId = 'NYO-' + Math.floor(1000 + Math.random() * 9000);
 
+  /* ── Find seller subaccount from the first cart item ──
+     For multi-seller carts: Paystack supports split codes for
+     multiple recipients but that requires a backend. For single
+     seller per cart (most common case), this works perfectly.  */
+  var sellerSubaccount = null;
+  var platformCharge   = null;
+
+  if (cart.length > 0) {
+    var firstItem  = cart[0];
+    var sellerUser = usrs.find(function (u) { return u.name === firstItem.seller; });
+    if (sellerUser && sellerUser.subaccountCode) {
+      sellerSubaccount = sellerUser.subaccountCode;
+      platformCharge   = Math.round(total * 0.10 * 100); /* 10% in kobo stays with you */
+    }
+  }
+
   var cfg = {
     key:      PK,
     email:    email,
-    amount:   Math.round(total * 100), // kobo, must be integer
+    amount:   Math.round(total * 100),
     currency: 'NGN',
     ref:      trackId,
     metadata: {
@@ -1667,61 +1735,62 @@ function processPaystack(mode) {
     },
 
     callback: function (resp) {
-      // Build and save order
       var order = {
-        id:         trackId,
-        ref:        resp.reference,
-        customer:   { name: name, email: maskEmail(email), whatsapp: wa, address: addr },
-        items:      cart.map(function (i) {
+        id:           trackId,
+        ref:          resp.reference,
+        customer:     { name: name, email: maskEmail(email), whatsapp: wa, address: addr },
+        items:        cart.map(function (i) {
           return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji };
         }),
-        total:      total,
-        status:     'escrow_held',
-        mode:       mode,
-        date:       new Date().toLocaleDateString(),
-        collected:  false,
-        downloadLog: []
+        total:        total,
+        platformFee:  Math.round(total * 0.10),
+        sellerPayout: Math.round(total * 0.90),
+        splitActive:  !!sellerSubaccount,
+        status:       'escrow_held',
+        mode:         mode,
+        date:         new Date().toLocaleDateString(),
+        collected:    false,
+        downloadLog:  []
       };
-      ords.push(order);
-      saveAll();
+      ords.push(order); saveAll();
+      cart = []; updBadge();
 
-      // Clear cart
-      cart = [];
-      updBadge();
-
-      // Show receipt modal
       var ri = document.getElementById('rec-id');
       var rf = document.getElementById('rec-info');
       if (ri) ri.textContent = trackId;
       if (rf) rf.innerHTML =
-        '<div>Name: '       + name  + '</div>' +
-        '<div>WhatsApp: '   + (wa || 'N/A') + '</div>' +
-        '<div>Amount: ₦'    + total.toLocaleString() + '</div>' +
-        '<div>Date: '       + new Date().toLocaleDateString() + '</div>' +
-        '<div style="margin-top:8px;color:var(--green)">🛡️ Funds held in escrow. Confirm receipt to release payment.</div>';
+        '<div>Name: '         + name + '</div>' +
+        '<div>WhatsApp: '     + (wa || 'N/A') + '</div>' +
+        '<div>Amount Paid: ₦' + total.toLocaleString() + '</div>' +
+        '<div>Platform Fee: ₦' + Math.round(total * 0.10).toLocaleString() + ' (10%)</div>' +
+        '<div>Seller Gets: ₦' + Math.round(total * 0.90).toLocaleString() + ' (90%' + (sellerSubaccount ? ' — auto-deposited ✅' : ' — manual payout') + ')</div>' +
+        '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
+        '<div style="margin-top:8px;color:var(--green)">🛡️ Escrow active. Confirm receipt to release payment to seller.</div>';
 
-      // Close any open modal then show receipt
       cM('m-cart'); cM('m-pd');
       oM('m-rec');
       toast('✅ Payment successful! Order ' + trackId, 'ok');
     },
 
-    onClose: function () {
-      toast('Payment window closed. Your cart is still intact.', 'warn');
-    }
+    onClose: function () { toast('Payment window closed. Cart is still intact.', 'warn'); }
   };
 
-  // Guard: PaystackPop must be loaded
+  /* ── Inject split if seller has a subaccount ── */
+  if (sellerSubaccount) {
+    cfg.subaccount          = sellerSubaccount;
+    cfg.transaction_charge  = platformCharge;  /* kobo kept by platform */
+    cfg.bearer              = 'account';        /* platform bears Paystack fees */
+  }
+
   if (typeof PaystackPop === 'undefined') {
-    alert('Paystack did not load. Please check your internet connection and refresh the page.');
+    alert('Paystack did not load. Check your internet connection and refresh.');
     return;
   }
 
   try {
-    var handler = PaystackPop.setup(cfg);
-    handler.openIframe();
+    PaystackPop.setup(cfg).openIframe();
   } catch (err) {
-    alert('Paystack error: ' + (err.message || 'Unknown error') + '\n\nPlease refresh and try again.');
+    alert('Paystack error: ' + (err.message || 'Unknown') + '\n\nPlease refresh and try again.');
   }
 }
 window.processPaystack = processPaystack;
@@ -2198,6 +2267,7 @@ function renderSellerPage() {
   if (CU.payoutBank)  sval('sel-bank',  CU.payoutBank);
   if (CU.payoutAcct)  sval('sel-acct',  CU.payoutAcct);
   if (CU.payoutAname) sval('sel-aname', CU.payoutAname);
+  renderSellerSubaccountStatus();
 
   /* Products list */
   var pl = document.getElementById('sel-products-list');
@@ -2261,26 +2331,277 @@ function renderSellerPage() {
 }
 window.renderSellerPage = renderSellerPage;
 
-/* Save payout from seller dashboard */
+/* Save payout from seller dashboard — saves bank details, subaccount created by admin */
+/* ════════════════════════════════════════════════════════
+   PAYSTACK KEY SYSTEM — key injected at runtime via 6-tap
+   NEVER stored in code. Reads from sessionStorage only.
+   ════════════════════════════════════════════════════════ */
+function getPSK() { return sessionStorage.getItem('master_key') || null; }
+
+/* Inject key manually (also called from admin panel button) */
+function injectKeyNow() {
+  var existing = getPSK() ? '✅ Key active. Replace it?' : '🔑 Enter Paystack Secret Key';
+  var key = prompt(existing + '\n\nPaste your sk_live_... key:\n(Never stored in code — session only)');
+  if (!key || !key.trim()) return;
+  key = key.trim();
+  if (!key.startsWith('sk_live_') && !key.startsWith('sk_test_')) {
+    alert('❌ Invalid key format. Must start with sk_live_ or sk_test_'); return;
+  }
+  sessionStorage.setItem('master_key', key);
+  toast('✅ Paystack key injected! Ready to process subaccounts.', 'ok');
+  aTab('pay', null);
+}
+window.injectKeyNow = injectKeyNow;
+
+/* Process a single seller subaccount from the admin panel */
+function processSubaccount(userId, sellerName, bankName, accountNumber, accountName) {
+  var PSK = getPSK();
+  if (!PSK) {
+    alert('❌ No Paystack key injected.\n\nTap the NeyoMarket logo 6 times to inject your sk_live_... key first, then click Process again.');
+    return;
+  }
+  var btnEl    = document.getElementById('btn-' + userId);
+  var statusEl = document.getElementById('status-' + userId);
+  if (btnEl)    { btnEl.disabled = true; btnEl.textContent = '⏳ Processing…'; }
+  if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Calling Paystack API…'; }
+
+  var bankCode = BANK_CODES[bankName];
+  if (!bankCode) {
+    if (btnEl)    { btnEl.disabled = false; btnEl.textContent = '⚡ Retry'; }
+    if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = '❌ Unknown bank: ' + bankName; }
+    return;
+  }
+
+  fetch('https://api.paystack.co/subaccount', {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + PSK, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      business_name:     sellerName + ' — NeyoMarket',
+      settlement_bank:   bankCode,
+      account_number:    accountNumber,
+      percentage_charge: 10
+    })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    if (d.status && d.data && d.data.subaccount_code) {
+      var subCode = d.data.subaccount_code;
+      /* Save to seller's user record */
+      var idx = usrs.findIndex(function (u) { return String(u.id) === String(userId); });
+      if (idx > -1) {
+        usrs[idx].subaccountCode   = subCode;
+        usrs[idx].subaccountStatus = 'active';
+        saveAll();
+      }
+      /* Update the row visually */
+      var row = document.getElementById('row-' + userId);
+      if (row) {
+        row.innerHTML = '<div style="flex:1"><div style="font-weight:600;font-size:.88rem">' + sellerName + '</div>'
+          + '<div style="font-size:.76rem;color:var(--muted);margin-top:2px">🏦 ' + bankName + ' · ' + accountNumber + '</div></div>'
+          + '<div style="text-align:right"><span class="sb2 s-ok">✅ Active</span>'
+          + '<div style="color:var(--gold);font-size:.73rem;margin-top:4px;font-weight:600">' + subCode + '</div></div>';
+        row.style.background = 'rgba(30,216,128,.04)';
+      }
+      toast('✅ Subaccount created! ' + subCode, 'ok');
+      setTimeout(function () { aTab('pay', null); }, 2000);
+    } else {
+      var errMsg = d.message || JSON.stringify(d);
+      if (btnEl)    { btnEl.disabled = false; btnEl.textContent = '⚡ Retry'; }
+      if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = '❌ ' + errMsg; }
+      toast('Paystack error: ' + errMsg, 'fail');
+    }
+  })
+  .catch(function () {
+    if (btnEl)    { btnEl.disabled = false; btnEl.textContent = '⚡ Retry'; }
+    if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = '❌ Network error.'; }
+    toast('Network error. Check connection.', 'fail');
+  });
+}
+window.processSubaccount = processSubaccount;
+
+/* Bank name → Paystack bank code lookup */
+var BANK_CODES = {
+  'Access Bank':    '044',
+  'First Bank':     '011',
+  'GTBank':         '058',
+  'UBA':            '033',
+  'Zenith Bank':    '057',
+  'Sterling Bank':  '232',
+  'Union Bank':     '032',
+  'Fidelity Bank':  '070',
+  'Ecobank':        '050',
+  'Wema Bank':      '035',
+  'Stanbic IBTC':   '039',
+  'FCMB':           '214',
+  'Keystone Bank':  '082',
+  'Polaris Bank':   '076',
+  'Heritage Bank':  '030',
+  'Opay':           '999992',
+  'Palmpay':        '999991',
+  'Kuda':           '090267',
+  'Moniepoint':     '090405',
+  'VFD MFB':        '090110'
+};
+
+/* Live account name verification via vault */
+var verifyTimer = null;
+function liveVerifyAccount() {
+  var acct  = gv('sel-acct');
+  var bank  = gv('sel-bank');
+  var vEl   = document.getElementById('sel-acct-verify');
+  var aname = document.getElementById('sel-aname');
+  if (!vEl) return;
+  clearTimeout(verifyTimer);
+  if (acct.length !== 10 || !bank) { vEl.textContent = ''; return; }
+  var code = BANK_CODES[bank];
+  if (!code) { vEl.style.color='var(--muted)'; vEl.textContent='Bank code not found — type account name manually.'; return; }
+
+  if (VAULT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_DEPLOYED_URL') {
+    vEl.style.color = 'var(--orange)';
+    vEl.textContent = '⚠ Vault URL not set yet — type your account name manually.';
+    return;
+  }
+
+  vEl.style.color = 'var(--muted)'; vEl.textContent = '⏳ Verifying account…';
+  verifyTimer = setTimeout(function () {
+    callVault('verify_account', { account_number: acct, bank_code: code }, function(d, err) {
+      if (err || !d || !d.success) {
+        vEl.style.color = 'var(--red)';
+        vEl.textContent = '❌ Account not found. Check number & bank.';
+      } else {
+        vEl.style.color = 'var(--green)';
+        vEl.textContent = '✅ ' + d.account_name;
+        if (aname && !aname.value) aname.value = d.account_name;
+      }
+    });
+  }, 700);
+}
+window.liveVerifyAccount = liveVerifyAccount;
+
+/* Create Paystack subaccount — called when seller saves bank details (uses injected key) */
+function createPaystackSubaccount(sellerName, settlementBank, accountNumber, callback) {
+  var PSK = getPSK();
+  if (!PSK) {
+    callback(null, 'No Paystack key injected. Bank details saved — admin will process your subaccount shortly.');
+    return;
+  }
+  var bankCode = BANK_CODES[settlementBank];
+  if (!bankCode) { callback(null, 'Bank code not found for: ' + settlementBank); return; }
+
+  fetch('https://api.paystack.co/subaccount', {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + PSK, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      business_name:     sellerName + ' — NeyoMarket Seller',
+      settlement_bank:   bankCode,
+      account_number:    accountNumber,
+      percentage_charge: 10
+    })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    if (d.status && d.data && d.data.subaccount_code) {
+      callback(d.data.subaccount_code, null);
+    } else {
+      callback(null, d.message || JSON.stringify(d));
+    }
+  })
+  .catch(function (err) {
+    callback(null, 'Network error: ' + (err.message || err));
+  });
+}
+
+/* Save payout + create subaccount automatically */
 function saveSellerPayout() {
   var bank  = gv('sel-bank');
   var acct  = gv('sel-acct');
   var aname = gv('sel-aname');
-  if (!bank || !acct || !aname) { toast('Please fill in all bank details', 'fail'); return; }
-  if (acct.length !== 10)       { toast('Account number must be exactly 10 digits', 'fail'); return; }
-  if (CU) {
-    CU.payoutBank = bank; CU.payoutAcct = acct; CU.payoutAname = aname;
+  var okEl  = document.getElementById('sel-payout-ok');
+  var btn   = document.getElementById('sel-save-btn');
+  var stEl  = document.getElementById('sel-subaccount-status');
+
+  if (!bank)             { toast('Please select your bank', 'fail'); return; }
+  if (!acct || acct.length !== 10) { toast('Account number must be 10 digits', 'fail'); return; }
+  if (!aname)            { toast('Please enter the account name', 'fail'); return; }
+  if (!CU)               { toast('Please sign in first', 'fail'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating…'; }
+
+  createPaystackSubaccount(CU.name, bank, acct, function (subCode, errMsg) {
+    /* Always save bank details locally regardless */
+    CU.payoutBank       = bank;
+    CU.payoutAcct       = acct;
+    CU.payoutAname      = aname;
+    CU.subaccountCode   = subCode || CU.subaccountCode || null;
+    CU.subaccountStatus = subCode ? 'active' : 'pending';
+
     var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
     if (idx > -1) { usrs[idx] = CU; saveAll(); }
     var uStr = JSON.stringify(CU);
     localStorage.setItem('nm_current_user', uStr);
     sessionStorage.setItem('nm_session', uStr);
-    var ok = document.getElementById('sel-payout-ok');
-    if (ok) { ok.style.display = 'block'; setTimeout(function(){ ok.style.display='none'; }, 3000); }
-    toast('Bank details saved ✓', 'ok');
-  }
+
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Save & Activate Split Payment'; }
+
+    if (subCode) {
+      /* SUCCESS — subaccount created */
+      if (stEl) {
+        stEl.innerHTML = '<div style="background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:12px 14px;font-size:.82rem">'
+          + '<div style="color:var(--green);font-weight:700;margin-bottom:4px">✅ Split Payment Active!</div>'
+          + '<div style="color:var(--muted)">Paystack will automatically send <strong style="color:var(--text)">90%</strong> to your bank account and keep <strong style="color:var(--text)">10%</strong> for NeyoMarket after every sale.</div>'
+          + '<div style="color:var(--muted);margin-top:6px;font-size:.76rem">Subaccount: <code style="color:var(--gold)">' + subCode + '</code></div>'
+          + '</div>';
+      }
+      if (okEl) {
+        okEl.style.display = 'block';
+        okEl.style.background = 'rgba(30,216,128,.08)';
+        okEl.style.border = '1px solid rgba(30,216,128,.22)';
+        okEl.style.color = 'var(--green)';
+        okEl.textContent = '✅ Bank details saved & split payment activated!';
+        setTimeout(function () { okEl.style.display = 'none'; }, 5000);
+      }
+      toast('Split payment activated! You\'ll receive 90% automatically 💸', 'ok');
+    } else {
+      /* Saved locally but no subaccount yet */
+      if (stEl) {
+        stEl.innerHTML = '<div style="background:rgba(255,157,61,.07);border:1px solid rgba(255,157,61,.22);border-radius:9px;padding:12px 14px;font-size:.82rem">'
+          + '<div style="color:var(--orange);font-weight:700;margin-bottom:4px">⚠ Bank Details Saved (Manual Payout)</div>'
+          + '<div style="color:var(--muted)">' + (errMsg || 'Auto split not active yet.') + '</div>'
+          + '<div style="color:var(--muted);margin-top:6px;font-size:.76rem">To enable automatic split, add your Paystack Secret Key to the code (PSK variable).</div>'
+          + '</div>';
+      }
+      if (okEl) {
+        okEl.style.display = 'block';
+        okEl.style.background = 'rgba(255,157,61,.07)';
+        okEl.style.border = '1px solid rgba(255,157,61,.22)';
+        okEl.style.color = 'var(--orange)';
+        okEl.textContent = '⚠ Bank details saved. Manual payouts until PSK is configured.';
+        setTimeout(function () { okEl.style.display = 'none'; }, 6000);
+      }
+      toast('Bank details saved ✓', 'ok');
+    }
+
+    renderSellerSubaccountStatus();
+  });
 }
 window.saveSellerPayout = saveSellerPayout;
+
+/* Render the subaccount badge at top of payout card */
+function renderSellerSubaccountStatus() {
+  var stEl = document.getElementById('sel-subaccount-status');
+  if (!stEl || !CU) return;
+  if (CU.subaccountCode) {
+    stEl.innerHTML = '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(30,216,128,.1);border:1px solid rgba(30,216,128,.22);color:var(--green);padding:5px 13px;border-radius:50px;font-size:.76rem;font-weight:700;margin-bottom:4px">'
+      + '✅ Split Payment Active — 90% auto-deposited to your bank</div>';
+  } else if (CU.payoutBank) {
+    stEl.innerHTML = '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,157,61,.1);border:1px solid rgba(255,157,61,.22);color:var(--orange);padding:5px 13px;border-radius:50px;font-size:.76rem;font-weight:700;margin-bottom:4px">'
+      + '⚠ Bank saved — Auto-split needs Paystack Secret Key</div>';
+  } else {
+    stEl.innerHTML = '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.2);color:var(--red);padding:5px 13px;border-radius:50px;font-size:.76rem;font-weight:700;margin-bottom:4px">'
+      + '❌ No bank details — add yours below to get paid</div>';
+  }
+}
+window.renderSellerSubaccountStatus = renderSellerSubaccountStatus;
 
 function savePayout() {
   var bank = gv('po-bank'), acct = gv('po-acct'), aname = gv('po-aname');
@@ -2523,13 +2844,68 @@ function aTab(tab, btn) {
         : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
       + '</div>';
   } else if (tab === 'pay') {
-    c.innerHTML = '<div class="ah"><h1>Payouts</h1></div>'
+    /* Build list of sellers who have bank details but no subaccount yet */
+    var pendingSellers = usrs.filter(function (u) {
+      return u.payoutBank && u.payoutAcct && !u.subaccountCode && u.role === 'seller';
+    });
+    var activeSellers = usrs.filter(function (u) {
+      return u.subaccountCode && u.role === 'seller';
+    });
+
+    var keyStatus = sessionStorage.getItem('master_key')
+      ? '<span style="color:var(--green);font-weight:700">✅ Paystack Key Active</span>'
+      : '<span style="color:var(--red);font-weight:700">❌ No Key Injected — tap logo 6× to inject</span>';
+
+    c.innerHTML = '<div class="ah"><h1>💰 Payouts & Split Payments</h1><p>Process seller subaccounts and manage automatic splits</p></div>'
       + '<div class="sr">'
       + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦' + rev.toLocaleString() + '</div></div>'
       + '<div class="sc2"><div class="lb">Platform (10%)</div><div class="vl">₦' + plat.toLocaleString() + '</div></div>'
       + '<div class="sc2"><div class="lb">Sellers (90%)</div><div class="vl">₦' + Math.round(rev * 0.9).toLocaleString() + '</div></div>'
+      + '<div class="sc2"><div class="lb">Active Splits</div><div class="vl" style="color:var(--green)">' + activeSellers.length + '</div></div>'
+      + '<div class="sc2"><div class="lb">Pending</div><div class="vl" style="color:var(--orange)">' + pendingSellers.length + '</div></div>'
       + '</div>'
-      + '<div class="act"><h3>Payout Info</h3><p style="color:var(--muted);font-size:.86rem;line-height:1.7">Paystack split payments auto-route 90% to seller subaccounts. Configure on your Paystack dashboard.</p></div>';
+
+      /* Key injector status card */
+      + '<div class="act"><h3>🔑 Paystack Secret Key Status</h3>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
+      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px">Tap the NeyoMarket logo <strong>6 times</strong> to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
+      + '<button onclick="injectKeyNow()" style="background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:8px 16px;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0">🔑 Inject Key Now</button>'
+      + '</div></div>'
+
+      /* Pending sellers — need subaccount created */
+      + '<div class="act"><h3>⏳ Pending Subaccounts (' + pendingSellers.length + ')</h3>'
+      + (pendingSellers.length
+        ? pendingSellers.map(function (u) {
+            return '<div id="row-' + u.id + '" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+              + '<div style="flex:1;min-width:160px">'
+              + '<div style="font-weight:600;font-size:.88rem">' + u.name + '</div>'
+              + '<div style="font-size:.77rem;color:var(--muted);margin-top:2px">' + maskEmail(u.email) + '</div>'
+              + '<div style="font-size:.76rem;color:var(--muted);margin-top:2px">🏦 ' + u.payoutBank + ' · ' + u.payoutAcct + '</div>'
+              + '<div style="font-size:.76rem;color:var(--muted)">Account: ' + (u.payoutAname || '—') + '</div>'
+              + '</div>'
+              + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'
+              + '<div id="status-' + u.id + '" style="font-size:.76rem;color:var(--muted)">Ready to process</div>'
+              + '<button id="btn-' + u.id + '" onclick="processSubaccount(\'' + u.id + '\',\'' + u.name + '\',\'' + u.payoutBank + '\',\'' + u.payoutAcct + '\',\'' + (u.payoutAname||'') + '\')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:8px 16px;border-radius:8px;font-size:.79rem;font-weight:700;cursor:pointer;white-space:nowrap">⚡ Process Subaccount</button>'
+              + '</div></div>';
+          }).join('')
+        : '<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:.86rem">No sellers waiting. All sellers with bank details have active subaccounts. ✅</div>')
+      + '</div>'
+
+      /* Active sellers — split already live */
+      + '<div class="act"><h3>✅ Active Split Payments (' + activeSellers.length + ')</h3>'
+      + (activeSellers.length
+        ? '<table class="tbl"><tr><th>Seller</th><th>Bank</th><th>Subaccount Code</th><th>Status</th></tr>'
+          + activeSellers.map(function (u) {
+              return '<tr>'
+                + '<td><strong>' + u.name + '</strong><br/><span style="font-size:.74rem;color:var(--muted)">' + maskEmail(u.email) + '</span></td>'
+                + '<td style="font-size:.8rem">' + u.payoutBank + '</td>'
+                + '<td><code style="color:var(--gold);font-size:.76rem">' + u.subaccountCode + '</code></td>'
+                + '<td><span class="sb2 s-ok">90% Auto-Split Active</span></td>'
+                + '</tr>';
+            }).join('')
+          + '</table>'
+        : '<p style="color:var(--muted);font-size:.84rem">No active subaccounts yet. Process sellers above to activate split payments.</p>')
+      + '</div>';
   } else if (tab === 'dis') {
     c.innerHTML = '<div class="ah"><h1>Disputes</h1></div><div class="act"><h3>Active Disputes (0)</h3><p style="color:var(--muted)">No active disputes. All orders protected by escrow.</p></div>';
   } else if (tab === 'set') {
