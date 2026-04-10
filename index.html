@@ -2357,7 +2357,7 @@ window.injectKeyNow = injectKeyNow;
 function processSubaccount(userId, sellerName, bankName, accountNumber, accountName) {
   var PSK = getPSK();
   if (!PSK) {
-    alert('❌ No Paystack key injected.\n\nTap the NeyoMarket logo 6 times to inject your sk_live_... key first, then click Process again.');
+    alert('❌ No Paystack key injected.\n\nTap the NeyoMarket logo 2 times to inject your sk_live_... key first, then click Process again.');
     return;
   }
   var btnEl    = document.getElementById('btn-' + userId);
@@ -3105,7 +3105,7 @@ validateSell();
     }, 250);
   }
 })();
-// Force 2-tap access for Paystack Key
+  // Force 2-tap access for Paystack Key
 document.querySelector('.nl').addEventListener('click', function() {
     window.taps = (window.taps || 0) + 1;
     if (window.taps === 2) {
@@ -3114,7 +3114,6 @@ document.querySelector('.nl').addEventListener('click', function() {
     }
     setTimeout(() => { window.taps = 0; }, 2000);
 });
-
 })();
 </script>
 
