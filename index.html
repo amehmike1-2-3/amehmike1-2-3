@@ -12,14 +12,14 @@
 <meta name="author" content="NeyoMarket"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#f0c040"/>
-<link rel="canonical" href="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<link rel="canonical" href="https://neyomarket.com/"/>
 
 <!-- ═══ OPEN GRAPH (Facebook / WhatsApp previews) ═══ -->
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://amehmike1-2-3.github.io/Neyo-Market/"/>
+<meta property="og:url" content="https://neyomarket.com/"/>
 <meta property="og:title" content="NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace"/>
 <meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers, 15–30% affiliate commissions. Zero scam guarantee."/>
-<meta property="og:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta property="og:image" content="https://neyomarket.com/og-image.png"/>
 <meta property="og:site_name" content="NeyoMarket"/>
 <meta property="og:locale" content="en_NG"/>
 
@@ -27,23 +27,24 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="NeyoMarket — Nigeria's Secure Marketplace"/>
 <meta name="twitter:description" content="Buy, sell, and earn. Escrow-protected. Verified sellers. Zero scam guarantee."/>
-<meta name="twitter:image" content="https://amehmike1-2-3.github.io/Neyo-Market/og-image.png"/>
+<meta name="twitter:image" content="https://neyomarket.com/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="mHHYhBdoFE_mjenp2e8_vdLjzd9OublNmweneg67JwI" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
+
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
+  "url": "https://neyomarket.com",
   "description": "Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://amehmike1-2-3.github.io/Neyo-Market/?q={search_term_string}"
+      "urlTemplate": "https://neyomarket.com/?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }
@@ -54,8 +55,8 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "NeyoMarket",
-  "url": "https://amehmike1-2-3.github.io/Neyo-Market/",
-  "logo": "https://amehmike1-2-3.github.io/Neyo-Market/logo.png",
+  "url": "https://neyomarket.com",
+  "logo": "https://neyomarket.com/logo.png",
   "contactPoint": {
     "@type": "ContactPoint",
     "telephone": "+2349072212496",
@@ -1373,12 +1374,35 @@ function cntImgs() { var c = 0; uploadedImages.forEach(function (x) { if (x) c++
 function triggerFile() { var i = document.getElementById('dfile-inp'); i.value = ''; i.click(); }
 window.triggerFile = triggerFile;
 
+/* Store the digital file data globally so submitProduct can save it */
+var digitalFileData = null; /* { dataUrl, name, ext, size } */
+
 function onFilePick(e) {
   var f = e.target.files[0]; if (!f) return;
-  dReady = true;
-  document.getElementById('dfile-name').textContent = '✓ ' + f.name;
-  document.getElementById('fz').classList.add('has');
-  validateSell();
+
+  /* Warn if file is very large (base64 bloats by ~33%) */
+  var sizeMB = f.size / (1024 * 1024);
+  if (sizeMB > 15) {
+    alert('⚠ File is ' + sizeMB.toFixed(1) + ' MB. Large files may not save correctly in the browser.\n\nFor files over 15MB, consider uploading to Google Drive and pasting a shareable link in your product description instead.');
+  }
+
+  var ext = f.name.lastIndexOf('.') > -1 ? f.name.substring(f.name.lastIndexOf('.')) : '';
+  document.getElementById('dfile-name').textContent = '⏳ Reading file…';
+
+  var reader = new FileReader();
+  reader.onload = function (ev) {
+    digitalFileData = { dataUrl: ev.target.result, name: f.name, ext: ext, size: f.size };
+    dReady = true;
+    document.getElementById('dfile-name').textContent = '✅ ' + f.name + ' (' + sizeMB.toFixed(2) + ' MB)';
+    document.getElementById('fz').classList.add('has');
+    validateSell();
+  };
+  reader.onerror = function () {
+    alert('Could not read the file. Please try again.');
+    dReady = false;
+    validateSell();
+  };
+  reader.readAsDataURL(f);
 }
 window.onFilePick = onFilePick;
 
@@ -1424,16 +1448,37 @@ function submitProduct() {
   var btn = document.getElementById('sell-btn');
   if (btn && btn.disabled) return;
   var emap = { ebooks:'📚', courses:'🎓', software:'⚙️', fashion:'👗', electronics:'📱', art:'🎨', other:'📦' };
-  var cat = gv('s-cat');
+  var cat  = gv('s-cat');
+  var type = gv('s-type');
   var p = {
-    id: Date.now(), name: gv('s-name'), type: gv('s-type'), cat: cat,
-    price: parseFloat(gv('s-price')), commission: parseFloat(gv('s-comm')),
-    desc: gv('s-desc'), seller: CU ? CU.name : 'Seller',
-    sellerEmail: maskEmail(gv('s-email')), rating: 0, reviews: 0,
-    emoji: emap[cat] || '📦', imgs: uploadedImages.filter(Boolean),
-    status: 'pending', badge: 'Pending Review', date: new Date().toLocaleDateString(), escrow: true
+    id:          Date.now(),
+    name:        gv('s-name'),
+    type:        type,
+    cat:         cat,
+    price:       parseFloat(gv('s-price')),
+    commission:  parseFloat(gv('s-comm')),
+    desc:        gv('s-desc'),
+    seller:      CU ? CU.name : 'Seller',
+    sellerEmail: maskEmail(gv('s-email')),
+    rating:      0,
+    reviews:     0,
+    emoji:       emap[cat] || '📦',
+    imgs:        uploadedImages.filter(Boolean),
+    status:      'pending',
+    badge:       'Pending Review',
+    date:        new Date().toLocaleDateString(),
+    escrow:      true
   };
+
+  /* Save digital file so buyers can download after purchase */
+  if ((type === 'digital' || type === 'course') && digitalFileData) {
+    p.fileDataUrl = digitalFileData.dataUrl;  /* base64 file */
+    p.fileExt     = digitalFileData.ext;
+    p.fileName    = digitalFileData.name;
+  }
+
   prods.push(p); saveAll();
+  digitalFileData = null; /* clear from memory */
   resetSell();
   alert('Product Submitted! It will go live after admin review.');
   go('admin');
@@ -1441,7 +1486,7 @@ function submitProduct() {
 window.submitProduct = submitProduct;
 
 function resetSell() {
-  uploadedImages = []; dReady = false;
+  uploadedImages = []; dReady = false; digitalFileData = null;
   ['s-name','s-type','s-cat','s-price','s-comm','s-desc','s-email'].forEach(function (id) { sval(id, ''); });
   var cb = document.getElementById('sell-cb'); if (cb) cb.checked = false;
   var dw = document.getElementById('dfile-wrap'); if (dw) dw.style.display = 'none';
@@ -1798,9 +1843,11 @@ window.processPaystack = processPaystack;
 function renderOrders() {
   var list = document.getElementById('ord-list'); if (!list) return;
   if (!CU) { list.innerHTML = ''; return; }
+
   var myOrders = ords.filter(function (o) {
     return o.customer && o.customer.email === maskEmail(CU.email);
   });
+
   if (!myOrders.length) {
     list.innerHTML = '<div style="text-align:center;padding:28px 0;color:var(--muted)">'
       + '<div style="font-size:2rem;margin-bottom:10px">🛒</div>'
@@ -1809,32 +1856,136 @@ function renderOrders() {
       + '</div>';
     return;
   }
-  list.innerHTML = myOrders.map(function (o) {
+
+  list.innerHTML = myOrders.slice().reverse().map(function (o) {
     var allDig = o.items.every(function (i) { return i.type === 'digital' || i.type === 'course'; });
-    var btn = o.collected
-      ? '<span style="color:var(--green);font-size:.8rem;font-weight:600">✓ Confirmed</span>'
-      : allDig
-        ? '<button class="dl-btn" onclick="markDL(\'' + o.id + '\')">⬇ Download & Confirm</button>'
-        : '<button class="col-btn" onclick="markCol(\'' + o.id + '\')">📦 Mark Collected</button>';
-    return '<div class="oc"><div class="ot"><h4>Order ' + o.id + '</h4><span class="sb2 ' + (o.collected ? 's-ok' : 's-pend') + '">' + (o.collected ? 'Completed' : 'Escrow Held') + '</span></div>'
-      + '<div class="oi">' + o.items.map(function (i) { return i.name.substring(0, 34); }).join(', ') + '</div>'
-      + '<div class="of"><span style="color:var(--gold);font-weight:700;font-family:\'Playfair Display\',serif">₦' + o.total.toLocaleString() + '</span>' + btn + '</div></div>';
+    var isPhys = o.items.some(function (i) { return i.type === 'physical'; });
+
+    /* ── Action button ── */
+    var actionBtn = '';
+    if (o.collected) {
+      actionBtn = '<span style="color:var(--green);font-size:.8rem;font-weight:600">✅ Confirmed & Complete</span>';
+    } else if (allDig) {
+      /* Digital — show Download button that actually opens the product */
+      actionBtn = '<button class="dl-btn" onclick="markDL(\'' + o.id + '\')" style="font-size:.8rem;padding:8px 16px">'
+        + '⬇ Download &amp; Confirm Receipt</button>';
+    } else {
+      /* Physical — show Mark Collected */
+      actionBtn = '<button class="col-btn" onclick="markCol(\'' + o.id + '\')" style="font-size:.8rem;padding:8px 16px">'
+        + '📦 Mark as Collected</button>';
+    }
+
+    /* ── Shipping address row (physical only) ── */
+    var addrRow = '';
+    if (isPhys && o.customer) {
+      var addr = o.customer.address || o.customer.addr || '';
+      var phone = o.customer.whatsapp || o.customer.phone || '';
+      if (addr || phone) {
+        addrRow = '<div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:8px;padding:9px 11px;margin:8px 0;font-size:.79rem">'
+          + '<div style="color:var(--blue);font-weight:600;margin-bottom:4px">📦 Shipping Details</div>'
+          + (phone ? '<div style="color:var(--muted)">📞 WhatsApp: <strong style="color:var(--text)">' + phone + '</strong></div>' : '')
+          + (addr  ? '<div style="color:var(--muted);margin-top:3px">📍 Address: <strong style="color:var(--text)">' + addr  + '</strong></div>' : '')
+          + '</div>';
+      }
+    }
+
+    /* ── Digital download info ── */
+    var dlRow = '';
+    if (allDig && !o.collected) {
+      dlRow = '<div style="background:rgba(30,216,128,.05);border:1px solid rgba(30,216,128,.15);border-radius:8px;padding:9px 11px;margin:8px 0;font-size:.79rem;color:var(--muted)">'
+        + '⚡ <strong style="color:var(--green)">Digital Product:</strong> Click "Download &amp; Confirm" below to access your file and release payment to the seller.'
+        + '</div>';
+    }
+
+    var statusLabel = o.collected ? 'Completed' : 'Escrow Held';
+    var statusClass = o.collected ? 's-ok' : 's-pend';
+
+    return '<div class="oc">'
+      + '<div class="ot">'
+      + '<h4 style="font-size:.86rem">Order <span style="color:var(--gold)">' + o.id + '</span></h4>'
+      + '<span class="sb2 ' + statusClass + '">' + statusLabel + '</span>'
+      + '</div>'
+      + '<div class="oi">' + o.items.map(function (i) { return i.emoji + ' ' + i.name.substring(0, 32); }).join(' · ') + '</div>'
+      + addrRow
+      + dlRow
+      + '<div class="of">'
+      + '<span style="color:var(--gold);font-weight:700;font-family:\'Playfair Display\',serif">₦' + o.total.toLocaleString() + '</span>'
+      + actionBtn
+      + '</div></div>';
   }).join('');
 }
 
 function markCol(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
   o.collected = true; o.status = 'completed'; o.collectedAt = new Date().toISOString();
-  saveAll(); toast('✓ Collected confirmed! Funds released 🎉', 'ok'); renderOrders();
+  saveAll();
+  toast('✅ Collected confirmed! Escrow released to seller 🎉', 'ok');
+  renderOrders();
 }
 window.markCol = markCol;
 
 function markDL(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
+
+  /* Log the download timestamp */
   if (!o.downloadLog) o.downloadLog = [];
-  o.downloadLog.push({ time: new Date().toISOString() });
-  o.collected = true; o.status = 'completed';
-  saveAll(); toast('✓ Download logged. Funds released! ✅', 'ok'); renderOrders();
+  o.downloadLog.push({ time: new Date().toISOString(), device: navigator.userAgent.substring(0, 60) });
+
+  /* Mark as completed — release escrow */
+  o.collected = true;
+  o.status    = 'completed';
+  o.completedAt = new Date().toISOString();
+  saveAll();
+
+  /* ── Try to open / download the actual product file ──
+     Products store their uploaded images in p.imgs.
+     For digital products, the seller's file URL is stored in p.fileUrl.
+     We find the matching product and open its download link.       */
+  var downloaded = false;
+  o.items.forEach(function (item) {
+    var prod = prods.find(function (p) { return p.id === item.id; });
+    if (prod) {
+      /* If seller uploaded a file (PDF/ZIP/MP4) */
+      if (prod.fileUrl && prod.fileUrl.length > 10) {
+        var a = document.createElement('a');
+        a.href     = prod.fileUrl;
+        a.download = prod.name + (prod.fileExt || '');
+        a.target   = '_blank';
+        a.rel      = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        downloaded = true;
+      } else if (prod.fileDataUrl && prod.fileDataUrl.length > 10) {
+        /* Base64 encoded file stored locally */
+        var a2 = document.createElement('a');
+        a2.href     = prod.fileDataUrl;
+        a2.download = prod.name;
+        a2.target   = '_blank';
+        document.body.appendChild(a2);
+        a2.click();
+        document.body.removeChild(a2);
+        downloaded = true;
+      }
+    }
+  });
+
+  renderOrders();
+
+  if (downloaded) {
+    toast('✅ Download started! Escrow released to seller 🎉', 'ok');
+  } else {
+    /* File not stored locally — show instructions modal */
+    toast('✅ Confirmed! Escrow released. Check your email for the download link.', 'ok');
+    /* Show a helpful message in a brief overlay */
+    setTimeout(function () {
+      var msg = '✅ Payment Confirmed!\n\n'
+        + 'Your escrow has been released to the seller.\n\n'
+        + '📧 The seller will be notified to send your download link.\n\n'
+        + '💡 Note: For instant downloads, sellers must upload their file directly when listing the product on the Sell page.';
+      alert(msg);
+    }, 400);
+  }
 }
 window.markDL = markDL;
 
@@ -2326,6 +2477,85 @@ function renderSellerPage() {
           + '</div></div>';
       }).join('');
     }
+  }
+
+  /* ── Incoming Orders for this seller ── */
+  var selOrders = ords.filter(function (o) {
+    return o.items && o.items.some(function (item) {
+      return myProds.some(function (p) { return p.id === item.id; });
+    });
+  });
+
+  var ordWrap = document.getElementById('sel-orders-wrap');
+  if (!ordWrap) {
+    /* Create the section if it doesn't exist yet */
+    var selDash = document.getElementById('page-seller');
+    if (selDash) {
+      var newSection = document.createElement('div');
+      newSection.className = 'dc';
+      newSection.id = 'sel-orders-wrap';
+      var insertBefore = selDash.querySelector('.sel-bottom-btns');
+      if (insertBefore) selDash.querySelector('.dw').insertBefore(newSection, insertBefore);
+      else selDash.querySelector('.dw').appendChild(newSection);
+      ordWrap = newSection;
+    }
+  }
+
+  if (ordWrap) {
+    ordWrap.innerHTML = '<h3>📬 Incoming Orders (' + selOrders.length + ')</h3>'
+      + (selOrders.length === 0
+        ? '<p style="color:var(--muted);font-size:.84rem;padding:12px 0">No orders yet. Share your product links to get your first sale! 🚀</p>'
+        : selOrders.slice().reverse().map(function (o) {
+            /* Which of my products were in this order? */
+            var myItems = o.items.filter(function (item) {
+              return myProds.some(function (p) { return p.id === item.id; });
+            });
+            var isPhys  = myItems.some(function (i) { return i.type === 'physical'; });
+            var isDig   = myItems.every(function (i) { return i.type === 'digital' || i.type === 'course'; });
+            var myTotal = myItems.reduce(function (s, i) { return s + i.price * (i.qty || 1); }, 0);
+            var myPayout = Math.round(myTotal * 0.9);
+
+            /* Customer details */
+            var custName  = (o.customer && o.customer.name)     || 'Customer';
+            var custPhone = (o.customer && (o.customer.whatsapp || o.customer.phone)) || '';
+            var custAddr  = (o.customer && (o.customer.address  || o.customer.addr))  || '';
+
+            var statusBadge = o.collected
+              ? '<span class="sb2 s-ok">✅ Confirmed — Payout Released</span>'
+              : '<span class="sb2 s-pend">⏳ Awaiting Buyer Confirmation</span>';
+
+            /* Shipping info card (physical only) */
+            var shipCard = '';
+            if (isPhys && (custPhone || custAddr)) {
+              shipCard = '<div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.16);border-radius:8px;padding:10px 12px;margin:8px 0">'
+                + '<div style="color:var(--blue);font-weight:700;font-size:.78rem;margin-bottom:5px">📦 Shipping Info — Send to this address</div>'
+                + (custPhone ? '<div style="font-size:.8rem;margin-bottom:3px">📞 WhatsApp: <a href="https://wa.me/' + custPhone.replace(/\D/g,'') + '" target="_blank" style="color:var(--green);font-weight:600">' + custPhone + '</a></div>' : '')
+                + (custAddr  ? '<div style="font-size:.8rem;color:var(--text)">📍 ' + custAddr + '</div>' : '')
+                + '</div>';
+            }
+
+            /* Digital confirmation note */
+            var digNote = '';
+            if (isDig && !o.collected) {
+              digNote = '<div style="background:rgba(240,192,64,.06);border:1px solid rgba(240,192,64,.18);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:.78rem;color:var(--muted)">'
+                + '⚡ <strong style="color:var(--gold)">Digital order</strong> — buyer will download and confirm. Payout releases automatically once they confirm.'
+                + '</div>';
+            }
+
+            return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">'
+              + '<div><div style="font-weight:600;font-size:.87rem">Order <span style="color:var(--gold)">' + o.id + '</span></div>'
+              + '<div style="font-size:.76rem;color:var(--muted);margin-top:2px">👤 ' + custName + ' · ' + o.date + '</div></div>'
+              + statusBadge
+              + '</div>'
+              + '<div style="font-size:.8rem;color:var(--muted);margin-bottom:6px">' + myItems.map(function(i){ return i.emoji + ' ' + i.name.substring(0,30); }).join(' · ') + '</div>'
+              + shipCard
+              + digNote
+              + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'
+              + '<div style="font-size:.8rem;color:var(--muted)">Your payout: <strong style="color:var(--green);font-size:.9rem">₦' + myPayout.toLocaleString() + '</strong> <span style="font-size:.72rem">(90%)</span></div>'
+              + (custPhone ? '<a href="https://wa.me/' + custPhone.replace(/\D/g,'') + '" target="_blank" style="background:rgba(30,216,128,.1);border:1px solid rgba(30,216,128,.22);color:var(--green);padding:5px 12px;border-radius:7px;font-size:.76rem;font-weight:700;text-decoration:none">💬 WhatsApp Buyer</a>' : '')
+              + '</div></div>';
+          }).join(''));
   }
 }
 window.renderSellerPage = renderSellerPage;
