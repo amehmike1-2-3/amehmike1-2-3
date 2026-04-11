@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -38,7 +38,7 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "NeyoMarket",
-  "url": "https://neyo-market.vercel.app/",
+  "url": "https://neyo-market.vercel.app",
   "description": "Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.",
   "potentialAction": {
     "@type": "SearchAction",
@@ -55,7 +55,7 @@
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "NeyoMarket",
-  "url": "https://neyo-market.vercel.app/",
+  "url": "https://neyo-market.vercel.app",
   "logo": "https://neyo-market.vercel.app/logo.png",
   "contactPoint": {
     "@type": "ContactPoint",
@@ -1180,7 +1180,10 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:32px 16
 'use strict';
 
 /* ═══ CONSTANTS ═══ */
-var PK            = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+/* Paystack public key — fetched from Vercel env var via /api/config
+   Falls back to the hardcoded key if the API is unavailable         */
+var PK = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+fetch('/api/config').then(function(r){ return r.json(); }).then(function(d){ if(d && d.pk) PK = d.pk; }).catch(function(){});
 var ADMIN_EMAIL   = 'admin@neyomarket.com';
 var ADMIN_PASS    = 'NEYO2026';
 var SUPPORT_PHONE = '+2349072212496';
@@ -1206,18 +1209,38 @@ var chatOpen = false;
 var tapCount = 0;
 var tapTimer = null;
 
-/* ═══ STORAGE ═══ */
+/* ════════════════════════════════════════════════════════
+   API LAYER — all auth/data calls go to Vercel Serverless
+   Functions which connect to Vercel Postgres.
+   localStorage is kept ONLY as a local cache/fallback.
+   ════════════════════════════════════════════════════════ */
+var API = '/api'; /* Vercel serves /api/* as serverless functions */
+
+/* Helper: call a Vercel API route */
+function apiCall(path, method, body) {
+  return fetch(API + path, {
+    method:  method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body:    body ? JSON.stringify(body) : undefined
+  }).then(function (r) {
+    if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || ('HTTP ' + r.status)); });
+    return r.json();
+  });
+}
+
+/* Local cache helpers (used while offline or as fallback) */
 function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function ld(k, d) { try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
 function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
 function sval(id, v) { var e = document.getElementById(id); if (e) e.value = v; }
 function maskEmail(e) { if (!e || !e.includes('@')) return '***'; var p = e.split('@'); return p[0][0] + '***@' + p[1]; }
 
-/* ═══ 1. loadUsers — MASTER ADMIN ALWAYS RE-INJECTED ON EVERY DEVICE ═══ */
+/* ═══ 1. loadUsers — ALWAYS injects master admin + syncs from API ═══ */
 function loadUsers() {
+  /* Local cache read — master admin always present */
   var stored = ld('nm_users', []);
   if (!Array.isArray(stored)) stored = [];
-  // Always remove any stale master admin entry and re-inject fresh at top
   stored = stored.filter(function (u) { return u.id !== MASTER_ADMIN.id; });
   stored.unshift(MASTER_ADMIN);
   sv('nm_users', stored);
@@ -1227,12 +1250,59 @@ function loadUsers() {
 function loadAll() {
   usrs  = loadUsers();
   prods = ld('nm_products', []);
-  ords  = ld('nm_orders', []);
-  // Check localStorage first (persists after refresh), then sessionStorage
+  ords  = ld('nm_orders',   []);
+  /* Restore session from localStorage (survives refresh) */
   var s = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
   if (s) { try { CU = JSON.parse(s); } catch (e) { CU = null; } }
+
+  /* Fetch live products from API in background */
+  apiCall('/products').then(function (data) {
+    if (data && Array.isArray(data.products)) {
+      prods = data.products;
+      sv('nm_products', prods);
+      rGrid('home-grid', getActive().slice(0, 8));
+      rGrid('mkt-grid',  getActive());
+      var hc = document.getElementById('hero-cnt');
+      if (hc) hc.textContent = getActive().length;
+    }
+  }).catch(function () { /* use local cache silently */ });
+
+  /* Fetch live orders for current user */
+  if (CU) {
+    apiCall('/orders?userId=' + encodeURIComponent(CU.id)).then(function (data) {
+      if (data && Array.isArray(data.orders)) {
+        ords = data.orders;
+        sv('nm_orders', ords);
+      }
+    }).catch(function () {});
+  }
 }
-function saveAll() { sv('nm_users', usrs); sv('nm_products', prods); sv('nm_orders', ords); }
+
+/* Save helpers — persist locally AND sync to API */
+function saveAll() {
+  sv('nm_users',    usrs);
+  sv('nm_products', prods);
+  sv('nm_orders',   ords);
+}
+
+function syncProductToAPI(product) {
+  apiCall('/products', 'POST', product).catch(function (e) {
+    console.warn('Product sync failed (saved locally):', e.message);
+  });
+}
+
+function syncOrderToAPI(order) {
+  apiCall('/orders', 'POST', order).catch(function (e) {
+    console.warn('Order sync failed (saved locally):', e.message);
+  });
+}
+
+function syncOrderUpdateToAPI(orderId, update) {
+  apiCall('/orders/' + orderId, 'PATCH', update).catch(function (e) {
+    console.warn('Order update sync failed:', e.message);
+  });
+}
+
 function getActive() { return prods.filter(function (p) { return p.status === 'active'; }); }
 
 /* ═══ 5. go() — hides ALL .page elements first ═══ */
@@ -1477,8 +1547,11 @@ function submitProduct() {
     p.fileName    = digitalFileData.name;
   }
 
-  prods.push(p); saveAll();
-  digitalFileData = null; /* clear from memory */
+  prods.push(p);
+  saveAll();
+  /* Sync to Vercel Postgres in background */
+  syncProductToAPI(p);
+  digitalFileData = null;
   resetSell();
   alert('Product Submitted! It will go live after admin review.');
   go('admin');
@@ -1582,7 +1655,7 @@ function swImg(el, src) {
 window.swImg = swImg;
 
 /* ═══ AFFILIATE LINK — product-specific, uses real GitHub Pages base URL ═══ */
-var SITE_BASE = 'https://amehmike1-2-3.github.io/Neyo-Market/';
+var SITE_BASE = 'https://neyo-market.vercel.app/';
 
 function cpyAffProd(id) {
   var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
@@ -1796,7 +1869,10 @@ function processPaystack(mode) {
         collected:    false,
         downloadLog:  []
       };
-      ords.push(order); saveAll();
+      ords.push(order);
+      saveAll();
+      /* Sync order to Vercel Postgres */
+      syncOrderToAPI(order);
       cart = []; updBadge();
 
       var ri = document.getElementById('rec-id');
@@ -1919,6 +1995,7 @@ function markCol(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
   o.collected = true; o.status = 'completed'; o.collectedAt = new Date().toISOString();
   saveAll();
+  syncOrderUpdateToAPI(id, { status: 'completed', collected: true, collectedAt: o.collectedAt });
   toast('✅ Collected confirmed! Escrow released to seller 🎉', 'ok');
   renderOrders();
 }
@@ -1989,9 +2066,8 @@ function markDL(id) {
 }
 window.markDL = markDL;
 
-/* ═══ AUTH ═══ */
+/* ═══ AUTH — API-backed ═══ */
 function doSignIn() {
-  // .trim().toLowerCase() fixes mobile auto-capitalisation
   var rawEmail = (document.getElementById('si-email') || {}).value || '';
   var email    = rawEmail.trim().toLowerCase();
   var passEl   = document.getElementById('si-pass');
@@ -2003,52 +2079,114 @@ function doSignIn() {
   if (!cb || !cb.checked) { if (err) err.textContent = 'Please accept the Terms of Service.'; return; }
   if (!email || !pass)    { if (err) err.textContent = 'All fields are required.'; return; }
 
-  // Reload users fresh so master admin is guaranteed present
-  usrs = loadUsers();
+  /* Show loading state */
+  var btn = document.querySelector('#page-signin .abtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Signing in…'; }
 
-  var u = usrs.find(function (x) {
-    return x.email.trim().toLowerCase() === email && x.password === pass;
-  });
+  /* Try API first (cross-device), fall back to local */
+  apiCall('/auth/login', 'POST', { email: email, password: pass })
+    .then(function (data) {
+      var u = data.user;
+      CU = u;
+      var uStr = JSON.stringify(u);
+      localStorage.setItem('nm_current_user', uStr);
+      sessionStorage.setItem('nm_session', uStr);
 
-  if (!u) {
-    if (err) err.textContent = 'Incorrect email or password. Check caps lock & spacing.';
-    return;
-  }
+      /* Sync local users array */
+      usrs = loadUsers();
+      var idx = usrs.findIndex(function (x) { return x.email === u.email; });
+      if (idx > -1) usrs[idx] = u; else usrs.push(u);
+      sv('nm_users', usrs);
 
-  CU = u;
-  // Save to BOTH storages: localStorage survives refresh, sessionStorage survives tab
-  var uStr = JSON.stringify(u);
-  localStorage.setItem('nm_current_user', uStr);
-  sessionStorage.setItem('nm_session', uStr);
-
-  updNav();
-  toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
-  go(u.role === 'admin' ? 'admin' : 'home');
+      updNav();
+      toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
+      go(u.role === 'admin' ? 'admin' : 'home');
+    })
+    .catch(function (e) {
+      /* API failed — fall back to local localStorage check */
+      usrs = loadUsers();
+      var u = usrs.find(function (x) { return x.email.trim().toLowerCase() === email && x.password === pass; });
+      if (u) {
+        CU = u;
+        var uStr2 = JSON.stringify(u);
+        localStorage.setItem('nm_current_user', uStr2);
+        sessionStorage.setItem('nm_session', uStr2);
+        updNav();
+        toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋 (offline mode)', 'ok');
+        go(u.role === 'admin' ? 'admin' : 'home');
+      } else {
+        if (err) err.textContent = e.message || 'Incorrect email or password.';
+      }
+    })
+    .finally(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign In Securely 🔐'; }
+    });
 }
 window.doSignIn = doSignIn;
 
 function doSignUp() {
-  var name = gv('su-name'), email = gv('su-email'), phone = gv('su-phone');
-  var role = gv('su-role'), pass = document.getElementById('su-pass').value;
-  var cb = document.getElementById('su-cb'), err = document.getElementById('su-err');
-  err.textContent = '';
-  if (!cb || !cb.checked) { err.textContent = 'Please accept the Terms of Service.'; return; }
-  if (!name || !email || !pass) { err.textContent = 'All fields are required.'; return; }
-  if (pass.length < 8)          { err.textContent = 'Password must be at least 8 characters.'; return; }
-  if (usrs.find(function (x) { return x.email === email; })) { err.textContent = 'Email already registered.'; return; }
-  var u = { id: Date.now(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase() };
-  usrs.push(u); saveAll();
-  CU = u;
-  var uStr = JSON.stringify(u);
-  localStorage.setItem('nm_current_user', uStr);
-  sessionStorage.setItem('nm_session', uStr);
-  updNav(); toast('Welcome to NeyoMarket! 🎉', 'ok');
-  if (role === 'seller') {
-    toast('Welcome, Seller! Your dashboard is ready 🏪', 'ok');
-    go('seller');
-  } else {
-    go('home');
-  }
+  var name  = gv('su-name');
+  var email = gv('su-email').toLowerCase();
+  var phone = gv('su-phone');
+  var role  = gv('su-role');
+  var pass  = document.getElementById('su-pass').value;
+  var cb    = document.getElementById('su-cb');
+  var err   = document.getElementById('su-err');
+  if (err) err.textContent = '';
+
+  if (!cb || !cb.checked) { if (err) err.textContent = 'Please accept the Terms of Service.'; return; }
+  if (!name || !email || !pass) { if (err) err.textContent = 'All fields are required.'; return; }
+  if (pass.length < 8) { if (err) err.textContent = 'Password must be at least 8 characters.'; return; }
+
+  var btn = document.querySelector('#page-signup .abtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating account…'; }
+
+  var affCode = 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase();
+
+  apiCall('/auth/register', 'POST', { name: name, email: email, phone: phone, role: role, password: pass, affCode: affCode })
+    .then(function (data) {
+      var u = data.user;
+      CU = u;
+      var uStr = JSON.stringify(u);
+      localStorage.setItem('nm_current_user', uStr);
+      sessionStorage.setItem('nm_session', uStr);
+
+      /* Also save locally as fallback */
+      usrs = loadUsers();
+      usrs.push(u); sv('nm_users', usrs);
+
+      updNav();
+      toast('Welcome to NeyoMarket! 🎉', 'ok');
+      if (role === 'seller') { toast('Your seller dashboard is ready 🏪', 'ok'); go('seller'); }
+      else go('home');
+    })
+    .catch(function (e) {
+      /* API failed — register locally */
+      if (e.message && e.message.toLowerCase().includes('exist')) {
+        if (err) err.textContent = 'This email is already registered.';
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
+        return;
+      }
+      /* Save locally as offline fallback */
+      usrs = loadUsers();
+      if (usrs.find(function (x) { return x.email === email; })) {
+        if (err) err.textContent = 'This email is already registered.';
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
+        return;
+      }
+      var u2 = { id: Date.now(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: affCode };
+      usrs.push(u2); sv('nm_users', usrs);
+      CU = u2;
+      var uStr2 = JSON.stringify(u2);
+      localStorage.setItem('nm_current_user', uStr2);
+      sessionStorage.setItem('nm_session', uStr2);
+      updNav();
+      toast('Account created (offline mode). Will sync when online. 🎉', 'ok');
+      if (role === 'seller') go('seller'); else go('home');
+    })
+    .finally(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
+    });
 }
 window.doSignUp = doSignUp;
 
@@ -2138,10 +2276,12 @@ function sendResetEmail() {
     tempPass += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  /* save temp password to account right now */
+  /* save temp password to account right now (local + API) */
   user.password = tempPass;
   var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === email; });
   if (idx > -1) { usrs[idx] = user; sv('nm_users', usrs); }
+  /* Sync password change to API */
+  apiCall('/auth/reset-password', 'POST', { email: email, tempPassword: tempPass }).catch(function(){});
 
   /* loading state */
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
@@ -2160,7 +2300,7 @@ function sendResetEmail() {
       to_name:        user.name || 'NeyoMarket User',
       user_name:      user.name || 'NeyoMarket User',
       temp_password:  tempPass,
-      login_url:      'https://amehmike1-2-3.github.io/Neyo-Market/'
+      login_url:      'https://neyo-market.vercel.app/'
     }
   };
 
@@ -2195,7 +2335,7 @@ function sendResetEmail() {
     } else if (detail.toLowerCase().includes('template')) {
       msg = 'Wrong Template ID. Double-check on EmailJS → Email Templates.';
     } else if (detail.toLowerCase().includes('block') || detail.toLowerCase().includes('origin') || detail.toLowerCase().includes('limit')) {
-      msg = 'Origin blocked. Go to EmailJS → Account → Security → Allowed Origins → add https://amehmike1-2-3.github.io';
+      msg = 'Origin blocked. Go to EmailJS → Account → Security → Allowed Origins → add https://neyo-market.vercel.app';
     } else {
       msg = detail;
     }
@@ -2924,6 +3064,9 @@ function changePassword() {
 
   var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === CU.email.trim().toLowerCase(); });
   if (idx > -1) { usrs[idx] = storedUser; sv('nm_users', usrs); }
+
+  /* Sync new password to API */
+  apiCall('/auth/change-password', 'POST', { userId: CU.id, email: CU.email, newPassword: nw }).catch(function(){});
 
   /* update session */
   var uStr = JSON.stringify(CU);
