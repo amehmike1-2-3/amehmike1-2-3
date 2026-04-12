@@ -1,8 +1,5 @@
 // /api/users.js — NeyoMarket Users API (Neon Postgres)
-// GET /api/users  → returns all users (admin use)
-// Used by the admin dashboard to show real-time user counts across all devices
-
-import { neon } from '@neondatabase/serverless';
+const { neon } = require('@neondatabase/serverless');
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -29,19 +26,16 @@ function toPublicUser(row) {
   };
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const rows = await sql`
-      SELECT * FROM users ORDER BY joined DESC
-    `;
+    const rows = await sql`SELECT * FROM users ORDER BY joined DESC`;
     return res.status(200).json({ users: rows.map(toPublicUser) });
   } catch (err) {
-    console.error('[users.js]', err);
+    console.error('[users.js error]', err);
     return res.status(500).json({ error: 'Failed to fetch users.' });
   }
-}
-
+};
