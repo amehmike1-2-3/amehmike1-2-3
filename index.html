@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1236,7 +1236,7 @@ function gv(id) { var e = document.getElementById(id); return e ? e.value.trim()
 function sval(id, v) { var e = document.getElementById(id); if (e) e.value = v; }
 function maskEmail(e) { if (!e || !e.includes('@')) return '***'; var p = e.split('@'); return p[0][0] + '***@' + p[1]; }
 
-/* ═══ 1. loadUsers — ALWAYS injects master admin + syncs from Neon ═══ */
+/* ═══ 1. loadUsers — ALWAYS injects master admin + syncs from API ═══ */
 function loadUsers() {
   /* Local cache read — master admin always present */
   var stored = ld('nm_users', []);
@@ -1247,18 +1247,6 @@ function loadUsers() {
   return stored;
 }
 
-/* Fetch ALL users from Neon and sync into local cache + global usrs */
-function syncUsersFromDB(callback) {
-  apiCall('/users', 'GET').then(function (data) {
-    if (data && Array.isArray(data.users)) {
-      var live = data.users.filter(function (u) { return String(u.id) !== 'master_admin_001'; });
-      usrs = [MASTER_ADMIN].concat(live);
-      sv('nm_users', usrs);
-      if (callback) callback(usrs);
-    }
-  }).catch(function () { /* silently fall back to local cache */ });
-}
-
 function loadAll() {
   usrs  = loadUsers();
   prods = ld('nm_products', []);
@@ -1266,9 +1254,6 @@ function loadAll() {
   /* Restore session from localStorage (survives refresh) */
   var s = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
   if (s) { try { CU = JSON.parse(s); } catch (e) { CU = null; } }
-
-  /* Fetch ALL users from Neon so every device sees the same list */
-  syncUsersFromDB();
 
   /* Fetch live products from API in background */
   apiCall('/products').then(function (data) {
@@ -1342,7 +1327,7 @@ function go(pageId) {
   if (pageId === 'market')   rGrid('mkt-grid', getActive());
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
-  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } syncUsersFromDB(function(){ aTab('ov', document.querySelector('.asb')); }); aTab('ov', document.querySelector('.asb')); }
+  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); }
   if (pageId === 'seller')   {
     if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
     if (CU.role !== 'seller' && CU.role !== 'admin') {
@@ -2122,24 +2107,8 @@ function doSignIn() {
       go(u.role === 'admin' ? 'admin' : 'home');
     })
     .catch(function (apiErr) {
-      /* ── API unreachable: fall back to localStorage ── */
-      usrs = loadUsers();
-      var u = usrs.find(function (x) {
-        return x.email.trim().toLowerCase() === email && x.password === pass;
-      });
-      if (u) {
-        CU = u;
-        var s2 = JSON.stringify(u);
-        localStorage.setItem('nm_current_user', s2);
-        sessionStorage.setItem('nm_session', s2);
-        restoreBtn();
-        updNav();
-        toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋 (offline mode)', 'ok');
-        go(u.role === 'admin' ? 'admin' : 'home');
-      } else {
-        restoreBtn();
-        if (err) err.textContent = apiErr.message || 'Incorrect email or password.';
-      }
+      restoreBtn();
+      if (err) err.textContent = apiErr.message || 'Incorrect email or password.';
     });
 }
 window.doSignIn = doSignIn;
@@ -2178,28 +2147,7 @@ function doSignUp() {
       else go('home');
     })
     .catch(function (e) {
-      if (e.message && (e.message.toLowerCase().includes('exist') || e.message.includes('409'))) {
-        if (err) err.textContent = 'This email is already registered. Please sign in.';
-        if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
-        return;
-      }
-      usrs = loadUsers();
-      if (usrs.find(function (x) { return x.email === email; })) {
-        if (err) err.textContent = 'This email is already registered.';
-        if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
-        return;
-      }
-      var u2 = { id: Date.now().toString(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: affCode };
-      usrs.push(u2); sv('nm_users', usrs);
-      CU = u2;
-      var uStr2 = JSON.stringify(u2);
-      localStorage.setItem('nm_current_user', uStr2);
-      sessionStorage.setItem('nm_session', uStr2);
-      updNav();
-      toast('Account created (offline mode — syncs when online) 🎉', 'ok');
-      if (role === 'seller') go('seller'); else go('home');
-    })
-    .finally(function () {
+      if (err) err.textContent = e.message || 'Something went wrong. Please try again.';
       if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
     });
 }
@@ -3233,25 +3181,18 @@ function aTab(tab, btn) {
         : '<p style="color:var(--muted)">No orders.</p>')
       + '</div>';
   } else if (tab === 'sel' || tab === 'buy' || tab === 'aff2') {
-    /* Always pull fresh users from Neon before rendering */
-    syncUsersFromDB(function (freshUsrs) {
-      var role = tab === 'sel' ? 'seller' : tab === 'buy' ? 'buyer' : 'affiliate';
-      var fl = freshUsrs.filter(function (u) { return u.role === role || (!u.role && role === 'buyer'); });
-      c.innerHTML = '<div class="ah"><h1>' + (role.charAt(0).toUpperCase() + role.slice(1)) + 's (' + fl.length + ')</h1></div>'
-        + '<div class="act"><h3>' + role + 's</h3>'
-        + (fl.length ? '<table class="tbl"><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Action</th></tr>'
-          + fl.map(function (u) {
-            return '<tr><td>' + u.name + '</td><td style="color:var(--muted);font-size:.8rem">' + maskEmail(u.email) + '</td>'
-              + '<td>' + (u.phone || '—') + '</td><td>' + (u.joined || '—') + '</td>'
-              + '<td class="ar2"><button class="at ade" onclick="suspU(' + u.id + ')">Suspend</button></td></tr>';
-          }).join('') + '</table>'
-          : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
-        + '</div>';
-    });
-    /* Show a loading state immediately while DB fetch runs */
     var role = tab === 'sel' ? 'seller' : tab === 'buy' ? 'buyer' : 'affiliate';
-    c.innerHTML = '<div class="ah"><h1>' + (role.charAt(0).toUpperCase() + role.slice(1)) + 's</h1></div>'
-      + '<div class="act"><p style="color:var(--muted)">⏳ Loading from database…</p></div>';
+    var fl = usrs.filter(function (u) { return u.role === role || (!u.role && role === 'buyer'); });
+    c.innerHTML = '<div class="ah"><h1>' + tab.charAt(0).toUpperCase() + tab.slice(1) + ' Users (' + fl.length + ')</h1></div>'
+      + '<div class="act"><h3>' + role + 's</h3>'
+      + (fl.length ? '<table class="tbl"><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Action</th></tr>'
+        + fl.map(function (u) {
+          return '<tr><td>' + u.name + '</td><td style="color:var(--muted);font-size:.8rem">' + maskEmail(u.email) + '</td>'
+            + '<td>' + (u.phone || '—') + '</td><td>' + (u.joined || '—') + '</td>'
+            + '<td class="ar2"><button class="at ade" onclick="suspU(' + u.id + ')">Suspend</button></td></tr>';
+        }).join('') + '</table>'
+        : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
+      + '</div>';
   } else if (tab === 'pay') {
     /* Build list of sellers who have bank details but no subaccount yet */
     var pendingSellers = usrs.filter(function (u) {
