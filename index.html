@@ -30,7 +30,8 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
+
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
 {
@@ -2917,6 +2918,16 @@ function saveSellerPayout() {
     var uStr = JSON.stringify(CU);
     localStorage.setItem('nm_current_user', uStr);
     sessionStorage.setItem('nm_session', uStr);
+
+    /* Sync seller payout + subaccount details to Neon DB */
+    apiCall('/auth?action=update-profile', 'POST', {
+      userId:           CU.id,
+      payoutBank:       bank,
+      payoutAcct:       acct,
+      payoutAname:      aname,
+      subaccountCode:   CU.subaccountCode   || null,
+      subaccountStatus: CU.subaccountStatus || 'pending'
+    }).catch(function(){});
 
     if (btn) { btn.disabled = false; btn.textContent = '💳 Save & Activate Split Payment'; }
 
