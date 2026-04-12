@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -2088,7 +2088,18 @@ function doSignIn() {
 
   function restoreBtn() { if (btn) { btn.disabled = false; btn.textContent = 'Sign In Securely 🔐'; } }
 
-  /* ── Try the Neon database first ── */
+  /* Master admin check */
+  if (email === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
+    CU = MASTER_ADMIN;
+    localStorage.setItem('nm_current_user', JSON.stringify(CU));
+    sessionStorage.setItem('nm_session', JSON.stringify(CU));
+    restoreBtn(); updNav();
+    toast('Welcome back, Admin! 🔐', 'ok');
+    go('admin');
+    return;
+  }
+
+  /* Regular users - try Neon database */
   apiCall('/auth?action=login', 'POST', { email: email, password: pass })
     .then(function (data) {
       var u = data.user;
