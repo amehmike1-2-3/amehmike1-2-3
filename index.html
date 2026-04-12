@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -2066,7 +2066,11 @@ function markDL(id) {
 }
 window.markDL = markDL;
 
-/* ═══ AUTH — API-backed ═══ */
+/* ═══════════════════════════════════════════════════════
+   AUTH  —  all calls go to /api/auth (Neon Postgres)
+   localStorage is used only as an offline session cache
+═══════════════════════════════════════════════════════ */
+
 function doSignIn() {
   var rawEmail = (document.getElementById('si-email') || {}).value || '';
   var email    = rawEmail.trim().toLowerCase();
@@ -2079,47 +2083,48 @@ function doSignIn() {
   if (!cb || !cb.checked) { if (err) err.textContent = 'Please accept the Terms of Service.'; return; }
   if (!email || !pass)    { if (err) err.textContent = 'All fields are required.'; return; }
 
-  /* Show loading state */
-  var btn = document.querySelector('#page-signin .abtn');
+  var btn = document.querySelector('#signin-panel .abtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Signing in…'; }
 
-  /* Try API first (cross-device), fall back to local */
-  apiCall('/auth/login', 'POST', { email: email, password: pass })
+  function restoreBtn() { if (btn) { btn.disabled = false; btn.textContent = 'Sign In Securely 🔐'; } }
+
+  /* ── Try the Neon database first ── */
+  apiCall('/auth?action=login', 'POST', { email: email, password: pass })
     .then(function (data) {
       var u = data.user;
-      CU = u;
-      var uStr = JSON.stringify(u);
-      localStorage.setItem('nm_current_user', uStr);
-      sessionStorage.setItem('nm_session', uStr);
-
-      /* Sync local users array */
+      CU    = u;
+      var s = JSON.stringify(u);
+      localStorage.setItem('nm_current_user', s);
+      sessionStorage.setItem('nm_session', s);
+      /* keep local user array in sync */
       usrs = loadUsers();
-      var idx = usrs.findIndex(function (x) { return x.email === u.email; });
-      if (idx > -1) usrs[idx] = u; else usrs.push(u);
+      var ix = usrs.findIndex(function(x){ return x.email === u.email; });
+      if (ix > -1) usrs[ix] = u; else usrs.push(u);
       sv('nm_users', usrs);
-
+      restoreBtn();
       updNav();
       toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
       go(u.role === 'admin' ? 'admin' : 'home');
     })
-    .catch(function (e) {
-      /* API failed — fall back to local localStorage check */
+    .catch(function (apiErr) {
+      /* ── API unreachable: fall back to localStorage ── */
       usrs = loadUsers();
-      var u = usrs.find(function (x) { return x.email.trim().toLowerCase() === email && x.password === pass; });
+      var u = usrs.find(function (x) {
+        return x.email.trim().toLowerCase() === email && x.password === pass;
+      });
       if (u) {
         CU = u;
-        var uStr2 = JSON.stringify(u);
-        localStorage.setItem('nm_current_user', uStr2);
-        sessionStorage.setItem('nm_session', uStr2);
+        var s2 = JSON.stringify(u);
+        localStorage.setItem('nm_current_user', s2);
+        sessionStorage.setItem('nm_session', s2);
+        restoreBtn();
         updNav();
         toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋 (offline mode)', 'ok');
         go(u.role === 'admin' ? 'admin' : 'home');
       } else {
-        if (err) err.textContent = e.message || 'Incorrect email or password.';
+        restoreBtn();
+        if (err) err.textContent = apiErr.message || 'Incorrect email or password.';
       }
-    })
-    .finally(function () {
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign In Securely 🔐'; }
     });
 }
 window.doSignIn = doSignIn;
@@ -2143,45 +2148,40 @@ function doSignUp() {
 
   var affCode = 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase();
 
-  apiCall('/auth/register', 'POST', { name: name, email: email, phone: phone, role: role, password: pass, affCode: affCode })
+  apiCall('/auth?action=register', 'POST', { name: name, email: email, phone: phone, role: role, password: pass, affCode: affCode })
     .then(function (data) {
       var u = data.user;
       CU = u;
       var uStr = JSON.stringify(u);
       localStorage.setItem('nm_current_user', uStr);
       sessionStorage.setItem('nm_session', uStr);
-
-      /* Also save locally as fallback */
       usrs = loadUsers();
       usrs.push(u); sv('nm_users', usrs);
-
       updNav();
       toast('Welcome to NeyoMarket! 🎉', 'ok');
       if (role === 'seller') { toast('Your seller dashboard is ready 🏪', 'ok'); go('seller'); }
       else go('home');
     })
     .catch(function (e) {
-      /* API failed — register locally */
-      if (e.message && e.message.toLowerCase().includes('exist')) {
-        if (err) err.textContent = 'This email is already registered.';
+      if (e.message && (e.message.toLowerCase().includes('exist') || e.message.includes('409'))) {
+        if (err) err.textContent = 'This email is already registered. Please sign in.';
         if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
         return;
       }
-      /* Save locally as offline fallback */
       usrs = loadUsers();
       if (usrs.find(function (x) { return x.email === email; })) {
         if (err) err.textContent = 'This email is already registered.';
         if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
         return;
       }
-      var u2 = { id: Date.now(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: affCode };
+      var u2 = { id: Date.now().toString(), name: name, email: email, phone: phone, role: role, password: pass, joined: new Date().toLocaleDateString(), affCode: affCode };
       usrs.push(u2); sv('nm_users', usrs);
       CU = u2;
       var uStr2 = JSON.stringify(u2);
       localStorage.setItem('nm_current_user', uStr2);
       sessionStorage.setItem('nm_session', uStr2);
       updNav();
-      toast('Account created (offline mode). Will sync when online. 🎉', 'ok');
+      toast('Account created (offline mode — syncs when online) 🎉', 'ok');
       if (role === 'seller') go('seller'); else go('home');
     })
     .finally(function () {
@@ -2281,7 +2281,7 @@ function sendResetEmail() {
   var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === email; });
   if (idx > -1) { usrs[idx] = user; sv('nm_users', usrs); }
   /* Sync password change to API */
-  apiCall('/auth/reset-password', 'POST', { email: email, tempPassword: tempPass }).catch(function(){});
+  apiCall('/auth?action=reset-password', 'POST', { email: email, tempPassword: tempPass }).catch(function(){});
 
   /* loading state */
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
@@ -2825,23 +2825,32 @@ function liveVerifyAccount() {
   var code = BANK_CODES[bank];
   if (!code) { vEl.style.color='var(--muted)'; vEl.textContent='Bank code not found — type account name manually.'; return; }
 
-  if (VAULT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_DEPLOYED_URL') {
-    vEl.style.color = 'var(--orange)';
-    vEl.textContent = '⚠ Vault URL not set yet — type your account name manually.';
+  var PSK = getPSK();
+  if (!PSK) {
+    vEl.style.color = 'var(--muted)';
+    vEl.textContent = 'Account number saved. (Live name check needs admin key — type name manually.)';
     return;
   }
 
   vEl.style.color = 'var(--muted)'; vEl.textContent = '⏳ Verifying account…';
   verifyTimer = setTimeout(function () {
-    callVault('verify_account', { account_number: acct, bank_code: code }, function(d, err) {
-      if (err || !d || !d.success) {
+    fetch('https://api.paystack.co/bank/resolve?account_number=' + acct + '&bank_code=' + code, {
+      headers: { 'Authorization': 'Bearer ' + PSK }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.status && d.data && d.data.account_name) {
+        vEl.style.color = 'var(--green)';
+        vEl.textContent = '✅ ' + d.data.account_name;
+        if (aname && !aname.value) aname.value = d.data.account_name;
+      } else {
         vEl.style.color = 'var(--red)';
         vEl.textContent = '❌ Account not found. Check number & bank.';
-      } else {
-        vEl.style.color = 'var(--green)';
-        vEl.textContent = '✅ ' + d.account_name;
-        if (aname && !aname.value) aname.value = d.account_name;
       }
+    })
+    .catch(function() {
+      vEl.style.color = 'var(--muted)';
+      vEl.textContent = 'Could not verify — check connection.';
     });
   }, 700);
 }
@@ -2977,9 +2986,15 @@ function savePayout() {
   if (!bank || !acct || !aname) { toast('Fill all payout fields', 'fail'); return; }
   if (CU) {
     CU.payoutBank = bank; CU.payoutAcct = acct; CU.payoutAname = aname;
-    sessionStorage.setItem('nm_session', JSON.stringify(CU));
+    var uStr = JSON.stringify(CU);
+    localStorage.setItem('nm_current_user', uStr);
+    sessionStorage.setItem('nm_session', uStr);
     var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
     if (idx > -1) { usrs[idx] = CU; saveAll(); }
+    /* Sync to DB */
+    apiCall('/auth?action=update-profile', 'POST', {
+      userId: CU.id, payoutBank: bank, payoutAcct: acct, payoutAname: aname
+    }).catch(function(){});
     toast('Payout details saved ✓', 'ok');
   }
 }
@@ -3066,7 +3081,7 @@ function changePassword() {
   if (idx > -1) { usrs[idx] = storedUser; sv('nm_users', usrs); }
 
   /* Sync new password to API */
-  apiCall('/auth/change-password', 'POST', { userId: CU.id, email: CU.email, newPassword: nw }).catch(function(){});
+  apiCall('/auth?action=change-password', 'POST', { userId: CU.id, email: CU.email, newPassword: nw }).catch(function(){});
 
   /* update session */
   var uStr = JSON.stringify(CU);
