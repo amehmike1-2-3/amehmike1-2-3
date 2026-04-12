@@ -1,0 +1,9 @@
+{
+  "name": "neyo-market",
+  "version": "1.0.0",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "bcryptjs": "^2.4.3"
+  }
+}
+
