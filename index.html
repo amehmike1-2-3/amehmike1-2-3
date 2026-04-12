@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1414,18 +1414,43 @@ function triggerImg(i) {
 }
 window.triggerImg = triggerImg;
 
+/* ── Cloudinary config ── */
+var CLD_CLOUD  = 'neyomarket';          /* your Cloudinary cloud name */
+var CLD_PRESET = 'neyomarket_unsigned'; /* your unsigned upload preset */
+
 function onImgPick(e) {
   var f = e.target.files[0]; if (!f) return;
   if (f.size > 5 * 1024 * 1024) { alert('Image too large. Max 5MB.'); return; }
-  var r = new FileReader();
-  r.onload = function (ev) {
-    uploadedImages[activeSlot] = ev.target.result;
-    var sl = document.getElementById('sl-' + activeSlot);
-    sl.innerHTML = '<img src="' + ev.target.result + '" alt=""/><button class="rx" onclick="rmImg(event,' + activeSlot + ')">✕</button>';
+  var sl = document.getElementById('sl-' + activeSlot);
+  sl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:.65rem;color:var(--muted)">⏳</div>';
+
+  var fd = new FormData();
+  fd.append('file', f);
+  fd.append('upload_preset', CLD_PRESET);
+
+  fetch('https://api.cloudinary.com/v1_1/' + CLD_CLOUD + '/image/upload', {
+    method: 'POST', body: fd
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (!data.secure_url) throw new Error('Upload failed');
+    uploadedImages[activeSlot] = data.secure_url;
+    sl.innerHTML = '<img src="' + data.secure_url + '" alt=""/><button class="rx" onclick="rmImg(event,' + activeSlot + ')">✕</button>';
     sl.classList.add('filled');
     validateSell();
-  };
-  r.readAsDataURL(f);
+    toast('Image uploaded ✓', 'ok');
+  })
+  .catch(function() {
+    /* Fallback to base64 if Cloudinary not set up yet */
+    var r = new FileReader();
+    r.onload = function(ev) {
+      uploadedImages[activeSlot] = ev.target.result;
+      sl.innerHTML = '<img src="' + ev.target.result + '" alt=""/><button class="rx" onclick="rmImg(event,' + activeSlot + ')">✕</button>';
+      sl.classList.add('filled');
+      validateSell();
+    };
+    r.readAsDataURL(f);
+  });
 }
 window.onImgPick = onImgPick;
 
@@ -2462,8 +2487,11 @@ function upgradeToSeller() {
   var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
   if (idx > -1) { usrs[idx] = CU; saveAll(); }
 
+  /* Sync role change to Neon */
+  apiCall('/auth?action=update-profile', 'POST', { userId: CU.id, role: 'seller' }).catch(function(){});
+
   toast('🏪 Seller account activated! You can now list products.', 'ok');
-  refreshProf(); /* re-render profile with seller view */
+  refreshProf();
 }
 window.upgradeToSeller = upgradeToSeller;
 
@@ -3385,7 +3413,14 @@ function rejP(id) {
   aTab('ov', null); toast('Product removed.', '');
 }
 window.rejP = rejP;
-function suspU(id) { var u = usrs.find(function (x) { return x.id === id; }); if (u) { u.suspended = true; saveAll(); toast('User suspended.', 'warn'); } }
+function suspU(id) {
+  var u = usrs.find(function (x) { return x.id === id; });
+  if (u) {
+    u.suspended = true; saveAll();
+    apiCall('/auth?action=update-profile', 'POST', { userId: id, suspended: true }).catch(function(){});
+    toast('User suspended.', 'warn');
+  }
+}
 window.suspU = suspU;
 
 /* ═══ MODAL HELPERS ═══ */
