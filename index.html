@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1628,23 +1628,111 @@ function opn(id) {
   var gi = p.imgs && p.imgs.length ? p.imgs : [];
   var mh = gi[0] ? '<img class="pdmi" id="pd-mi" src="' + gi[0] + '" alt="' + p.name + '"/>' : '<div class="pdmi emj">' + p.emoji + '</div>';
   var th = gi.length > 1 ? '<div class="pdg">' + gi.map(function (s, i) { return '<img src="' + s + '" class="' + (i === 0 ? 'on' : '') + '" onclick="swImg(this,\'' + s + '\')"/>'; }).join('') + '</div>' : '';
+  var starsHtml = '';
+  if (p.reviews > 0) {
+    var full = Math.floor(p.rating); var half = (p.rating - full) >= 0.5;
+    for (var si = 0; si < 5; si++) {
+      if (si < full) starsHtml += '<span style="color:var(--gold)">★</span>';
+      else if (si === full && half) starsHtml += '<span style="color:var(--gold)">½</span>';
+      else starsHtml += '<span style="color:var(--border)">★</span>';
+    }
+  }
   document.getElementById('pd-body').innerHTML = mh + th
     + '<div class="pdmeta"><span class="pdt">' + (p.type === 'digital' ? '⚡ Digital' : p.type === 'course' ? '🎓 Course' : '📦 Physical') + '</span>'
     + '<span class="pdt">🏷 ' + p.cat + '</span>'
-    + (p.reviews > 0 ? '<span class="pdt">⭐' + p.rating + '</span>' : '')
+    + (p.reviews > 0 ? '<span class="pdt">⭐ ' + p.rating + ' (' + p.reviews + ' reviews)</span>' : '<span class="pdt" style="color:var(--muted)">No reviews yet</span>')
     + '<span class="pdt">💸 ' + p.commission + '% affiliate</span>'
     + '<span class="pdt">🛡 Escrow</span></div>'
+    + (p.reviews > 0 ? '<div style="margin-bottom:8px;font-size:1.1rem">' + starsHtml + '</div>' : '')
     + '<div class="pdprice">₦' + p.price.toLocaleString() + '</div>'
-    + '<p class="pddesc">' + p.desc + '</p>'
+    + '<p class="pddesc">' + (p.description || p.desc || '') + '</p>'
     + '<div class="prot">🛡️ <strong>Buyer Protected:</strong> Funds held in escrow until you confirm receipt. Full refund if not as described.</div>'
     + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:12px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong></p>'
     + '<div class="pdbtns">'
     + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">🛒 Add to Cart</button>'
     + '<button onclick="cpyAffProd(' + p.id + ')" style="background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">🔗 Affiliate Link</button>'
+    + '</div>'
+    + '<div id="reviews-section-' + p.id + '" style="margin-top:22px">'
+    + '<h4 style="font-size:.92rem;margin-bottom:12px;border-top:1px solid var(--border);padding-top:14px">⭐ Reviews</h4>'
+    + '<div id="reviews-list-' + p.id + '"><p style="color:var(--muted);font-size:.82rem">Loading reviews…</p></div>'
+    + (CU ? '<div style="margin-top:14px;background:var(--surface);border-radius:10px;padding:13px">'
+      + '<p style="font-size:.82rem;font-weight:600;margin-bottom:8px">Leave a Review</p>'
+      + '<div style="display:flex;gap:6px;margin-bottom:8px" id="star-pick-' + p.id + '">'
+      + [1,2,3,4,5].map(function(n){ return '<span onclick="pickStar(' + p.id + ',' + n + ')" style="font-size:1.4rem;cursor:pointer;color:var(--border)" id="star-' + p.id + '-' + n + '">★</span>'; }).join('')
+      + '</div>'
+      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience…" style="width:100%;background:var(--card);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:.83rem;resize:none;height:72px;outline:none;font-family:inherit"></textarea>'
+      + '<button onclick="submitReview(' + p.id + ')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:9px;border-radius:8px;font-weight:700;font-size:.83rem;cursor:pointer">Submit Review ✓</button>'
+      + '</div>' : '<p style="font-size:.79rem;color:var(--muted);margin-top:10px"><a onclick="go(\'signin\')" style="color:var(--gold);cursor:pointer">Sign in</a> to leave a review</p>')
     + '</div>';
   oM('m-pd');
+  /* Load reviews from Neon */
+  loadReviews(p.id);
 }
 window.opn = opn;
+
+var selectedStars = {};
+function pickStar(productId, n) {
+  selectedStars[productId] = n;
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('star-' + productId + '-' + i);
+    if (el) el.style.color = i <= n ? 'var(--gold)' : 'var(--border)';
+  }
+}
+window.pickStar = pickStar;
+
+function loadReviews(productId) {
+  var listEl = document.getElementById('reviews-list-' + productId);
+  if (!listEl) return;
+  fetch('/api/reviews?productId=' + productId)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var revs = data.reviews || [];
+      if (!revs.length) {
+        listEl.innerHTML = '<p style="color:var(--muted);font-size:.82rem">No reviews yet. Be the first!</p>';
+        return;
+      }
+      listEl.innerHTML = revs.map(function(r) {
+        var stars = '';
+        for (var i = 1; i <= 5; i++) stars += '<span style="color:' + (i <= r.rating ? 'var(--gold)' : 'var(--border)') + '">★</span>';
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+          + '<strong style="font-size:.83rem">' + r.user_name + '</strong>'
+          + '<span style="font-size:.85rem">' + stars + '</span></div>'
+          + (r.comment ? '<p style="font-size:.8rem;color:var(--muted);margin:0">' + r.comment + '</p>' : '')
+          + '</div>';
+      }).join('');
+    })
+    .catch(function() {
+      if (listEl) listEl.innerHTML = '<p style="color:var(--muted);font-size:.82rem">Could not load reviews.</p>';
+    });
+}
+window.loadReviews = loadReviews;
+
+function submitReview(productId) {
+  if (!CU) { toast('Please sign in to review', 'fail'); return; }
+  var rating  = selectedStars[productId];
+  var comment = (document.getElementById('rev-comment-' + productId) || {}).value || '';
+  if (!rating) { toast('Please select a star rating', 'fail'); return; }
+  fetch('/api/reviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId: String(productId), userId: String(CU.id), userName: CU.name, rating: rating, comment: comment })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      toast('Review submitted! ⭐', 'ok');
+      /* Update local product rating */
+      var p = prods.find(function(x){ return x.id === productId; });
+      if (p) { p.rating = parseFloat(data.rating); p.reviews = data.reviews; sv('nm_products', prods); }
+      loadReviews(productId);
+    } else {
+      toast(data.error || 'Could not submit review', 'fail');
+    }
+  })
+  .catch(function(){ toast('Could not submit review', 'fail'); });
+}
+window.submitReview = submitReview;
 
 function swImg(el, src) {
   document.querySelectorAll('.pdg img').forEach(function (i) { i.classList.remove('on'); });
@@ -3280,9 +3368,22 @@ function aTab(tab, btn) {
 }
 window.aTab = aTab;
 
-function apvP(id) { var p = prods.find(function (x) { return x.id === id; }); if (p) { p.status = 'active'; p.badge = ''; saveAll(); aTab('ov', null); toast('Product approved ✓', 'ok'); } }
+function apvP(id) {
+  var p = prods.find(function (x) { return x.id === id; });
+  if (p) {
+    p.status = 'active'; p.badge = '';
+    saveAll();
+    apiCall('/products', 'PATCH', { id: id, status: 'active', badge: '' }).catch(function(){});
+    aTab('ov', null); toast('Product approved ✓', 'ok');
+  }
+}
 window.apvP = apvP;
-function rejP(id) { prods = prods.filter(function (x) { return x.id !== id; }); saveAll(); aTab('ov', null); toast('Product removed.', ''); }
+function rejP(id) {
+  prods = prods.filter(function (x) { return x.id !== id; });
+  saveAll();
+  apiCall('/products', 'DELETE', { id: id }).catch(function(){});
+  aTab('ov', null); toast('Product removed.', '');
+}
 window.rejP = rejP;
 function suspU(id) { var u = usrs.find(function (x) { return x.id === id; }); if (u) { u.suspended = true; saveAll(); toast('User suspended.', 'warn'); } }
 window.suspU = suspU;
