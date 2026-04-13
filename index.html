@@ -1586,8 +1586,6 @@ function submitProduct() {
     toast('Could not prepare product data: ' + e.message, 'fail');
     return;
   }
-  alert('Payload OK. Size: ' + payloadStr.length + ' bytes. Imgs: ' + cleanImgs.length);
-
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
   fetch('/api/products', {
@@ -1595,7 +1593,12 @@ function submitProduct() {
     headers: { 'Content-Type': 'application/json' },
     body: payloadStr
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    return r.text().then(function(txt) {
+      alert('Server response: ' + txt.substring(0, 300));
+      try { return JSON.parse(txt); } catch(e) { throw new Error('Server returned: ' + txt.substring(0, 200)); }
+    });
+  })
   .then(function(data) {
     if (data && (data.ok || data.product)) {
       digitalFileData = null;
@@ -1610,6 +1613,7 @@ function submitProduct() {
   })
   .catch(function(err) {
     if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
+    alert('Full error: ' + err.message);
     toast('Failed: ' + (err.message || 'Please try again'), 'fail');
   });
 }
