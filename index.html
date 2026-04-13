@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1275,9 +1275,8 @@ function loadAll() {
 
 /* Save helpers — persist locally AND sync to API */
 function saveAll() {
-  sv('nm_users',    usrs);
-  sv('nm_products', prods);
-  sv('nm_orders',   ords);
+  /* Only cache session — products/orders always come from Neon */
+  sv('nm_users', usrs);
 }
 
 function syncProductToAPI(product) {
@@ -1542,19 +1541,25 @@ function submitProduct() {
     p.fileName    = digitalFileData.name;
   }
 
-  prods.push(p);
-  saveAll();
-  /* Sync to Vercel Postgres in background */
-  /* Sync to Neon DB */
+  /* Save to Neon DB */
+  var btn2 = document.getElementById('sell-btn');
+  if (btn2) { btn2.disabled = true; btn2.textContent = '⏳ Submitting…'; }
   apiCall('/products', 'POST', p).then(function(data) {
-    toast('Product submitted! It will go live after admin review. ✅', 'ok');
-  }).catch(function() {
-    toast('Product saved locally — will sync when online.', 'warn');
+    /* Add to local array with returned data */
+    if (data && data.product) {
+      prods.push(data.product);
+    } else {
+      prods.push(p);
+    }
+    digitalFileData = null;
+    resetSell();
+    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
+    toast('Product submitted for review! 🎉', 'ok');
+    go(CU && CU.role === 'admin' ? 'admin' : 'seller');
+  }).catch(function(err) {
+    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
+    toast('Failed to submit: ' + (err.message || 'Please try again'), 'fail');
   });
-  digitalFileData = null;
-  resetSell();
-  toast('Product submitted for review! 🎉', 'ok');
-  go(CU && CU.role === 'admin' ? 'admin' : 'seller');
 }
 window.submitProduct = submitProduct;
 
