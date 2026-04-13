@@ -46,6 +46,15 @@ function toProduct(r) {
   };
 }
 
+// Tell Vercel to parse body as JSON with larger size limit
+module.exports.config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb'
+    }
+  }
+};
+
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
