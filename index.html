@@ -1543,44 +1543,8 @@ function submitProduct() {
   if (imgN < 2) { alert('Please upload at least 2 product images'); return; }
   var btn = document.getElementById('sell-btn');
   if (btn && btn.disabled) return;
-  var emap = { ebooks:'📚', courses:'🎓', software:'⚙️', fashion:'👗', electronics:'📱', art:'🎨', other:'📦' };
-  var cat  = gv('s-cat');
-  var type = gv('s-type');
-  var p = {
-    id:          Date.now(),
-    name:        gv('s-name'),
-    type:        type,
-    cat:         cat,
-    price:       parseFloat(gv('s-price')),
-    commission:  parseFloat(gv('s-comm')),
-    desc:        gv('s-desc'),
-    seller:      CU ? CU.name : 'Seller',
-    sellerEmail: maskEmail(gv('s-email')),
-    rating:      0,
-    reviews:     0,
-    emoji:       emap[cat] || '📦',
-    imgs:        uploadedImages.filter(Boolean).map(function(img){
-      /* Strip base64 — only keep real URLs */
-      return (typeof img === 'string' && img.startsWith('data:')) ? null : img;
-    }).filter(Boolean),
-    status:      'pending',
-    badge:       'Pending Review',
-    date:        new Date().toLocaleDateString(),
-    escrow:      true
-  };
 
-  /* Save digital file name/ext only — base64 too large for DB */
-  if ((type === 'digital' || type === 'course') && digitalFileData) {
-    p.fileExt  = digitalFileData.ext;
-    p.fileName = digitalFileData.name;
-    /* fileDataUrl kept in memory only for immediate download after purchase */
-    p._localFileData = digitalFileData.dataUrl;
-  }
-
-  /* Save to Neon DB — send clean object without any base64 */
-  var btn2 = document.getElementById('sell-btn');
-
-  /* Check if any images are still base64 (still uploading) */
+  /* Check images still uploading */
   var stillUploading = uploadedImages.filter(Boolean).some(function(img){
     return typeof img === 'string' && img.startsWith('data:');
   });
@@ -1589,51 +1553,62 @@ function submitProduct() {
     return;
   }
 
-  if (btn2) { btn2.disabled = true; btn2.textContent = '⏳ Submitting…'; }
+  /* Build clean payload — only plain strings and numbers */
+  var cleanImgs = [];
+  uploadedImages.forEach(function(img) {
+    if (img && typeof img === 'string' && img.indexOf('http') === 0) {
+      cleanImgs.push(img);
+    }
+  });
 
-  var pClean = {
-    id:          p.id,
-    name:        p.name,
-    type:        p.type,
-    cat:         p.cat,
-    price:       p.price,
-    commission:  p.commission,
-    desc:        p.desc,
-    seller:      p.seller,
-    sellerEmail: p.sellerEmail,
-    emoji:       p.emoji,
-    imgs:        uploadedImages.filter(function(img){ return img && !img.startsWith('data:'); }),
-    status:      'pending',
-    badge:       'Pending Review',
-    date:        p.date,
-    escrow:      true,
-    fileExt:     p.fileExt  || null,
-    fileName:    p.fileName || null
+  var payload = {
+    id:          Date.now(),
+    name:        gv('s-name'),
+    type:        gv('s-type') || 'physical',
+    cat:         gv('s-cat')  || 'other',
+    price:       parseFloat(gv('s-price')) || 0,
+    commission:  parseFloat(gv('s-comm'))  || 0,
+    desc:        gv('s-desc'),
+    seller:      CU ? CU.name : 'Seller',
+    sellerEmail: maskEmail(gv('s-email')),
+    imgs:        cleanImgs,
+    date:        new Date().toLocaleDateString(),
+    fileExt:     null,
+    fileName:    null
   };
 
-  /* Verify payload size before sending */
-  var payloadStr = JSON.stringify(pClean);
-  if (payloadStr.length > 500000) {
-    toast('Product data too large. Please use smaller images.', 'fail');
-    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
+  /* Test JSON serialization first */
+  var payloadStr;
+  try {
+    payloadStr = JSON.stringify(payload);
+  } catch(e) {
+    toast('Could not prepare product data: ' + e.message, 'fail');
     return;
   }
 
-  apiCall('/products', 'POST', pClean).then(function(data) {
-    /* Add to local array with returned data */
-    if (data && data.product) {
-      prods.push(data.product);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+
+  fetch('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payloadStr
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data && (data.ok || data.product)) {
+      digitalFileData = null;
+      uploadedImages = [];
+      resetSell();
+      if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
+      toast('Product submitted for review! 🎉', 'ok');
+      go(CU && CU.role === 'admin' ? 'admin' : 'seller');
     } else {
-      prods.push(p);
+      throw new Error(data.error || 'Submission failed');
     }
-    digitalFileData = null;
-    resetSell();
-    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
-    toast('Product submitted for review! 🎉', 'ok');
-    go(CU && CU.role === 'admin' ? 'admin' : 'seller');
-  }).catch(function(err) {
-    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
-    toast('Failed to submit: ' + (err.message || 'Please try again'), 'fail');
+  })
+  .catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
+    toast('Failed: ' + (err.message || 'Please try again'), 'fail');
   });
 }
 window.submitProduct = submitProduct;
