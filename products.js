@@ -1,12 +1,6 @@
 // /api/products.js — NeyoMarket Products API (Neon Postgres)
 const { neon } = require('@neondatabase/serverless');
-
 const sql = neon(process.env.DATABASE_URL);
-
-// IMPORTANT: Tell Vercel to increase body size limit
-module.exports.config = {
-  api: { bodyParser: { sizeLimit: '2mb' } }
-};
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,27 +33,23 @@ function toProduct(r) {
   };
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-
-    /* GET — fetch all products */
     if (req.method === 'GET') {
       const rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
       return res.status(200).json({ products: rows.map(toProduct) });
     }
 
-    /* POST — save a new product */
     if (req.method === 'POST') {
       const p = req.body || {};
       if (!p.name || !p.price)
-        return res.status(400).json({ error: 'Product name and price are required.' });
+        return res.status(400).json({ error: 'Name and price required.' });
 
-      /* Strip any base64 images */
       const imgs = (p.imgs || []).filter(function(img) {
-        return img && typeof img === 'string' && !img.startsWith('data:');
+        return img && typeof img === 'string' && img.indexOf('http') === 0;
       });
 
       await sql`
@@ -78,8 +68,7 @@ module.exports = async function handler(req, res) {
           ${p.desc || ''},
           ${p.seller || ''},
           ${p.sellerEmail || ''},
-          ${0},
-          ${0},
+          ${0}, ${0},
           ${p.emoji || ''},
           ${JSON.stringify(imgs)},
           ${'pending'},
@@ -91,15 +80,12 @@ module.exports = async function handler(req, res) {
           NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
-          name   = EXCLUDED.name,
-          status = EXCLUDED.status,
-          badge  = EXCLUDED.badge
-        RETURNING *
+          name = EXCLUDED.name,
+          status = EXCLUDED.status
       `;
       return res.status(201).json({ ok: true });
     }
 
-    /* PATCH — approve/reject */
     if (req.method === 'PATCH') {
       const { id, status, badge } = req.body || {};
       if (!id) return res.status(400).json({ error: 'id required' });
@@ -107,7 +93,6 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    /* DELETE */
     if (req.method === 'DELETE') {
       const { id } = req.body || {};
       if (!id) return res.status(400).json({ error: 'id required' });
@@ -121,4 +106,6 @@ module.exports = async function handler(req, res) {
     console.error('[products.js]', err);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
-};
+}
+
+module.exports = handler;
