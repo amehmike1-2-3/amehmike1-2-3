@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1577,10 +1577,29 @@ function submitProduct() {
     p._localFileData = digitalFileData.dataUrl;
   }
 
-  /* Save to Neon DB */
+  /* Save to Neon DB — send clean object without any base64 */
   var btn2 = document.getElementById('sell-btn');
   if (btn2) { btn2.disabled = true; btn2.textContent = '⏳ Submitting…'; }
-  apiCall('/products', 'POST', p).then(function(data) {
+  var pClean = {
+    id:          p.id,
+    name:        p.name,
+    type:        p.type,
+    cat:         p.cat,
+    price:       p.price,
+    commission:  p.commission,
+    desc:        p.desc,
+    seller:      p.seller,
+    sellerEmail: p.sellerEmail,
+    emoji:       p.emoji,
+    imgs:        (p.imgs || []).filter(function(img){ return img && !img.startsWith('data:'); }),
+    status:      p.status,
+    badge:       p.badge,
+    date:        p.date,
+    escrow:      p.escrow,
+    fileExt:     p.fileExt  || null,
+    fileName:    p.fileName || null
+  };
+  apiCall('/products', 'POST', pClean).then(function(data) {
     /* Add to local array with returned data */
     if (data && data.product) {
       prods.push(data.product);
