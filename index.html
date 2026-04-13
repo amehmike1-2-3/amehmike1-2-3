@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -398,6 +398,8 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:40px 20
 .toast.ok{border-color:var(--green);color:var(--green)}
 .toast.fail{border-color:var(--red);color:var(--red)}
 .toast.warn{border-color:var(--orange);color:var(--orange)}
+.so-btn{width:100%;background:rgba(232,85,85,.07);color:var(--red);border:1px solid rgba(232,85,85,.2);padding:12px;border-radius:3px;font-size:.78rem;font-weight:600;cursor:pointer;transition:var(--tr);letter-spacing:.5px;text-transform:uppercase;margin-top:20px}
+.so-btn:hover{background:rgba(232,85,85,.14)}
 
 /* MISC */
 .pbt{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -3202,7 +3204,8 @@ function updNav() {
       + '<div style="' + chipStyle + '" onclick="go(' + dest + ')">'
       + '<div class="uav">' + init + '</div>'
       + '<span style="font-size:.78rem;font-weight:' + (isSeller||isAdmin?'700':'500') + ';color:' + (isSeller||isAdmin?'var(--gold)':'var(--text)') + ';max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-      + label + '</span></div>';
+      + label + '</span></div>'
+      + '<button onclick="doSignOut()" style="background:none;border:1px solid var(--border2);color:var(--muted);padding:6px 12px;border-radius:4px;font-size:.68rem;font-weight:500;cursor:pointer;letter-spacing:.3px;text-transform:uppercase">Sign Out</button>';
   } else {
     nr.innerHTML =
       '<button class="bo" onclick="go(\'signin\')">Sign In</button>'
