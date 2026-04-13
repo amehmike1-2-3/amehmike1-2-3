@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1545,11 +1545,16 @@ function submitProduct() {
   prods.push(p);
   saveAll();
   /* Sync to Vercel Postgres in background */
-  syncProductToAPI(p);
+  /* Sync to Neon DB */
+  apiCall('/products', 'POST', p).then(function(data) {
+    toast('Product submitted! It will go live after admin review. ✅', 'ok');
+  }).catch(function() {
+    toast('Product saved locally — will sync when online.', 'warn');
+  });
   digitalFileData = null;
   resetSell();
-  alert('Product Submitted! It will go live after admin review.');
-  go('admin');
+  toast('Product submitted for review! 🎉', 'ok');
+  go(CU && CU.role === 'admin' ? 'admin' : 'seller');
 }
 window.submitProduct = submitProduct;
 
