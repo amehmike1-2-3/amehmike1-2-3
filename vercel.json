@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "api/products.js": {
+      "maxDuration": 10
+    },
+    "api/auth.js": {
+      "maxDuration": 10
+    },
+    "api/users.js": {
+      "maxDuration": 10
+    },
+    "api/orders.js": {
+      "maxDuration": 10
+    },
+    "api/reviews.js": {
+      "maxDuration": 10
+    }
+  }
+}
