@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1408,16 +1408,48 @@ function triggerImg(i) {
 }
 window.triggerImg = triggerImg;
 
+var IMGBB_KEY = 'b2c01e6615189dbcad9377d41098676e'; /* free ImgBB key */
+
 function onImgPick(e) {
   var f = e.target.files[0]; if (!f) return;
   if (f.size > 5 * 1024 * 1024) { alert('Image too large. Max 5MB.'); return; }
+  var slot = activeSlot;
+  var sl = document.getElementById('sl-' + slot);
+
+  /* Show preview immediately using base64 */
   var r = new FileReader();
   r.onload = function (ev) {
-    uploadedImages[activeSlot] = ev.target.result;
-    var sl = document.getElementById('sl-' + activeSlot);
-    sl.innerHTML = '<img src="' + ev.target.result + '" alt=""/><button class="rx" onclick="rmImg(event,' + activeSlot + ')">✕</button>';
+    var base64 = ev.target.result;
+    sl.innerHTML = '<img src="' + base64 + '" alt=""/><div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff">Uploading…</div>';
     sl.classList.add('filled');
-    validateSell();
+
+    /* Upload to ImgBB */
+    var formData = new FormData();
+    formData.append('image', base64.split(',')[1]);
+    fetch('https://api.imgbb.com/1/upload?key=b2c01e6615189dbcad9377d41098676e', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data) {
+      if (data && data.data && data.data.url) {
+        uploadedImages[slot] = data.data.url;
+        sl.innerHTML = '<img src="' + data.data.url + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
+        validateSell();
+        toast('Image uploaded ✓', 'ok');
+      } else {
+        /* ImgBB failed — keep base64 as fallback */
+        uploadedImages[slot] = base64;
+        sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
+        validateSell();
+      }
+    })
+    .catch(function() {
+      /* Network error — keep base64 */
+      uploadedImages[slot] = base64;
+      sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
+      validateSell();
+    });
   };
   r.readAsDataURL(f);
 }
@@ -1527,7 +1559,10 @@ function submitProduct() {
     rating:      0,
     reviews:     0,
     emoji:       emap[cat] || '📦',
-    imgs:        uploadedImages.filter(Boolean),
+    imgs:        uploadedImages.filter(Boolean).map(function(img){
+      /* Strip base64 — only keep real URLs */
+      return (typeof img === 'string' && img.startsWith('data:')) ? null : img;
+    }).filter(Boolean),
     status:      'pending',
     badge:       'Pending Review',
     date:        new Date().toLocaleDateString(),
