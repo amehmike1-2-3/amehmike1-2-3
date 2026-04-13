@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1579,7 +1579,18 @@ function submitProduct() {
 
   /* Save to Neon DB — send clean object without any base64 */
   var btn2 = document.getElementById('sell-btn');
+
+  /* Check if any images are still base64 (still uploading) */
+  var stillUploading = uploadedImages.filter(Boolean).some(function(img){
+    return typeof img === 'string' && img.startsWith('data:');
+  });
+  if (stillUploading) {
+    toast('Please wait — images still uploading…', 'warn');
+    return;
+  }
+
   if (btn2) { btn2.disabled = true; btn2.textContent = '⏳ Submitting…'; }
+
   var pClean = {
     id:          p.id,
     name:        p.name,
@@ -1591,14 +1602,23 @@ function submitProduct() {
     seller:      p.seller,
     sellerEmail: p.sellerEmail,
     emoji:       p.emoji,
-    imgs:        (p.imgs || []).filter(function(img){ return img && !img.startsWith('data:'); }),
-    status:      p.status,
-    badge:       p.badge,
+    imgs:        uploadedImages.filter(function(img){ return img && !img.startsWith('data:'); }),
+    status:      'pending',
+    badge:       'Pending Review',
     date:        p.date,
-    escrow:      p.escrow,
+    escrow:      true,
     fileExt:     p.fileExt  || null,
     fileName:    p.fileName || null
   };
+
+  /* Verify payload size before sending */
+  var payloadStr = JSON.stringify(pClean);
+  if (payloadStr.length > 500000) {
+    toast('Product data too large. Please use smaller images.', 'fail');
+    if (btn2) { btn2.disabled = false; btn2.textContent = '🔒 Submit for Review'; }
+    return;
+  }
+
   apiCall('/products', 'POST', pClean).then(function(data) {
     /* Add to local array with returned data */
     if (data && data.product) {
