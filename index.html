@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1569,11 +1569,12 @@ function submitProduct() {
     escrow:      true
   };
 
-  /* Save digital file so buyers can download after purchase */
+  /* Save digital file name/ext only — base64 too large for DB */
   if ((type === 'digital' || type === 'course') && digitalFileData) {
-    p.fileDataUrl = digitalFileData.dataUrl;  /* base64 file */
-    p.fileExt     = digitalFileData.ext;
-    p.fileName    = digitalFileData.name;
+    p.fileExt  = digitalFileData.ext;
+    p.fileName = digitalFileData.name;
+    /* fileDataUrl kept in memory only for immediate download after purchase */
+    p._localFileData = digitalFileData.dataUrl;
   }
 
   /* Save to Neon DB */
