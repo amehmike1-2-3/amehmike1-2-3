@@ -1582,9 +1582,11 @@ function submitProduct() {
   try {
     payloadStr = JSON.stringify(payload);
   } catch(e) {
+    alert('JSON Error: ' + e.message + '\nImgs: ' + JSON.stringify(cleanImgs));
     toast('Could not prepare product data: ' + e.message, 'fail');
     return;
   }
+  alert('Payload OK. Size: ' + payloadStr.length + ' bytes. Imgs: ' + cleanImgs.length);
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
