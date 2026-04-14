@@ -19,6 +19,7 @@ function toProduct(r) {
     desc:        r.description || '',
     description: r.description || '',
     seller:      r.seller,
+    sellerId:    r.seller_id || null,
     sellerEmail: r.seller_email,
     rating:      parseFloat(r.rating  || 0),
     reviews:     parseInt(r.reviews   || 0),
@@ -55,7 +56,7 @@ async function handler(req, res) {
       await sql`
         INSERT INTO products (
           id, name, type, cat, price, commission, description,
-          seller, seller_email, rating, reviews, emoji,
+          seller, seller_id, seller_email, rating, reviews, emoji,
           imgs, status, badge, date, escrow,
           file_ext, file_name, created_at
         ) VALUES (
@@ -66,7 +67,8 @@ async function handler(req, res) {
           ${p.price},
           ${p.commission || 0},
           ${p.desc || ''},
-          ${p.seller || ''},
+          ${p.seller   || ''},
+          ${p.sellerId || ''},
           ${p.sellerEmail || ''},
           ${0}, ${0},
           ${p.emoji || ''},
