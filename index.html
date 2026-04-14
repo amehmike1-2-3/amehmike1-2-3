@@ -898,6 +898,30 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:40px 20
         <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
       </div>
 
+      <!-- KYC Verification -->
+      <div class="dc" style="margin-top:14px">
+        <h3>🪪 Identity Verification (KYC)</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.55">
+          Verify your identity with NIN or BVN to unlock product listing. Required for all sellers.
+        </p>
+        <div id="kyc-status-banner"></div>
+        <div class="fg">
+          <label>Verification Type</label>
+          <select class="fi" id="kyc-type">
+            <option value="">— Select Type —</option>
+            <option value="nin">NIN (National Identity Number)</option>
+            <option value="bvn">BVN (Bank Verification Number)</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Enter Number <span style="color:var(--red)">*</span></label>
+          <input class="fi" type="text" id="kyc-number" placeholder="Enter your NIN or BVN" maxlength="11"/>
+          <p class="hint">Your data is encrypted and used only for identity verification.</p>
+        </div>
+        <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
+        <button class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
+      </div>
+
       <!-- Sign out -->
       <button class="so-btn" onclick="doSignOut()" style="margin-top:6px">Sign Out</button>
     </div>
@@ -1539,6 +1563,14 @@ window.validateSell = validateSell;
 
 /* ═══ 2b. submitProduct ═══ */
 function submitProduct() {
+  /* KYC check — must be verified to list products */
+  if (CU && CU.role !== 'admin') {
+    if (!CU.kycStatus || CU.kycStatus !== 'verified') {
+      toast('❌ You must complete KYC verification before listing products.', 'fail');
+      setTimeout(function(){ go('profile'); setTimeout(function(){ switchDashTab('settings', document.getElementById('tab-settings')); }, 300); }, 500);
+      return;
+    }
+  }
   var imgN = cntImgs();
   if (imgN < 2) { alert('Please upload at least 2 product images'); return; }
   var btn = document.getElementById('sell-btn');
@@ -1570,6 +1602,7 @@ function submitProduct() {
     commission:  parseFloat(gv('s-comm'))  || 0,
     desc:        gv('s-desc'),
     seller:      CU ? CU.name : 'Seller',
+    sellerId:    CU ? String(CU.id) : '',
     sellerEmail: maskEmail(gv('s-email')),
     imgs:        cleanImgs,
     date:        new Date().toLocaleDateString(),
@@ -2488,6 +2521,8 @@ function refreshProf() {
   if (CU.payoutAcct)  sval('po-acct', CU.payoutAcct);
   if (CU.payoutAname) sval('po-aname', CU.payoutAname);
 
+  /* Render KYC status */
+  renderKYCStatus();
   /* default to Seller tab, render all panels */
   switchDashTab('seller', document.getElementById('tab-seller'));
   renderSellerDash();
@@ -2607,7 +2642,7 @@ function renderSellerDash() {
       + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
       + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
-      + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
+      + ((!p.sellerId || String(p.sellerId) === String(CU.id) || CU.role === 'admin') ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
       + '</div>'
       + '</div>';
   }).join('');
@@ -2620,12 +2655,14 @@ function deleteProduct(productId) {
   var p = prods.find(function (x) { return x.id === productId; });
   if (!p) { toast('Product not found', 'fail'); return; }
 
-  // Security check: email must match OR user is admin
-  var ownsIt = p.seller === CU.name || p.sellerEmail === maskEmail(CU.email);
+  // Security check: sellerId must match OR user is admin
+  var ownsIt = (p.sellerId && String(p.sellerId) === String(CU.id))
+             || p.seller === CU.name
+             || p.sellerEmail === maskEmail(CU.email);
   var isAdmin = CU.role === 'admin';
 
   if (!ownsIt && !isAdmin) {
-    toast('You can only delete your own products', 'fail');
+    toast('❌ Unauthorized — you can only delete your own products', 'fail');
     return;
   }
 
@@ -3605,6 +3642,55 @@ function sendMsg() {
   setTimeout(function () { addBotMsg(getChatReply(text)); }, 500);
 }
 window.sendMsg = sendMsg;
+
+/* ═══ KYC FUNCTIONS ═══ */
+function submitKYC() {
+  var type   = gv('kyc-type');
+  var number = gv('kyc-number').trim();
+  var errEl  = document.getElementById('kyc-err');
+  var btn    = document.querySelector('#panel-settings .bg[onclick="submitKYC()"]') ||
+               Array.from(document.querySelectorAll('#panel-settings .bg')).find(function(b){ return b.textContent.includes('Verification'); });
+
+  if (errEl) errEl.textContent = '';
+  if (!type)   { if (errEl) errEl.textContent = 'Please select NIN or BVN.'; return; }
+  if (!number) { if (errEl) errEl.textContent = 'Please enter your ' + type.toUpperCase() + '.'; return; }
+  if (number.length < 10) { if (errEl) errEl.textContent = type.toUpperCase() + ' must be at least 10 digits.'; return; }
+  if (!CU) { toast('Please sign in first', 'fail'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifying…'; }
+
+  apiCall('/auth?action=kyc', 'POST', {
+    userId: CU.id,
+    kycType: type,
+    kycNumber: number
+  }).then(function(data) {
+    CU.kycStatus = data.kycStatus || 'pending';
+    CU.kycType   = type;
+    localStorage.setItem('nm_current_user', JSON.stringify(CU));
+    sessionStorage.setItem('nm_session', JSON.stringify(CU));
+    renderKYCStatus();
+    if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
+    toast(data.kycStatus === 'verified' ? '✅ Identity Verified!' : '⏳ Verification pending — we will notify you.', 'ok');
+  }).catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
+    if (errEl) errEl.textContent = err.message || 'Verification failed. Try again.';
+  });
+}
+window.submitKYC = submitKYC;
+
+function renderKYCStatus() {
+  var banner = document.getElementById('kyc-status-banner');
+  if (!banner || !CU) return;
+  var status = CU.kycStatus || 'unverified';
+  var colors = { verified: 'var(--green)', pending: 'var(--orange)', failed: 'var(--red)', unverified: 'var(--muted)' };
+  var icons  = { verified: '✅', pending: '⏳', failed: '❌', unverified: '⚠️' };
+  var labels = { verified: 'Identity Verified', pending: 'Verification Pending', failed: 'Verification Failed — try again', unverified: 'Not Verified — submit below to list products' };
+  banner.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ' + colors[status] + ';border-radius:4px;padding:10px 14px;margin-bottom:14px;font-size:.82rem">'
+    + '<span style="color:' + colors[status] + ';font-weight:600">' + icons[status] + ' ' + labels[status] + '</span>'
+    + (CU.kycType ? '<div style="color:var(--muted);font-size:.74rem;margin-top:3px">Type: ' + CU.kycType.toUpperCase() + '</div>' : '')
+    + '</div>';
+}
+window.renderKYCStatus = renderKYCStatus;
 
 /* ═══ INIT ═══ */
 loadAll();
