@@ -24,6 +24,8 @@ function toPublicUser(row) {
     payoutAname:      row.payout_aname      || '',
     subaccountCode:   row.subaccount_code   || null,
     subaccountStatus: row.subaccount_status || 'pending',
+    kycStatus:        row.kyc_status        || 'unverified',
+    kycType:          row.kyc_type          || null,
   };
 }
 
@@ -137,7 +139,7 @@ module.exports = async function handler(req, res) {
     if (action === 'update-profile') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-      const { userId, payoutBank, payoutAcct, payoutAname, subaccountCode, subaccountStatus } = req.body || {};
+      const { userId, payoutBank, payoutAcct, payoutAname, subaccountCode, subaccountStatus, role, suspended } = req.body || {};
       if (!userId) return res.status(400).json({ error: 'userId is required.' });
 
       await sql`
@@ -146,7 +148,9 @@ module.exports = async function handler(req, res) {
           payout_acct       = COALESCE(${payoutAcct       ?? null}, payout_acct),
           payout_aname      = COALESCE(${payoutAname      ?? null}, payout_aname),
           subaccount_code   = COALESCE(${subaccountCode   ?? null}, subaccount_code),
-          subaccount_status = COALESCE(${subaccountStatus ?? null}, subaccount_status)
+          subaccount_status = COALESCE(${subaccountStatus ?? null}, subaccount_status),
+          role              = COALESCE(${role             ?? null}, role),
+          suspended         = COALESCE(${suspended        ?? null}, suspended)
         WHERE id = ${userId}
       `;
 
@@ -154,6 +158,38 @@ module.exports = async function handler(req, res) {
       if (!rows.length) return res.status(404).json({ error: 'User not found.' });
 
       return res.status(200).json({ user: toPublicUser(rows[0]) });
+    }
+
+    /* ── KYC VERIFICATION ── */
+    if (action === 'kyc') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+      const { userId, kycType, kycNumber } = req.body || {};
+      if (!userId || !kycType || !kycNumber)
+        return res.status(400).json({ error: 'userId, kycType and kycNumber are required.' });
+
+      /* Basic format validation */
+      if (kycNumber.length < 10)
+        return res.status(400).json({ error: 'Invalid ' + kycType.toUpperCase() + ' number.' });
+
+      /* For now: save as pending — admin reviews manually */
+      /* You can integrate Dojah/Paystack KYC API here later */
+      await sql`
+        UPDATE users
+        SET kyc_status = 'pending',
+            kyc_type   = ${kycType},
+            kyc_number = ${kycNumber}
+        WHERE id = ${userId}
+      `;
+
+      const rows = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      if (!rows.length) return res.status(404).json({ error: 'User not found.' });
+
+      return res.status(200).json({ 
+        ok: true, 
+        kycStatus: 'pending',
+        user: toPublicUser(rows[0])
+      });
     }
 
     return res.status(400).json({ error: `Unknown action: "${action}"` });
