@@ -30,7 +30,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -919,7 +919,28 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:40px 20
           <p class="hint">Your data is encrypted and used only for identity verification.</p>
         </div>
         <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
-        <button class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
+        <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
+      </div>
+
+      <!-- Withdrawal Section -->
+      <div class="dc" style="margin-top:14px" id="withdraw-panel">
+        <h3>💸 Request Payout</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.55">
+          Withdraw your earnings to your bank account. Minimum ₦2,000. KYC required.
+        </p>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Available Balance</div>
+          <div id="withdraw-balance" style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;color:var(--gold)">₦0</div>
+        </div>
+        <div class="fg">
+          <label>Amount to Withdraw (₦)</label>
+          <input class="fi" type="number" id="withdraw-amount" placeholder="Min ₦2,000" min="2000"/>
+        </div>
+        <button id="withdraw-btn" class="bg" style="padding:10px 22px;width:100%;opacity:.4;cursor:not-allowed" onclick="requestWithdraw()" disabled>💸 Request Payout</button>
+        <div style="margin-top:20px">
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Withdrawal History</div>
+          <div id="withdrawal-history"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
+        </div>
       </div>
 
       <!-- Sign out -->
@@ -2532,6 +2553,9 @@ function refreshProf() {
 /* ═══ PROFILE DASHBOARD TABS ═══ */
 
 function switchDashTab(name, btn) {
+  if (name === 'settings') {
+    setTimeout(function(){ loadWithdrawBalance(); loadWithdrawalHistory(); }, 300);
+  }
   /* hide all panels */
   ['seller','orders','affiliate','settings'].forEach(function (t) {
     var p = document.getElementById('panel-' + t);
@@ -3648,8 +3672,7 @@ function submitKYC() {
   var type   = gv('kyc-type');
   var number = gv('kyc-number').trim();
   var errEl  = document.getElementById('kyc-err');
-  var btn    = document.querySelector('#panel-settings .bg[onclick="submitKYC()"]') ||
-               Array.from(document.querySelectorAll('#panel-settings .bg')).find(function(b){ return b.textContent.includes('Verification'); });
+  var btn    = document.getElementById('kyc-btn');
 
   if (errEl) errEl.textContent = '';
   if (!type)   { if (errEl) errEl.textContent = 'Please select NIN or BVN.'; return; }
@@ -3659,24 +3682,113 @@ function submitKYC() {
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifying…'; }
 
-  apiCall('/auth?action=kyc', 'POST', {
-    userId: CU.id,
-    kycType: type,
-    kycNumber: number
-  }).then(function(data) {
-    CU.kycStatus = data.kycStatus || 'pending';
-    CU.kycType   = type;
-    localStorage.setItem('nm_current_user', JSON.stringify(CU));
-    sessionStorage.setItem('nm_session', JSON.stringify(CU));
-    renderKYCStatus();
+  fetch('/api/paystack?action=kyc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: String(CU.id), kycType: type, kycNumber: number })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
     if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
-    toast(data.kycStatus === 'verified' ? '✅ Identity Verified!' : '⏳ Verification pending — we will notify you.', 'ok');
-  }).catch(function(err) {
+    if (data.ok) {
+      CU.kycStatus = data.kycStatus || 'pending';
+      CU.kycType   = type;
+      localStorage.setItem('nm_current_user', JSON.stringify(CU));
+      sessionStorage.setItem('nm_session', JSON.stringify(CU));
+      renderKYCStatus();
+      toast(data.kycStatus === 'verified' ? '✅ Identity Verified!' : '⏳ Submitted — under review.', 'ok');
+    } else {
+      if (errEl) errEl.textContent = data.error || 'Verification failed.';
+    }
+  })
+  .catch(function(err) {
     if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
     if (errEl) errEl.textContent = err.message || 'Verification failed. Try again.';
   });
 }
 window.submitKYC = submitKYC;
+
+/* ═══ WITHDRAWAL ═══ */
+function loadWithdrawBalance() {
+  if (!CU) return;
+  var balEl = document.getElementById('withdraw-balance');
+  var btnEl = document.getElementById('withdraw-btn');
+  if (!balEl) return;
+  balEl.textContent = 'Loading…';
+  fetch('/api/paystack?action=balance&userId=' + encodeURIComponent(String(CU.id)))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var bal = data.balance || 0;
+      balEl.textContent = '₦' + bal.toLocaleString();
+      if (btnEl) {
+        var canWithdraw = CU.kycStatus === 'verified' && bal >= 2000;
+        btnEl.disabled = !canWithdraw;
+        btnEl.title = !CU.kycStatus || CU.kycStatus !== 'verified'
+          ? 'Complete KYC verification first'
+          : bal < 2000 ? 'Minimum withdrawal is ₦2,000' : '';
+      }
+    })
+    .catch(function() { if (balEl) balEl.textContent = '₦0'; });
+}
+window.loadWithdrawBalance = loadWithdrawBalance;
+
+function requestWithdraw() {
+  if (!CU) { toast('Please sign in', 'fail'); return; }
+  if (CU.kycStatus !== 'verified') { toast('Complete KYC verification first', 'fail'); return; }
+  var amtEl = document.getElementById('withdraw-amount');
+  var amt   = parseFloat(amtEl ? amtEl.value : 0);
+  if (!amt || amt < 2000) { toast('Minimum withdrawal is ₦2,000', 'fail'); return; }
+  var btn = document.getElementById('withdraw-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
+  fetch('/api/paystack?action=withdraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: String(CU.id), amount: amt })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Payout'; }
+    if (data.ok) {
+      toast(data.message || 'Payout requested! ✅', 'ok');
+      loadWithdrawBalance();
+      loadWithdrawalHistory();
+    } else {
+      toast(data.error || 'Payout failed', 'fail');
+    }
+  })
+  .catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Payout'; }
+    toast('Payout failed: ' + err.message, 'fail');
+  });
+}
+window.requestWithdraw = requestWithdraw;
+
+function loadWithdrawalHistory() {
+  if (!CU) return;
+  var listEl = document.getElementById('withdrawal-history');
+  if (!listEl) return;
+  fetch('/api/paystack?action=withdrawals&userId=' + encodeURIComponent(String(CU.id)))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var rows = data.withdrawals || [];
+      if (!rows.length) { listEl.innerHTML = '<p style="color:var(--muted);font-size:.8rem">No withdrawals yet.</p>'; return; }
+      listEl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+        + '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.68rem;text-transform:uppercase">Amount</th>'
+        + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.68rem;text-transform:uppercase">Status</th>'
+        + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.68rem;text-transform:uppercase">Date</th></tr>'
+        + rows.map(function(w) {
+            var sc = w.status === 'success' ? 'var(--green)' : w.status === 'failed' ? 'var(--red)' : 'var(--orange)';
+            return '<tr>'
+              + '<td style="padding:8px;border-bottom:1px solid var(--border);font-weight:600">₦' + parseFloat(w.amount).toLocaleString() + '</td>'
+              + '<td style="padding:8px;border-bottom:1px solid var(--border);color:' + sc + ';font-weight:600;text-transform:uppercase;font-size:.7rem">' + w.status + '</td>'
+              + '<td style="padding:8px;border-bottom:1px solid var(--border);color:var(--muted)">' + new Date(w.created_at).toLocaleDateString() + '</td>'
+              + '</tr>';
+          }).join('')
+        + '</table>';
+    })
+    .catch(function() {});
+}
+window.loadWithdrawalHistory = loadWithdrawalHistory;
 
 function renderKYCStatus() {
   var banner = document.getElementById('kyc-status-banner');
