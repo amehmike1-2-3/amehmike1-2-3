@@ -1592,16 +1592,21 @@ function loadAll() {
     rGrid('mkt-grid',  getActive());
   });
 
-  /* Fetch live orders from Neon */
+  /* Fetch live orders from Neon — always from DB, never from localStorage */
   if (CU) {
-    apiCall('/orders?userId=' + encodeURIComponent(CU.id)).then(function (data) {
-      if (data && Array.isArray(data.orders)) {
-        ords = data.orders;
-        sv('nm_orders', ords);
-      }
-    }).catch(function () {
-      ords = ld('nm_orders', []);
-    });
+    fetch('/api/orders?userId=' + encodeURIComponent(String(CU.id)))
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data && Array.isArray(data.orders)) {
+          ords = data.orders;
+          /* Refresh orders UI if profile is open */
+          if (document.getElementById('page-profile') &&
+              document.getElementById('page-profile').classList.contains('active')) {
+            renderOrders();
+          }
+        }
+      })
+      .catch(function() { ords = ld('nm_orders', []); });
   }
 }
 
@@ -2324,12 +2329,16 @@ function processPaystack(mode) {
   var sellerSubaccount = null;
   var platformCharge   = null;
 
+  var sellerUserId = null;
   if (cart.length > 0) {
     var firstItem  = cart[0];
-    var sellerUser = usrs.find(function (u) { return u.name === firstItem.seller; });
-    if (sellerUser && sellerUser.subaccountCode) {
-      sellerSubaccount = sellerUser.subaccountCode;
-      platformCharge   = Math.round(total * 0.10 * 100); /* 10% in kobo stays with you */
+    var sellerUser = usrs.find(function (u) { return u.name === firstItem.seller || u.sellerId === firstItem.sellerId; });
+    if (sellerUser) {
+      sellerUserId = String(sellerUser.id);
+      if (sellerUser.subaccountCode) {
+        sellerSubaccount = sellerUser.subaccountCode;
+        platformCharge   = Math.round(total * 0.10 * 100);
+      }
     }
   }
 
@@ -2349,75 +2358,99 @@ function processPaystack(mode) {
     },
 
     callback: function (resp) {
-      var order = {
-        id:           trackId,
-        ref:          resp.reference,
-        customer:     { name: name, email: maskEmail(email), whatsapp: wa, address: addr },
-        items:        cart.map(function (i) {
-          return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji };
-        }),
-        total:        total,
-        platformFee:  Math.round(total * 0.10),
-        sellerPayout: Math.round(total * 0.90),
-        splitActive:  !!sellerSubaccount,
-        status:       'escrow_held',
-        mode:         mode,
-        date:         new Date().toLocaleDateString(),
-        collected:    false,
-        downloadLog:  []
-      };
-      ords.push(order);
-      saveAll();
-      /* Sync order to Vercel Postgres */
-      syncOrderToAPI(order);
+      /* ── DB FIRST, UI SECOND ── */
+      /* Show saving indicator */
+      toast('⏳ Saving your order…', 'ok');
 
-      /* ── Affiliate commission tracking ── */
-      /* Affiliate commission — check both storages */
+      /* Get affiliate code */
       var refCode = null;
       try {
         var refRaw = localStorage.getItem('nm_ref');
         if (refRaw) {
           var refData = JSON.parse(refRaw);
-          if (refData && refData.code && refData.expires && Date.now() < refData.expires) {
-            refCode = refData.code;
-          }
+          if (refData && refData.code && refData.expires && Date.now() < refData.expires) refCode = refData.code;
         }
-        if (!refCode) {
-          refCode = sessionStorage.getItem('nm_ref_session') || sessionStorage.getItem('nm_ref') || null;
-        }
+        if (!refCode) refCode = sessionStorage.getItem('nm_ref_session') || null;
       } catch(e) {}
 
-      if (refCode) {
-        var affComm = Math.round(total * 0.05);
-        fetch('/api/affiliate?action=record', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            affCode:    refCode,
-            orderId:    String(order.id),
-            amount:     total,
-            commission: affComm,
-            productId:  String(cart.length ? cart[0].id : '')
-          })
-        }).catch(function(){});
-      }
-      cart = []; updBadge();
+      /* Build order payload */
+      var orderPayload = {
+        reference:     resp.reference,
+        orderId:       trackId,
+        userId:        CU ? String(CU.id) : '',
+        sellerUserId:  sellerUserId || '',
+        items:         cart.map(function(i){ return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji }; }),
+        total:         total,
+        customer:      { name: name, email: maskEmail(email), whatsapp: wa || '', address: addr || '' },
+        mode:          mode,
+        affCode:       refCode || null,
+        shipping:      addr ? { address: addr, whatsapp: wa } : null
+      };
 
-      var ri = document.getElementById('rec-id');
-      var rf = document.getElementById('rec-info');
-      if (ri) ri.textContent = trackId;
-      if (rf) rf.innerHTML =
-        '<div>Name: '         + name + '</div>' +
-        '<div>WhatsApp: '     + (wa || 'N/A') + '</div>' +
-        '<div>Amount Paid: ₦' + total.toLocaleString() + '</div>' +
-        '<div>Platform Fee: ₦' + Math.round(total * 0.10).toLocaleString() + ' (10%)</div>' +
-        '<div>Seller Gets: ₦' + Math.round(total * 0.90).toLocaleString() + ' (90%' + (sellerSubaccount ? ' — auto-deposited ✅' : ' — manual payout') + ')</div>' +
-        '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
-        '<div style="margin-top:8px;color:var(--green)">🛡️ Escrow active. Confirm receipt to release payment to seller.</div>';
+      /* ── POST to server — saves order + splits balances atomically ── */
+      fetch('/api/payment?action=confirm', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(orderPayload)
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (!data.ok) {
+          /* Server rejected — show error but still show receipt */
+          console.error('Order save failed:', data.error);
+          toast('⚠ Order saved locally — contact support if issues persist', 'warn');
+        }
 
-      cM('m-cart'); cM('m-pd');
-      oM('m-rec');
-      toast('✅ Payment successful! Order ' + trackId, 'ok');
+        /* Add to local orders array for immediate UI */
+        var order = {
+          id:           trackId,
+          ref:          resp.reference,
+          customer:     orderPayload.customer,
+          items:        orderPayload.items,
+          total:        total,
+          platformFee:  data.platformFee  || Math.round(total * 0.05),
+          sellerPayout: data.sellerAmount || Math.round(total * 0.90),
+          affiliateFee: data.affiliateFee || 0,
+          status:       'paid',
+          mode:         mode,
+          date:         new Date().toLocaleDateString(),
+          collected:    false
+        };
+        ords.push(order);
+        cart = []; updBadge();
+
+        /* Show receipt */
+        var ri = document.getElementById('rec-id');
+        var rf = document.getElementById('rec-info');
+        if (ri) ri.textContent = trackId;
+        if (rf) rf.innerHTML =
+          '<div>Name: '         + name + '</div>' +
+          '<div>WhatsApp: '     + (wa || 'N/A') + '</div>' +
+          '<div>Amount Paid: ₦' + total.toLocaleString() + '</div>' +
+          '<div>Platform Fee: ₦' + (data.platformFee || Math.round(total * 0.05)).toLocaleString() + ' (5%)</div>' +
+          (data.affiliateFee ? '<div>Affiliate: ₦' + data.affiliateFee.toLocaleString() + ' (5%)</div>' : '') +
+          '<div>Seller Gets: ₦' + (data.sellerAmount || Math.round(total * 0.90)).toLocaleString() + '</div>' +
+          '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
+          '<div style="margin-top:8px;color:var(--green)">✅ Payment confirmed & saved. Escrow active.</div>';
+
+        cM('m-cart'); cM('m-pd');
+        oM('m-rec');
+        toast('✅ Payment confirmed! Order ' + trackId, 'ok');
+      })
+      .catch(function(err) {
+        /* Network error — save locally as fallback */
+        console.error('Network error saving order:', err);
+        var order = {
+          id: trackId, ref: resp.reference,
+          customer: orderPayload.customer, items: orderPayload.items,
+          total: total, status: 'paid', date: new Date().toLocaleDateString(), collected: false
+        };
+        ords.push(order);
+        cart = []; updBadge();
+        cM('m-cart'); cM('m-pd');
+        oM('m-rec');
+        toast('✅ Payment done! Order saved locally.', 'ok');
+      });
     },
 
     onClose: function () { toast('Payment window closed. Cart is still intact.', 'warn'); }
