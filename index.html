@@ -30,7 +30,8 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
+
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
 {
@@ -819,27 +820,31 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:40px 20
     <div id="panel-affiliate" class="dash-panel" style="display:none">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">💸 Affiliate Dashboard</h3>
       <div class="smini" style="margin-bottom:16px">
-        <div class="sm"><div class="sl">Earnings</div><div class="sv">₦0</div></div>
-        <div class="sm"><div class="sl">Clicks</div><div class="sv">0</div></div>
-        <div class="sm"><div class="sl">Sales</div><div class="sv">0</div></div>
-        <div class="sm"><div class="sl">Pending</div><div class="sv">₦0</div></div>
+        <div class="sm"><div class="sl">Total Earned</div><div class="sv" id="aff-total-earned">₦0</div></div>
+        <div class="sm"><div class="sl">Pending</div><div class="sv" id="aff-pending">₦0</div></div>
+        <div class="sm"><div class="sl">Sales</div><div class="sv" id="aff-sales">0</div></div>
+        <div class="sm"><div class="sl">Referrals</div><div class="sv" id="aff-referrals">0</div></div>
       </div>
       <div class="dc">
-        <h3>Your General Affiliate Link</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px;line-height:1.55">Share this link anywhere. When someone signs up or buys through it, you earn commission.</p>
+        <h3>Your Affiliate Link</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px;line-height:1.55">Share this link. When someone buys through it, you earn 5% commission instantly.</p>
         <div class="fg"><label>Your Link</label>
           <div class="ar"><input class="ai" id="aff-l" readonly/><button class="ac2" onclick="cpyAff()">Copy</button></div>
         </div>
         <p style="color:var(--muted);font-size:.78rem;margin-top:10px">💡 For product-specific links: go to Marketplace → tap a product → tap <strong style="color:var(--gold)">🔗 Affiliate Link</strong></p>
       </div>
+      <div class="dc" style="margin-top:14px">
+        <h3>Commission History</h3>
+        <div id="aff-commission-list"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
+      </div>
       <div style="margin-top:14px">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
-          <h4 style="font-size:.88rem;font-weight:700;margin-bottom:8px">How to earn</h4>
-          <div style="font-size:.82rem;color:var(--muted);line-height:1.9">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px">
+          <h4 style="font-size:.85rem;font-weight:600;margin-bottom:8px">How to earn</h4>
+          <div style="font-size:.8rem;color:var(--muted);line-height:1.9;font-weight:300">
             1. Copy your affiliate link above<br/>
             2. Share on WhatsApp, TikTok, Instagram<br/>
-            3. Earn <strong style="color:var(--gold)">15–30%</strong> commission on every sale<br/>
-            4. Get paid every <strong style="color:var(--gold)">Monday</strong> to your bank
+            3. Earn <strong style="color:var(--gold)">5%</strong> commission on every sale<br/>
+            4. Commissions paid every <strong style="color:var(--gold)">Monday</strong> to your bank
           </div>
         </div>
       </div>
@@ -904,21 +909,23 @@ footer{background:var(--dark);border-top:1px solid var(--border);padding:40px 20
           Verify your identity with NIN or BVN to unlock product listing. Required for all sellers.
         </p>
         <div id="kyc-status-banner"></div>
-        <div class="fg">
-          <label>Verification Type</label>
-          <select class="fi" id="kyc-type">
-            <option value="">— Select Type —</option>
-            <option value="nin">NIN (National Identity Number)</option>
-            <option value="bvn">BVN (Bank Verification Number)</option>
-          </select>
+        <div id="kyc-form">
+          <div class="fg">
+            <label>Verification Type</label>
+            <select class="fi" id="kyc-type">
+              <option value="">— Select Type —</option>
+              <option value="nin">NIN (National Identity Number)</option>
+              <option value="bvn">BVN (Bank Verification Number)</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Enter Number <span style="color:var(--red)">*</span></label>
+            <input class="fi" type="text" id="kyc-number" placeholder="Enter your NIN or BVN" maxlength="11"/>
+            <p class="hint">Your data is encrypted and used only for identity verification.</p>
+          </div>
+          <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
+          <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
         </div>
-        <div class="fg">
-          <label>Enter Number <span style="color:var(--red)">*</span></label>
-          <input class="fi" type="text" id="kyc-number" placeholder="Enter your NIN or BVN" maxlength="11"/>
-          <p class="hint">Your data is encrypted and used only for identity verification.</p>
-        </div>
-        <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
-        <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
       </div>
 
       <!-- Withdrawal Section -->
@@ -2075,6 +2082,29 @@ function processPaystack(mode) {
       saveAll();
       /* Sync order to Vercel Postgres */
       syncOrderToAPI(order);
+
+      /* ── Affiliate commission tracking ── */
+      var refRaw = localStorage.getItem('nm_ref');
+      if (refRaw) {
+        try {
+          var refData = JSON.parse(refRaw);
+          /* Check not expired */
+          if (refData.expires && Date.now() < refData.expires && refData.code) {
+            var affComm = Math.round(total * 0.05); /* 5% affiliate commission */
+            fetch('/api/affiliate?action=record', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                affCode:    refData.code,
+                orderId:    order.id,
+                amount:     total,
+                commission: affComm,
+                productId:  cart.length ? cart[0].id : null
+              })
+            }).catch(function(){});
+          }
+        } catch(e) {}
+      }
       cart = []; updBadge();
 
       var ri = document.getElementById('rec-id');
@@ -2554,6 +2584,9 @@ function refreshProf() {
 function switchDashTab(name, btn) {
   if (name === 'settings') {
     setTimeout(function(){ loadWithdrawBalance(); loadWithdrawalHistory(); }, 300);
+  }
+  if (name === 'affiliate') {
+    setTimeout(function(){ loadAffiliateDash(); }, 300);
   }
   /* hide all panels */
   ['seller','orders','affiliate','settings'].forEach(function (t) {
@@ -3790,18 +3823,71 @@ function loadWithdrawalHistory() {
 window.loadWithdrawalHistory = loadWithdrawalHistory;
 
 function renderKYCStatus() {
-  var banner = document.getElementById('kyc-status-banner');
+  var banner  = document.getElementById('kyc-status-banner');
+  var form    = document.getElementById('kyc-form');
   if (!banner || !CU) return;
-  var status = CU.kycStatus || 'unverified';
-  var colors = { verified: 'var(--green)', pending: 'var(--orange)', failed: 'var(--red)', unverified: 'var(--muted)' };
-  var icons  = { verified: '✅', pending: '⏳', failed: '❌', unverified: '⚠️' };
-  var labels = { verified: 'Identity Verified', pending: 'Verification Pending', failed: 'Verification Failed — try again', unverified: 'Not Verified — submit below to list products' };
-  banner.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ' + colors[status] + ';border-radius:4px;padding:10px 14px;margin-bottom:14px;font-size:.82rem">'
-    + '<span style="color:' + colors[status] + ';font-weight:600">' + icons[status] + ' ' + labels[status] + '</span>'
-    + (CU.kycType ? '<div style="color:var(--muted);font-size:.74rem;margin-top:3px">Type: ' + CU.kycType.toUpperCase() + '</div>' : '')
+  var status  = CU.kycStatus || 'unverified';
+  var colors  = { verified: 'var(--green)', pending: 'var(--orange)', failed: 'var(--red)', unverified: 'var(--muted)' };
+  var icons   = { verified: '✅', pending: '⏳', failed: '❌', unverified: '⚠️' };
+  var labels  = { verified: 'Identity Verified — Seller features unlocked!', pending: 'Verification Pending — under review', failed: 'Verification Failed — try again below', unverified: 'Not Verified — submit below to list products' };
+
+  banner.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ' + colors[status] + ';border-radius:4px;padding:12px 14px;margin-bottom:14px;font-size:.84rem">'
+    + '<div style="color:' + colors[status] + ';font-weight:700;font-size:.9rem">' + icons[status] + ' ' + labels[status] + '</div>'
+    + (CU.kycType ? '<div style="color:var(--muted);font-size:.74rem;margin-top:4px">Verified via: ' + CU.kycType.toUpperCase() + '</div>' : '')
     + '</div>';
+
+  /* Hide form if already verified, show if not */
+  if (form) form.style.display = (status === 'verified') ? 'none' : 'block';
 }
 window.renderKYCStatus = renderKYCStatus;
+
+/* ═══ AFFILIATE DASHBOARD LOADER ═══ */
+function loadAffiliateDash() {
+  if (!CU) return;
+  var listEl = document.getElementById('aff-commission-list');
+
+  fetch('/api/affiliate?action=stats&affCode=' + encodeURIComponent(CU.affCode || ''))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      /* Update stats */
+      var te = document.getElementById('aff-total-earned');
+      var pe = document.getElementById('aff-pending');
+      var sa = document.getElementById('aff-sales');
+      var re = document.getElementById('aff-referrals');
+      if (te) te.textContent = '₦' + (data.totalEarned || 0).toLocaleString();
+      if (pe) pe.textContent = '₦' + (data.pendingComm || 0).toLocaleString();
+      if (sa) sa.textContent = data.sales || 0;
+      if (re) re.textContent = data.referrals || 0;
+
+      /* Commission history */
+      var rows = data.commissions || [];
+      if (listEl) {
+        if (!rows.length) {
+          listEl.innerHTML = '<p style="color:var(--muted);font-size:.8rem">No commissions yet. Start sharing your link!</p>';
+        } else {
+          listEl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+            + '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.67rem;text-transform:uppercase">Order</th>'
+            + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.67rem;text-transform:uppercase">Commission</th>'
+            + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.67rem;text-transform:uppercase">Status</th>'
+            + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.67rem;text-transform:uppercase">Date</th></tr>'
+            + rows.map(function(r) {
+                var sc = r.status === 'paid' ? 'var(--green)' : 'var(--orange)';
+                return '<tr>'
+                  + '<td style="padding:8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:.72rem">' + String(r.order_id).slice(-8) + '</td>'
+                  + '<td style="padding:8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--gold)">₦' + parseFloat(r.commission).toLocaleString() + '</td>'
+                  + '<td style="padding:8px;border-bottom:1px solid var(--border);color:' + sc + ';font-weight:600;font-size:.7rem;text-transform:uppercase">' + r.status + '</td>'
+                  + '<td style="padding:8px;border-bottom:1px solid var(--border);color:var(--muted)">' + new Date(r.created_at).toLocaleDateString() + '</td>'
+                  + '</tr>';
+              }).join('')
+            + '</table>';
+        }
+      }
+    })
+    .catch(function() {
+      if (listEl) listEl.innerHTML = '<p style="color:var(--muted);font-size:.8rem">Could not load commissions.</p>';
+    });
+}
+window.loadAffiliateDash = loadAffiliateDash;
 
 /* ═══ INIT ═══ */
 loadAll();
@@ -3816,7 +3902,11 @@ validateSell();
 
   // Save affiliate referral code
   var ref = params.get('ref');
-  if (ref) sessionStorage.setItem('nm_ref', ref);
+  if (ref) {
+    /* Save referral code with 30-day expiry */
+    var refData = { code: ref, expires: Date.now() + (30 * 24 * 60 * 60 * 1000) };
+    localStorage.setItem('nm_ref', JSON.stringify(refData));
+  }
 
   // Deep-link: ?p=PRODUCT_ID  — open the product immediately
   var pid = params.get('p');
