@@ -2084,26 +2084,34 @@ function processPaystack(mode) {
       syncOrderToAPI(order);
 
       /* ── Affiliate commission tracking ── */
-      var refRaw = localStorage.getItem('nm_ref');
-      if (refRaw) {
-        try {
+      /* Affiliate commission — check both storages */
+      var refCode = null;
+      try {
+        var refRaw = localStorage.getItem('nm_ref');
+        if (refRaw) {
           var refData = JSON.parse(refRaw);
-          /* Check not expired */
-          if (refData.expires && Date.now() < refData.expires && refData.code) {
-            var affComm = Math.round(total * 0.05); /* 5% affiliate commission */
-            fetch('/api/affiliate?action=record', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                affCode:    refData.code,
-                orderId:    order.id,
-                amount:     total,
-                commission: affComm,
-                productId:  cart.length ? cart[0].id : null
-              })
-            }).catch(function(){});
+          if (refData && refData.code && refData.expires && Date.now() < refData.expires) {
+            refCode = refData.code;
           }
-        } catch(e) {}
+        }
+        if (!refCode) {
+          refCode = sessionStorage.getItem('nm_ref_session') || sessionStorage.getItem('nm_ref') || null;
+        }
+      } catch(e) {}
+
+      if (refCode) {
+        var affComm = Math.round(total * 0.05);
+        fetch('/api/affiliate?action=record', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            affCode:    refCode,
+            orderId:    String(order.id),
+            amount:     total,
+            commission: affComm,
+            productId:  String(cart.length ? cart[0].id : '')
+          })
+        }).catch(function(){});
       }
       cart = []; updBadge();
 
@@ -3709,17 +3717,32 @@ function submitKYC() {
   if (errEl) errEl.textContent = '';
   if (!type)   { if (errEl) errEl.textContent = 'Please select NIN or BVN.'; return; }
   if (!number) { if (errEl) errEl.textContent = 'Please enter your ' + type.toUpperCase() + '.'; return; }
-  if (number.length < 10) { if (errEl) errEl.textContent = type.toUpperCase() + ' must be at least 10 digits.'; return; }
+  if (!/^[0-9]{10,11}$/.test(number)) { if (errEl) errEl.textContent = type.toUpperCase() + ' must be 10-11 digits, numbers only.'; return; }
   if (!CU) { toast('Please sign in first', 'fail'); return; }
 
+  /* ONE-CLICK rule — disable immediately */
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifying…'; }
 
-  fetch('/api/paystack?action=kyc', {
-    method: 'POST',
+  /* Build request with timeout */
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timeoutId  = controller ? setTimeout(function(){ controller.abort(); }, 30000) : null;
+
+  var fetchOpts = {
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: String(CU.id), kycType: type, kycNumber: number })
+    body:    JSON.stringify({ userId: String(CU.id), kycType: type, kycNumber: number })
+  };
+  if (controller) fetchOpts.signal = controller.signal;
+
+  fetch('/api/paystack?action=kyc', fetchOpts)
+  .then(function(r) {
+    if (timeoutId) clearTimeout(timeoutId);
+    /* Safe JSON parse */
+    return r.text().then(function(txt) {
+      if (!txt || txt.trim() === '') throw new Error('Verification service is warming up. Please try again.');
+      try { return JSON.parse(txt); } catch(e) { throw new Error('Unexpected response. Please try again.'); }
+    });
   })
-  .then(function(r){ return r.json(); })
   .then(function(data) {
     if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
     if (data.ok) {
@@ -3727,15 +3750,28 @@ function submitKYC() {
       CU.kycType   = type;
       localStorage.setItem('nm_current_user', JSON.stringify(CU));
       sessionStorage.setItem('nm_session', JSON.stringify(CU));
+      /* Auto UI update — no manual refresh needed */
       renderKYCStatus();
-      toast(data.kycStatus === 'verified' ? '✅ Identity Verified!' : '⏳ Submitted — under review.', 'ok');
+      updNav();
+      if (data.kycStatus === 'verified') {
+        toast('✅ Identity Verified! You can now list products.', 'ok');
+        /* Unlock sell button immediately */
+        var sellBtn = document.getElementById('sell-btn');
+        if (sellBtn) sellBtn.disabled = false;
+      } else {
+        toast('⏳ ' + (data.message || 'Submitted — under review.'), 'ok');
+      }
     } else {
-      if (errEl) errEl.textContent = data.error || 'Verification failed.';
+      if (errEl) errEl.textContent = data.error || 'Verification failed. Check your details.';
     }
   })
   .catch(function(err) {
+    if (timeoutId) clearTimeout(timeoutId);
     if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
-    if (errEl) errEl.textContent = err.message || 'Verification failed. Try again.';
+    var msg = err.message || 'Connection error. Please try again.';
+    if (msg.includes('abort') || msg.includes('AbortError')) msg = 'Request timed out. Please try again.';
+    if (errEl) errEl.textContent = msg;
+    toast(msg, 'fail');
   });
 }
 window.submitKYC = submitKYC;
@@ -3902,10 +3938,15 @@ validateSell();
 
   // Save affiliate referral code
   var ref = params.get('ref');
-  if (ref) {
-    /* Save referral code with 30-day expiry */
-    var refData = { code: ref, expires: Date.now() + (30 * 24 * 60 * 60 * 1000) };
-    localStorage.setItem('nm_ref', JSON.stringify(refData));
+  if (ref && typeof ref === 'string' && ref.length > 0 && ref.length < 50) {
+    try {
+      var refData = { code: ref.trim(), expires: Date.now() + (30 * 24 * 60 * 60 * 1000) };
+      localStorage.setItem('nm_ref', JSON.stringify(refData));
+      console.log('Referral saved:', ref);
+    } catch(e) {
+      /* localStorage might be blocked — use sessionStorage fallback */
+      try { sessionStorage.setItem('nm_ref_session', ref.trim()); } catch(e2) {}
+    }
   }
 
   // Deep-link: ?p=PRODUCT_ID  — open the product immediately
