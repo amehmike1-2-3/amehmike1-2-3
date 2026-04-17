@@ -23,6 +23,12 @@ function toPublicUser(row) {
     payoutAname:      row.payout_aname      || '',
     subaccountCode:   row.subaccount_code   || null,
     subaccountStatus: row.subaccount_status || 'pending',
+    kycStatus:        row.kyc_status        || 'unverified',
+    kycType:          row.kyc_type          || null,
+    sellerBalance:    parseFloat(row.seller_balance    || 0),
+    affiliateBalance: parseFloat(row.affiliate_balance || 0),
+    adminBalance:     parseFloat(row.admin_balance     || 0),
+    suspended:        row.suspended         || false,
   };
 }
 
