@@ -661,6 +661,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         touch-action:manipulation;box-shadow:0 4px 12px rgba(5,150,105,.3);
         display:flex;align-items:center;justify-content:center;gap:8px}
 .dl-btn:active{opacity:.88;transform:scale(.99)}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
 </style>
 </head>
 <body>
@@ -792,7 +793,21 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="fli"><h4>Company</h4><a>About</a><a>Blog</a><a>Press</a></div>
       <div class="fli"><h4>Support</h4><a>Help</a><a>Disputes</a><a>Privacy</a><a onclick="oM('m-terms')">Terms</a></div>
     </div>
-    <div class="fbt"><p>© 2025 NeyoMarket. All rights reserved. Powered by Neyo AI.</p><p style="color:var(--gold)">🛡️ Zero Scam Guarantee</p></div>
+    <div style="max-width:960px;margin:0 auto;padding-bottom:14px;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 14px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7l9 5 9-5-9-5zM3 17l9 5 9-5M3 12l9 5 9-5" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span style="font-size:.72rem;color:rgba(255,255,255,.7);font-weight:500">Secured by <strong style="color:#fff">Paystack</strong></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 14px">
+    <span style="font-size:.85rem">🔐</span>
+    <span style="font-size:.72rem;color:rgba(255,255,255,.7);font-weight:500"><strong style="color:#fff">256-bit SSL</strong> · Escrow Protected</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 14px">
+    <span style="font-size:.85rem">🛡️</span>
+    <span style="font-size:.72rem;color:rgba(255,255,255,.7);font-weight:500"><strong style="color:#fff">Zero Scam</strong> Guarantee</span>
+  </div>
+</div>
+<div class="fbt"><p>© 2025 NeyoMarket. All rights reserved.</p><p style="color:rgba(255,255,255,.4);font-size:.7rem">Powered by Neyo AI</p></div>
   </footer>
 </div>
 
@@ -916,7 +931,10 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="sh-cb" onchange="vShip()"/><label for="sh-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="sh-err"></div>
       <button class="pb3" id="sh-pay" disabled onclick="processPaystack('physical')">🔐 Pay Securely with Paystack</button>
-      <p style="text-align:center;font-size:.7rem;color:var(--muted);margin-top:7px">Secured by Paystack SSL · Escrow-protected payment</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
+  <span style="font-size:.72rem;color:#065f46;font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
+</div>
     </div>
   </div>
 </div>
@@ -937,7 +955,10 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="co-cb" onchange="vCo()"/><label for="co-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="co-err"></div>
       <button class="pb3" id="co-pay" disabled onclick="processPaystack('digital')">🔐 Pay Securely with Paystack</button>
-      <p style="text-align:center;font-size:.7rem;color:var(--muted);margin-top:7px">Secured by Paystack SSL · Escrow-protected payment</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
+  <span style="font-size:.72rem;color:#065f46;font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
+</div>
     </div>
   </div>
 </div>
@@ -1493,7 +1514,10 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 <!-- ═══════════════════════════════════════
      JAVASCRIPT — ALL LOGIC
 ═══════════════════════════════════════ -->
+
+
 <script>
+
 (function () {
 'use strict';
 
@@ -1663,7 +1687,7 @@ function go(pageId) {
   if (pageId === 'market')   rGrid('mkt-grid', getActive());
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
-  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); }
+  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
     if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
     if (CU.role !== 'seller' && CU.role !== 'admin') {
@@ -3798,16 +3822,17 @@ function aTab(tab, btn) {
       /* Update global ords for the table below */
       ords = allOrders;
     }).catch(function(e){ console.error('Admin stats error:', e); });
-      + '<div class="act"><h3>⏳ Pending Reviews (' + pending.length + ')</h3>'
+      + '<div class="act"><h3>⏳ Pending Product Reviews (' + pending.length + ')</h3>'
       + (pending.length ? pending.map(function (p) {
-        var ih = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:8px;object-fit:cover"/>' : '<span style="font-size:1.6rem">' + p.emoji + '</span>';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
-          + ih + '<div style="flex:1;min-width:120px"><div style="font-weight:600;font-size:.87rem">' + p.name + '</div>'
-          + '<div style="font-size:.75rem;color:var(--muted)">by ' + p.seller + ' · ₦' + p.price.toLocaleString() + ' · ' + ((p.imgs && p.imgs.filter(Boolean).length) || 0) + ' images</div></div>'
-          + '<div class="ar2"><button class="at aok" onclick="apvP(' + p.id + ')">Approve</button>'
-          + '<button class="at ade" onclick="rejP(' + p.id + ')">Reject</button></div></div>';
-      }).join('') : '<p style="color:var(--muted)">No pending products.</p>')
+        var ih = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>' : '<span style="font-size:1.6rem">' + (p.emoji||'📦') + '</span>';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+          + ih + '<div style="flex:1;min-width:120px"><div style="font-weight:600;font-size:.88rem;color:var(--text)">' + p.name + '</div>'
+          + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px">by ' + p.seller + ' · ₦' + p.price.toLocaleString() + ' · ' + ((p.imgs && p.imgs.filter(Boolean).length) || 0) + ' images</div></div>'
+          + '<div class="ar2"><button class="at aok" onclick="apvP(' + p.id + ')">✓ Approve</button>'
+          + '<button class="at ade" onclick="rejP(' + p.id + ')">✕ Reject</button></div></div>';
+      }).join('') : '<div style="color:var(--muted);font-size:.84rem;padding:12px 0;text-align:center">✅ No pending product reviews.</div>')
       + '</div>'
+      + '<div class="act" id="kyc-pending-section"><h3>🪪 Pending KYC Reviews</h3><div style="color:var(--muted);font-size:.84rem">⏳ Loading…</div></div>'
       + '<div class="act"><h3>Recent Orders</h3>'
       + (ords.length ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>'
         + ords.slice(-6).reverse().map(function (o) {
@@ -3858,68 +3883,107 @@ function aTab(tab, btn) {
         : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
       + '</div>';
   } else if (tab === 'pay') {
-    /* Build list of sellers who have bank details but no subaccount yet */
-    var pendingSellers = usrs.filter(function (u) {
-      return u.payoutBank && u.payoutAcct && !u.subaccountCode && u.role === 'seller';
-    });
-    var activeSellers = usrs.filter(function (u) {
-      return u.subaccountCode && u.role === 'seller';
-    });
+    /* Show loading immediately */
+    c.innerHTML = '<div class="ah"><h1>💰 Payouts & Withdrawals</h1><p>Live data from Neon database</p></div>'
+      + '<div id="pay-content"><div style="text-align:center;padding:40px;color:var(--muted)">⏳ Loading payout data…</div></div>';
 
-    var keyStatus = sessionStorage.getItem('master_key')
-      ? '<span style="color:var(--green);font-weight:700">✅ Paystack Key Active</span>'
-      : '<span style="color:var(--red);font-weight:700">❌ No Key Injected — double-tap logo to inject</span>';
+    Promise.all([
+      fetch('/api/users').then(function(r){ return r.json(); }),
+      fetch('/api/orders').then(function(r){ return r.json(); })
+    ]).then(function(results) {
+      var allUsers  = results[0].users  || [];
+      var allOrders = results[1].orders || [];
+      var sellers        = allUsers.filter(function(u){ return u.role === 'seller'; });
+      var pendingSellers = sellers.filter(function(u){ return u.payoutBank && u.payoutAcct && !u.subaccountCode; });
+      var activeSellers  = sellers.filter(function(u){ return u.subaccountCode; });
+      var totalRev  = allOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
+      var platComm  = allOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
+      var keyStatus = sessionStorage.getItem('master_key')
+        ? '<span style="color:var(--green);font-weight:600">✅ Paystack Key Active</span>'
+        : '<span style="color:var(--red);font-weight:600">❌ No Key — double-tap logo to inject</span>';
 
-    c.innerHTML = '<div class="ah"><h1>💰 Payouts & Split Payments</h1><p>Process seller subaccounts and manage automatic splits</p></div>'
-      + '<div class="sr">'
-      + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦' + rev.toLocaleString() + '</div></div>'
-      + '<div class="sc2"><div class="lb">Platform (10%)</div><div class="vl">₦' + plat.toLocaleString() + '</div></div>'
-      + '<div class="sc2"><div class="lb">Sellers (90%)</div><div class="vl">₦' + Math.round(rev * 0.9).toLocaleString() + '</div></div>'
-      + '<div class="sc2"><div class="lb">Active Splits</div><div class="vl" style="color:var(--green)">' + activeSellers.length + '</div></div>'
-      + '<div class="sc2"><div class="lb">Pending</div><div class="vl" style="color:var(--orange)">' + pendingSellers.length + '</div></div>'
-      + '</div>'
+      var html = '<div class="sr">'
+        + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦' + Math.round(totalRev).toLocaleString() + '</div></div>'
+        + '<div class="sc2"><div class="lb">Platform Commission</div><div class="vl">₦' + Math.round(platComm).toLocaleString() + '</div><div class="ch">5% per sale</div></div>'
+        + '<div class="sc2"><div class="lb">Active Sellers</div><div class="vl" style="color:var(--green)">' + activeSellers.length + '</div></div>'
+        + '<div class="sc2"><div class="lb">Pending Setup</div><div class="vl" style="color:var(--orange)">' + pendingSellers.length + '</div></div>'
+        + '</div>'
 
-      /* Key injector status card */
-      + '<div class="act"><h3>🔑 Paystack Secret Key Status</h3>'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
-      + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.79rem;margin-top:5px"><strong>Double-tap</strong> the NeyoMarket logo (2 taps) to inject your sk_live_... key. It stays only for this session and is never saved to code or storage.</div></div>'
-      + '<button onclick="injectKeyNow()" style="background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:8px 16px;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;flex-shrink:0">🔑 Inject Key Now</button>'
-      + '</div></div>'
+        /* Paystack key */
+        + '<div class="act"><h3>🔑 Paystack Key Status</h3>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
+        + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.78rem;margin-top:5px">Double-tap the NeyoMarket logo to inject your sk_live_... key.</div></div>'
+        + '<button onclick="injectKeyNow()" class="bg" style="padding:8px 16px">🔑 Inject Key</button>'
+        + '</div></div>'
 
-      /* Pending sellers — need subaccount created */
-      + '<div class="act"><h3>⏳ Pending Subaccounts (' + pendingSellers.length + ')</h3>'
-      + (pendingSellers.length
-        ? pendingSellers.map(function (u) {
-            return '<div id="row-' + u.id + '" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
-              + '<div style="flex:1;min-width:160px">'
-              + '<div style="font-weight:600;font-size:.88rem">' + u.name + '</div>'
-              + '<div style="font-size:.77rem;color:var(--muted);margin-top:2px">' + maskEmail(u.email) + '</div>'
-              + '<div style="font-size:.76rem;color:var(--muted);margin-top:2px">🏦 ' + u.payoutBank + ' · ' + u.payoutAcct + '</div>'
-              + '<div style="font-size:.76rem;color:var(--muted)">Account: ' + (u.payoutAname || '—') + '</div>'
-              + '</div>'
-              + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'
-              + '<div id="status-' + u.id + '" style="font-size:.76rem;color:var(--muted)">Ready to process</div>'
-              + '<button id="btn-' + u.id + '" onclick="processSubaccount(\'' + u.id + '\',\'' + u.name + '\',\'' + u.payoutBank + '\',\'' + u.payoutAcct + '\',\'' + (u.payoutAname||'') + '\')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:8px 16px;border-radius:8px;font-size:.79rem;font-weight:700;cursor:pointer;white-space:nowrap">⚡ Process Subaccount</button>'
-              + '</div></div>';
-          }).join('')
-        : '<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:.86rem">No sellers waiting. All sellers with bank details have active subaccounts. ✅</div>')
-      + '</div>'
+        /* Seller withdrawal requests from DB */
+        + '<div class="act" id="withdrawal-requests-section"><h3>💸 Seller Withdrawal Requests</h3>'
+        + '<div style="color:var(--muted);font-size:.82rem">⏳ Loading withdrawals…</div></div>'
 
-      /* Active sellers — split already live */
-      + '<div class="act"><h3>✅ Active Split Payments (' + activeSellers.length + ')</h3>'
-      + (activeSellers.length
-        ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Seller</th><th>Bank</th><th>Subaccount Code</th><th>Status</th></tr>'
-          + activeSellers.map(function (u) {
-              return '<tr>'
-                + '<td><strong>' + u.name + '</strong><br/><span style="font-size:.74rem;color:var(--muted)">' + maskEmail(u.email) + '</span></td>'
-                + '<td style="font-size:.8rem">' + u.payoutBank + '</td>'
-                + '<td><code style="color:var(--gold);font-size:.76rem">' + u.subaccountCode + '</code></td>'
-                + '<td><span class="sb2 s-ok">90% Auto-Split Active</span></td>'
-                + '</tr>';
+        /* Pending subaccounts */
+        + '<div class="act"><h3>⏳ Pending Subaccounts (' + pendingSellers.length + ')</h3>'
+        + (pendingSellers.length
+          ? pendingSellers.map(function(u) {
+              return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+                + '<div style="flex:1;min-width:150px"><div style="font-weight:600">' + u.name + '</div>'
+                + '<div style="font-size:.75rem;color:var(--muted)">' + maskEmail(u.email) + '</div>'
+                + '<div style="font-size:.74rem;color:var(--muted)">🏦 ' + (u.payoutBank||'') + ' · ' + (u.payoutAcct||'') + '</div></div>'
+                + '<button onclick="adminActivateSplit(\'' + String(u.id) + '\')" class="bg" style="padding:8px 14px;font-size:.76rem">⚡ Activate</button>'
+                + '</div>';
             }).join('')
-          + '</table></div>'
-        : '<p style="color:var(--muted);font-size:.84rem">No active subaccounts yet. Process sellers above to activate split payments.</p>')
-      + '</div>';
+          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">All sellers activated ✅</div>')
+        + '</div>'
+
+        /* Active sellers */
+        + '<div class="act"><h3>✅ Active Split Payments (' + activeSellers.length + ')</h3>'
+        + (activeSellers.length
+          ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Seller</th><th>Bank</th><th>Balance</th><th>Code</th></tr>'
+            + activeSellers.map(function(u) {
+                return '<tr>'
+                  + '<td><strong>' + u.name + '</strong><br/><span style="font-size:.72rem;color:var(--muted)">' + maskEmail(u.email) + '</span></td>'
+                  + '<td>' + (u.payoutBank||'—') + '</td>'
+                  + '<td style="color:var(--green);font-weight:600">₦' + parseFloat(u.sellerBalance||0).toLocaleString() + '</td>'
+                  + '<td><code style="font-size:.74rem;color:var(--gold)">' + u.subaccountCode + '</code></td>'
+                  + '</tr>';
+              }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active subaccounts yet.</div>')
+        + '</div>';
+
+      var payContent = document.getElementById('pay-content');
+      if (payContent) payContent.innerHTML = html;
+
+      /* Load withdrawal requests separately */
+      fetch('/api/paystack?action=withdrawals&userId=all')
+        .then(function(r){ return r.json(); })
+        .then(function(wData) {
+          var wdraw = (wData.withdrawals || []).filter(function(w){ return w.status === 'pending'; });
+          var wSection = document.getElementById('withdrawal-requests-section');
+          if (!wSection) return;
+          if (!wdraw.length) {
+            wSection.innerHTML = '<h3>💸 Seller Withdrawal Requests</h3><div style="color:var(--muted);font-size:.84rem;padding:10px 0">No pending requests.</div>';
+            return;
+          }
+          wSection.innerHTML = '<h3>💸 Seller Withdrawal Requests (' + wdraw.length + ')</h3>'
+            + '<div class="tbl-wrap"><table class="tbl"><tr><th>Seller</th><th>Amount</th><th>Bank</th><th>Date</th><th>Action</th></tr>'
+            + wdraw.map(function(w) {
+                var u = allUsers.find(function(x){ return String(x.id) === String(w.user_id); }) || {};
+                return '<tr>'
+                  + '<td><strong>' + (u.name||'—') + '</strong><br/><span style="font-size:.72rem;color:var(--muted)">' + maskEmail(u.email||'') + '</span></td>'
+                  + '<td style="font-weight:700;color:var(--gold)">₦' + parseFloat(w.amount||0).toLocaleString() + '</td>'
+                  + '<td style="font-size:.78rem">' + (u.payoutBank||'—') + '<br/>' + (u.payoutAcct||'—') + '</td>'
+                  + '<td style="font-size:.74rem;color:var(--muted)">' + new Date(w.created_at||Date.now()).toLocaleDateString() + '</td>'
+                  + '<td><button onclick="adminProcessWithdraw(\''+w.id+'\',\''+String(w.user_id)+'\',\''+w.amount+'\')" class="at aok">Process</button></td>'
+                  + '</tr>';
+              }).join('')
+            + '</table></div>';
+        }).catch(function(){});
+
+    }).catch(function(e) {
+      var pc = document.getElementById('pay-content');
+      if (pc) pc.innerHTML = '<div style="color:var(--red);padding:16px">Error loading data: ' + e.message + '</div>';
+    });
+
   } else if (tab === 'dis') {
     c.innerHTML = '<div class="ah"><h1>Disputes</h1></div><div class="act"><h3>Active Disputes (0)</h3><p style="color:var(--muted)">No active disputes. All orders protected by escrow.</p></div>';
   } else if (tab === 'set') {
@@ -3932,6 +3996,85 @@ function aTab(tab, btn) {
   }
 }
 window.aTab = aTab;
+
+function adminActivateSplit(userId) {
+  var u = usrs.find(function(x){ return String(x.id) === String(userId); });
+  if (!u) { toast('User not found in local cache', 'fail'); return; }
+  processSubaccount(u.id, u.name, u.payoutBank||'', u.payoutAcct||'', u.payoutAname||'');
+}
+window.adminActivateSplit = adminActivateSplit;
+
+function adminProcessWithdraw(withdrawalId, userId, amount) {
+  adminProcessWithdrawal(withdrawalId, userId, amount);
+}
+window.adminProcessWithdraw = adminProcessWithdraw;
+
+function adminProcessWithdrawal(withdrawalId, userId, amount) {
+  if (!confirm('Process withdrawal of ₦' + parseFloat(amount).toLocaleString() + '?\n\nThis will trigger a Paystack transfer to the seller\'s bank.')) return;
+  fetch('/api/paystack?action=withdraw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId, amount: parseFloat(amount), adminOverride: true })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      toast('✅ Withdrawal processed! Ref: ' + (data.reference||''), 'ok');
+      aTab('pay', null); /* Refresh payout tab */
+    } else {
+      toast('❌ Failed: ' + (data.error||'Unknown error'), 'fail');
+    }
+  })
+  .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
+}
+window.adminProcessWithdrawal = adminProcessWithdrawal;
+
+function loadAdminKYCPending() {
+  var section = document.getElementById('kyc-pending-section');
+  if (!section) return;
+  fetch('/api/users').then(function(r){ return r.json(); }).then(function(data) {
+    var pending = (data.users||[]).filter(function(u){ return u.kycStatus === 'pending'; });
+    if (!pending.length) {
+      section.innerHTML = '<h3>🪪 Pending KYC Reviews</h3><div style="color:var(--muted);font-size:.84rem;padding:10px 0">✅ No pending KYC reviews.</div>';
+      return;
+    }
+    section.innerHTML = '<h3>🪪 Pending KYC Reviews (' + pending.length + ')</h3>'
+      + '<div class="tbl-wrap"><table class="tbl"><tr><th>Name</th><th>Email</th><th>Type</th><th>Status</th><th>Action</th></tr>'
+      + pending.map(function(u) {
+          return '<tr>'
+            + '<td><strong>' + u.name + '</strong></td>'
+            + '<td style="font-size:.78rem;color:var(--muted)">' + maskEmail(u.email) + '</td>'
+            + '<td style="text-transform:uppercase;font-size:.74rem">' + (u.kycType||'—') + '</td>'
+            + '<td><span class="sb2 s-pend">Pending</span></td>'
+            + '<td class="ar2">'
+            + '<button onclick="adminApproveKYC(\'' + String(u.id) + '\')" class="at aok">✓ Verify</button>'
+            + '<button onclick="adminRejectKYC(\'' + String(u.id) + '\')" class="at ade">✕ Reject</button>'
+            + '</td></tr>';
+        }).join('')
+      + '</table></div>';
+  }).catch(function(){
+    if (section) section.innerHTML = '<h3>🪪 KYC Reviews</h3><div style="color:var(--muted);font-size:.82rem">Could not load.</div>';
+  });
+}
+window.loadAdminKYCPending = loadAdminKYCPending;
+
+function adminApproveKYC(userId) {
+  fetch('/api/auth?action=update-profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId, kycStatus: 'verified' })
+  }).then(function(){ toast('✅ KYC approved!', 'ok'); loadAdminKYCPending(); })
+  .catch(function(){ toast('Error approving KYC', 'fail'); });
+}
+window.adminApproveKYC = adminApproveKYC;
+
+function adminRejectKYC(userId) {
+  fetch('/api/auth?action=update-profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId, kycStatus: 'failed' })
+  }).then(function(){ toast('KYC rejected.', 'warn'); loadAdminKYCPending(); })
+  .catch(function(){ toast('Error rejecting KYC', 'fail'); });
+}
+window.adminRejectKYC = adminRejectKYC;
 
 function apvP(id) {
   var p = prods.find(function (x) { return x.id === id; });
@@ -3975,135 +4118,143 @@ function toast(msg, type) {
 window.toast = toast;
 
 /* ═══ NEYO AI — LOCAL SWITCH-CASE, always uses live product data ═══ */
-var chatOpen2 = false;
-
-function getChatReply(input) {
-  var q = input.toLowerCase().trim();
-
-  // ── Product deletion — NeyoLady's answer ──
-  if (q.includes('delete') || q.includes('remove') || q.includes('delist') || q.includes('take down') || q.includes('take it down')) {
-    return "Go to your **Profile → Seller tab** (the 🏪 tab). Find your product in the list and tap the **🗑 Delete** button. It's removed instantly! Only you can delete your own listings.";
-  }
-  if (q.includes('seller dashboard') || q.includes('my products') || q.includes('seller tab') || q.includes('where') && q.includes('sell') || q.includes('access seller') || q.includes('find seller')) {
-    return "Your Seller Dashboard is right in your **Profile**! Tap your avatar/name in the top bar → you'll see 4 tabs. The first one **🏪 Seller** shows all your listings.\n\nNot a seller yet? Just tap **✅ Activate Seller Account** — it's free and instant! Then go to the **Sell** page in the nav to list your first product.";
-  }
-  if (q.includes('become seller') || q.includes('activate seller') || q.includes('how to sell') || q.includes('start selling')) {
-    return "It's easy! Go to your **Profile → 🏪 Seller tab** and tap **'Activate Seller Account'** — it's free and takes one second. Then tap **Sell** in the navigation bar to list your product. Upload 2+ photos, fill in the details, and submit. Admin approves within 24 hours. 🏪";
-  }
-
-  // ── Affiliate link / referral ──
-  if (q.includes('affiliate') || q.includes('earn') || q.includes('commission') || q.includes('referral') || q.includes('refer')) {
-    return "Our **Affiliate Program** pays 15–30% commission per sale! 💸 Open any product, tap **🔗 Affiliate Link**, and you'll get a link like:\n`?ref=YOUR_CODE&p=PRODUCT_ID`\nShare it — when someone buys through your link, you earn automatically. Check your Profile for your code.";
-  }
-
-  // ── How many products / what's available ──
-  if (q.includes('how many product') || q.includes('what product') || q.includes('available product') || q.includes('list of product')) {
-    var activeCount = prods.filter(function(p){ return p.status === 'active'; }).length;
-    if (activeCount === 0) return "No products are live right now, but new listings go up daily! 🛍 Check back soon, or be the first to list one on the **Sell** page.";
-    var sample = prods.filter(function(p){ return p.status === 'active'; }).slice(0,3).map(function(p){ return '**' + p.name + '** (₦' + p.price.toLocaleString() + ')'; }).join(', ');
-    return "There are currently **" + activeCount + " active product(s)** on NeyoMarket! 🛒 Some examples: " + sample + ". Browse them all on the **Marketplace** page.";
-  }
-
-  // ── Sell / list ──
-  if (q.includes('sell') || q.includes('list') || q.includes('upload product')) {
-    return "To sell on NeyoMarket: ① Sign up and select **Seller** as your account type. ② Go to the **Sell** page in the nav menu. ③ Upload at least 2 product images and fill in all details. ④ Submit for review — admin approves within 24 hours. ⑤ Once live, manage everything from your **🏪 Dashboard** in the nav bar! 🏪";
-  }
-  if (q.includes('seller dashboard') || q.includes('my dashboard') || q.includes('manage') || q.includes('my product') || q.includes('my listing') || q.includes('how do i access') || q.includes('where is my dashboard') || q.includes('seller access')) {
-    return "To access your **Seller Dashboard**: \n\n① Sign in to your account (must be registered as a **Seller**).\n② Look for the **🏪 Dashboard** button in the top navigation bar — it appears automatically when you're logged in as a seller.\n③ Tap it to see all your products, approval status, earnings, bank details, and promo links! 🎯\n\nIf you don't see the Dashboard button, go to **Profile** and check that your account type is set to **Seller**.";
-  }
-
-  // ── Buy / purchase ──
-  if (q.includes('buy') || q.includes('purchase') || q.includes('cart') || q.includes('order')) {
-    return "Browse the **Marketplace**, add items to your cart, then checkout. 🛒 Your payment is held in **escrow** — only released to the seller after you confirm receipt. You're always protected!";
-  }
-
-  // ── SafeHaven ──
-  if (q.includes('safehaven') || q.includes('safe haven') || q.includes('shelter') || q.includes('donate')) {
-    return "SafeHaven is a children's shelter we proudly support. 🏠 Their donation platform is powered by NeyoMarket's payment system. Contact us at " + SUPPORT_PHONE + " to donate or learn more.";
-  }
-
-  // ── Escrow / scam / fraud ──
-  if (q.includes('escrow') || q.includes('scam') || q.includes('fraud') || q.includes('safe') || q.includes('protect')) {
-    return "🛡️ **Zero Scam Guarantee:** All payments are held in escrow via Paystack. Your money is NEVER sent directly to sellers — it's only released after you confirm receipt. Full refund if anything goes wrong.";
-  }
-
-  // ── Refund / dispute ──
-  if (q.includes('refund') || q.includes('return') || q.includes('dispute') || q.includes('wrong')) {
-    return "**Refund Policy:** Physical = 3-day window. Digital = 24hr if not as described. Open a dispute from your **My Orders** page — our team reviews within 24 hours. Full refund if seller is at fault. ⚖️";
-  }
-
-  // ── Payment / Paystack ──
-  if (q.includes('pay') || q.includes('paystack') || q.includes('transfer') || q.includes('payment')) {
-    return "All payments use **Paystack** — Nigeria's most trusted payment gateway. 🔐 Every transaction is escrow-protected. Digital products go straight to payment; physical items ask for your shipping address first.";
-  }
-
-  // ── Shipping / delivery ──
-  if (q.includes('shipping') || q.includes('delivery') || q.includes('address') || q.includes('collect')) {
-    return "Physical products need your delivery address at checkout. 📦 Enter your WhatsApp number so the seller can reach you. Tap **Mark as Collected** when your item arrives to release the escrow funds. Avg delivery: 3–7 days.";
-  }
-
-  // ── Payout / bank ──
-  if (q.includes('payout') || q.includes('withdraw') || q.includes('bank') || q.includes('withdrawal')) {
-    return "Add your bank details in **Profile → Payout Settings**. 🏦 Payouts are processed every Monday. Minimum withdrawal: ₦500. Make sure your account name matches your identity for smooth processing.";
-  }
-
-  // ── Password / forgot ──
-  if (q.includes('forgot') || q.includes('password') || q.includes('reset') || q.includes('login problem')) {
-    return "Tap **Sign In**, then use the **'Forgot password?'** link. We'll send a temporary password to your email. Once you sign in, go to **Profile → Change Password** to set your own personal password. 🔑";
-  }
-  if (q.includes('change password') || q.includes('update password') || q.includes('new password') || q.includes('temp') || q.includes('temporary')) {
-    return "After signing in with your temporary password, go to your **Profile page** and scroll down to the **🔒 Change Password** section. Enter your temp password as the current one, type your new personal password twice, and tap **Update Password**. Done! ✅";
-  }
-
-  // ── Support / contact ──
-  if (q.includes('contact') || q.includes('support') || q.includes('help') || q.includes('whatsapp') || q.includes('call') || q.includes('phone')) {
-    return "📞 Reach our support team at **" + SUPPORT_PHONE + "** (WhatsApp or call). Real humans — no bots. We handle every complaint personally. Available 8am–8pm daily (WAT).";
-  }
-
-  // ── Greeting ──
-  if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('good morning') || q.includes('good afternoon') || q.includes('good evening')) {
-    return "Hello! 👋 I'm **Neyo AI**, NeyoMarket's assistant. I can help you with buying, selling, deleting products, affiliate links, escrow, payments, and more. What would you like to know?";
-  }
-
-  if (q.includes('thank')) return "You're welcome! 😊 Happy selling and shopping on NeyoMarket! 🛒";
-
-  if (q.includes('how') && q.includes('work')) {
-    return "NeyoMarket works in 3 steps: 1️⃣ Browse &amp; buy — payment is held in escrow. 2️⃣ Seller delivers your product. 3️⃣ You confirm receipt and the seller gets paid. Simple, safe, and fast! 🎯";
-  }
-
-  // ── Default ──
-  return "Hmm, I'm not sure about that one. 🤔 Try asking: **sell, buy, delete product, affiliate link, escrow, refund, payment, shipping**, or **support**. Or call us at " + SUPPORT_PHONE + ".";
-}
+var chatOpen2  = false;
+var chatHistory = []; /* Maintains conversation context for Claude API */
 
 function addBotMsg(text) {
   var m = document.getElementById('chat-ms'); if (!m) return;
   var d = document.createElement('div'); d.className = 'bub bot';
-  d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>');
   m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
+
 function addUserMsg2(text) {
   var m = document.getElementById('chat-ms'); if (!m) return;
   var d = document.createElement('div'); d.className = 'bub user'; d.textContent = text;
   m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 
-function tChat() {
-  chatOpen2 = !chatOpen2;
-  document.getElementById('chat-p').classList.toggle('open', chatOpen2);
-  if (chatOpen2 && !document.getElementById('chat-ms').children.length) {
-    addBotMsg("Hi! I'm **Neyo AI** 👋 Ask me about buying, selling, affiliates, escrow, or anything NeyoMarket. How can I help?");
-  }
+function addTypingIndicator() {
+  var m = document.getElementById('chat-ms'); if (!m) return;
+  var d = document.createElement('div');
+  d.className = 'bub bot'; d.id = 'typing-indicator';
+  d.innerHTML = '<span style="display:inline-flex;gap:3px;align-items:center">'
+    + '<span style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1s infinite"></span>'
+    + '<span style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1s .2s infinite"></span>'
+    + '<span style="width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1s .4s infinite"></span>'
+    + '</span>';
+  m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
-window.tChat = tChat;
+
+function removeTypingIndicator() {
+  var el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+/* Build a context-rich system prompt using live marketplace data */
+function buildSystemPrompt() {
+  var activeProds  = prods.filter(function(p){ return p.status === 'active'; });
+  var categories   = {};
+  activeProds.forEach(function(p){ categories[p.cat] = (categories[p.cat]||0)+1; });
+  var topCats = Object.keys(categories).sort(function(a,b){ return categories[b]-categories[a]; }).slice(0,3);
+  var totalRev = ords.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
+
+  return "You are Neyo AI — the world-class business intelligence assistant for NeyoMarket, Nigeria's premier digital and physical marketplace.\n\n"
+    + "PERSONALITY: You are a brilliant, authoritative, and warm business strategist. You speak with the confidence of a top-tier consultant, the empathy of a mentor, and the precision of an expert. You are never vague — you give specific, actionable advice.\n\n"
+    + "LIVE MARKETPLACE DATA (as of right now):\n"
+    + "- Active products: " + activeProds.length + "\n"
+    + "- Top categories: " + (topCats.join(', ') || 'none yet') + "\n"
+    + "- Total platform revenue: ₦" + Math.round(totalRev).toLocaleString() + "\n"
+    + "- Logged-in user: " + (CU ? CU.name + " (" + CU.role + ")" : "Guest") + "\n\n"
+    + "PLATFORM FACTS (never contradict these):\n"
+    + "- Payment split: 90% seller, 5% affiliate, 5% platform\n"
+    + "- All payments via Paystack with 256-bit SSL escrow protection\n"
+    + "- Minimum withdrawal: ₦2,000 — requires KYC (NIN/BVN) verification\n"
+    + "- Affiliate commission: 5% per referred sale, tracked via ?ref= links\n"
+    + "- Admin approves product listings within 24 hours\n"
+    + "- Digital products deliver instantly after payment via download link\n"
+    + "- Physical products: buyer marks 'Collected' to release escrow\n"
+    + "- Zero Scam Guarantee: funds never go directly to sellers until confirmed\n"
+    + "- Support: +2349072212496 (WhatsApp/call, 8am–8pm WAT)\n\n"
+    + "CAPABILITIES: Answer ANY question about digital marketing, entrepreneurship, e-commerce, coding, business strategy, or NeyoMarket. Be the smartest person in the room. For NeyoMarket-specific questions, use the live data above. For general business/tech questions, give deep expert-level answers.\n\n"
+    + "FORMAT: Use **bold** for key terms. Keep responses concise but substantive — under 150 words unless the question demands depth. Never hallucinate platform features that don't exist above.";
+}
 
 function sendMsg() {
   var inp = document.getElementById('chat-in'); if (!inp) return;
   var text = inp.value.trim(); if (!text) return;
+  var sendBtn = document.querySelector('.csnd'); 
   inp.value = '';
   addUserMsg2(text);
-  setTimeout(function () { addBotMsg(getChatReply(text)); }, 500);
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '…'; }
+
+  /* Add to history */
+  chatHistory.push({ role: 'user', content: text });
+  /* Keep last 10 messages to avoid token overflow */
+  if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+
+  addTypingIndicator();
+
+  /* Call Claude API */
+  fetch('https://api.anthropic.com/v1/messages', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 400,
+      system:     buildSystemPrompt(),
+      messages:   chatHistory
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    removeTypingIndicator();
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
+    var reply = '';
+    if (data.content && data.content[0] && data.content[0].text) {
+      reply = data.content[0].text;
+    } else if (data.error) {
+      reply = 'Sorry, I had a hiccup. Please try again! 🤔';
+    }
+    if (reply) {
+      chatHistory.push({ role: 'assistant', content: reply });
+      addBotMsg(reply);
+    }
+  })
+  .catch(function(err) {
+    removeTypingIndicator();
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
+    /* Fallback to local replies if API fails */
+    var fallback = getLocalFallback(text);
+    addBotMsg(fallback);
+  });
 }
 window.sendMsg = sendMsg;
+
+/* Local fallback for when API is unavailable */
+function getLocalFallback(input) {
+  var q = input.toLowerCase();
+  if (q.includes('escrow') || q.includes('safe') || q.includes('scam'))
+    return "🛡️ **Zero Scam Guarantee:** All payments held in escrow via Paystack. Money only releases after you confirm receipt. Full refund if anything goes wrong.";
+  if (q.includes('sell') || q.includes('list'))
+    return "To sell: go to **Sell** in the nav → upload 2+ photos → fill details → submit. Admin approves within 24hrs. You keep **90%** of every sale! 🏪";
+  if (q.includes('pay') || q.includes('paystack'))
+    return "All payments use **Paystack** — Nigeria's most trusted gateway. 256-bit SSL encrypted. Your money is escrow-protected until delivery confirmed. ✅";
+  if (q.includes('withdraw') || q.includes('payout'))
+    return "Go to **Profile → Settings → Withdrawal**. Minimum ₦2,000. Requires KYC verification (NIN/BVN). Payments sent directly to your bank. 🏦";
+  if (q.includes('affiliate') || q.includes('earn'))
+    return "Share your affiliate link and earn **5% commission** on every sale! Find your link in **Profile → Affiliate tab**. Get paid every Monday. 💸";
+  return "I'm here to help! Ask me about selling, buying, payments, withdrawals, affiliates, or anything business-related. 🤖";
+}
+
+function tChat() {
+  chatOpen2 = !chatOpen2;
+  document.getElementById('chat-p').classList.toggle('open', chatOpen2);
+  if (chatOpen2 && !document.getElementById('chat-ms').children.length) {
+    addBotMsg("Hello! I'm **Neyo AI** 👋 — your marketplace intelligence assistant.\n\nI can help you with selling strategies, buying safely, understanding escrow, affiliate marketing, and anything business-related. What would you like to know?");
+  }
+}
+window.tChat = tChat;
 
 /* ═══ KYC FUNCTIONS ═══ */
 function submitKYC() {
@@ -4180,18 +4331,30 @@ function loadWithdrawBalance() {
   var balEl = document.getElementById('withdraw-balance');
   var btnEl = document.getElementById('withdraw-btn');
   if (!balEl) return;
-  balEl.textContent = 'Loading…';
-  fetch('/api/paystack?action=balance&userId=' + encodeURIComponent(String(CU.id)))
+  balEl.textContent = '⏳';
+
+  /* Fetch fresh user data from Neon — gets real seller_balance */
+  fetch('/api/users')
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      var bal = data.balance || 0;
-      balEl.textContent = '₦' + bal.toLocaleString();
-      if (btnEl) {
-        var canWithdraw = CU.kycStatus === 'verified' && bal >= 2000;
-        btnEl.disabled = !canWithdraw;
-        btnEl.title = !CU.kycStatus || CU.kycStatus !== 'verified'
-          ? 'Complete KYC verification first'
-          : bal < 2000 ? 'Minimum withdrawal is ₦2,000' : '';
+      var u = (data.users||[]).find(function(x){ return String(x.id) === String(CU.id); });
+      if (u) {
+        var bal = parseFloat(u.sellerBalance || u.seller_balance || 0);
+        CU.sellerBalance = bal;
+        CU.kycStatus     = u.kycStatus || CU.kycStatus;
+        localStorage.setItem('nm_current_user', JSON.stringify(CU));
+        balEl.textContent = '₦' + bal.toLocaleString();
+        if (btnEl) {
+          var canWithdraw = CU.kycStatus === 'verified' && bal >= 2000;
+          btnEl.disabled = !canWithdraw;
+          btnEl.style.opacity = canWithdraw ? '1' : '0.4';
+          btnEl.style.cursor  = canWithdraw ? 'pointer' : 'not-allowed';
+          btnEl.title = CU.kycStatus !== 'verified'
+            ? 'Complete KYC verification first'
+            : bal < 2000 ? 'Minimum withdrawal is ₦2,000' : 'Request payout';
+        }
+      } else {
+        balEl.textContent = '₦0';
       }
     })
     .catch(function() { if (balEl) balEl.textContent = '₦0'; });
@@ -4366,6 +4529,7 @@ validateSell();
 })();
 
 })();
+
 </script>
 
 </body>
