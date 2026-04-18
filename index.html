@@ -526,7 +526,7 @@ textarea.fi{resize:vertical;min-height:88px}
      padding:3px 9px;border-radius:4px;font-size:.66rem;font-weight:500;color:var(--muted)}
 .pdprice{font-family:'Cormorant Garamond',serif;font-size:1.9rem;
          font-weight:600;color:var(--gold);margin-bottom:10px}
-.pddesc{font-size:.84rem;color:var(--muted);line-height:1.7;margin-bottom:12px;font-weight:300}
+.pddesc{font-size:1rem;color:#000;line-height:1.75;margin-bottom:12px;font-weight:400;background:#fff;padding:10px 12px;border-radius:6px;border:1px solid var(--border)}
 .prot{background:var(--green-bg);border:1px solid rgba(5,150,105,.2);
       border-radius:6px;padding:10px 12px;font-size:.76rem;color:var(--green);margin-bottom:12px;line-height:1.6}
 .pdbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -1102,6 +1102,13 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           <button onclick="go('sell')" style="background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">
             ＋ List New Product
           </button>
+        </div>
+        <!-- Wallet Balance card -->
+        <div id="wallet-card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;padding:20px;margin-bottom:16px;color:#fff">
+          <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:6px">Available Balance</div>
+          <div id="wallet-balance" style="font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:700;color:var(--gold);margin-bottom:4px">⏳</div>
+          <div id="wallet-status" style="font-size:.74rem;color:rgba(255,255,255,.5)">Loading…</div>
+          <button onclick="openWithdrawModal()" id="wallet-withdraw-btn" style="margin-top:14px;background:var(--gold);color:#000;border:none;padding:10px 22px;border-radius:6px;font-weight:700;font-size:.82rem;cursor:pointer;opacity:.4" disabled>💸 Withdraw Funds</button>
         </div>
         <!-- Stats row -->
         <div id="seller-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-bottom:18px"></div>
@@ -2954,6 +2961,8 @@ function refreshProf() {
 
   /* Render KYC status */
   renderKYCStatus();
+  /* Load wallet balance immediately */
+  loadWalletBalance();
   /* default to Seller tab, render all panels */
   switchDashTab('seller', document.getElementById('tab-seller'));
   renderSellerDash();
@@ -2965,6 +2974,9 @@ function refreshProf() {
 function switchDashTab(name, btn) {
   if (name === 'settings') {
     setTimeout(function(){ loadWithdrawBalance(); loadWithdrawalHistory(); }, 300);
+  }
+  if (name === 'seller') {
+    setTimeout(function(){ loadWalletBalance(); }, 400);
   }
   if (name === 'affiliate') {
     setTimeout(function(){ loadAffiliateDash(); }, 300);
@@ -3878,7 +3890,10 @@ function aTab(tab, btn) {
         + fl.map(function (u) {
           return '<tr><td>' + u.name + '</td><td style="color:var(--muted);font-size:.8rem">' + maskEmail(u.email) + '</td>'
             + '<td>' + (u.phone || '—') + '</td><td>' + (u.joined || '—') + '</td>'
-            + '<td class="ar2"><button class="at ade" onclick="suspU(' + u.id + ')">Suspend</button></td></tr>';
+            + '<td class="ar2">'
+            + '<button class="at ade" onclick="suspU(\'' + u.id + '\')">Suspend</button>'
+            + '<button class="at ade" style="background:rgba(220,38,38,.15)" onclick="deleteUser(\'' + u.id + '\')">Delete</button>'
+            + '</td></tr>';
         }).join('') + '</table></div>'
         : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
       + '</div>';
@@ -4103,6 +4118,25 @@ function suspU(id) {
 }
 window.suspU = suspU;
 
+function deleteUser(id) {
+  var u = usrs.find(function(x){ return x.id === id; });
+  if (!u) return;
+  if (!confirm('DELETE account for ' + u.name + '?\n\nThis is PERMANENT and cannot be undone.')) return;
+  fetch('/api/users?userId=' + encodeURIComponent(String(id)), { method: 'DELETE' })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        usrs = usrs.filter(function(x){ return x.id !== id; });
+        toast('Account deleted.', 'warn');
+        aTab('buy', null); /* refresh user tab */
+      } else {
+        toast(data.error || 'Delete failed', 'fail');
+      }
+    })
+    .catch(function(){ toast('Delete failed', 'fail'); });
+}
+window.deleteUser = deleteUser;
+
 /* ═══ MODAL HELPERS ═══ */
 function oM(id) { var el = document.getElementById(id); if (el) el.classList.add('open'); }
 function cM(id) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
@@ -4326,6 +4360,134 @@ function submitKYC() {
 window.submitKYC = submitKYC;
 
 /* ═══ WITHDRAWAL ═══ */
+/* ═══ WALLET SYSTEM ═══ */
+
+function loadWalletBalance() {
+  if (!CU) return;
+  var balEl    = document.getElementById('wallet-balance');
+  var statusEl = document.getElementById('wallet-status');
+  var btnEl    = document.getElementById('wallet-withdraw-btn');
+  if (!balEl) return;
+
+  fetch('/api/users')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var u = (data.users||[]).find(function(x){ return String(x.id) === String(CU.id); });
+      if (!u) return;
+      var bal = parseFloat(u.sellerBalance || u.seller_balance || 0);
+      CU.sellerBalance = bal;
+      CU.kycStatus     = u.kycStatus || CU.kycStatus;
+      localStorage.setItem('nm_current_user', JSON.stringify(CU));
+
+      if (balEl) balEl.textContent = '₦' + bal.toLocaleString();
+
+      var kyc = CU.kycStatus === 'verified';
+      var canW = kyc && bal >= 2000;
+
+      if (statusEl) {
+        if (!kyc) {
+          statusEl.textContent = '⚠ KYC verification required to withdraw';
+          statusEl.style.color = 'rgba(255,200,0,.8)';
+        } else if (bal < 2000) {
+          statusEl.textContent = 'Minimum ₦2,000 required to withdraw';
+          statusEl.style.color = 'rgba(255,255,255,.5)';
+        } else {
+          statusEl.textContent = '✓ Ready to withdraw';
+          statusEl.style.color = 'rgba(45,212,170,.9)';
+        }
+      }
+      if (btnEl) {
+        btnEl.disabled       = !canW;
+        btnEl.style.opacity  = canW ? '1' : '0.4';
+        btnEl.style.cursor   = canW ? 'pointer' : 'not-allowed';
+      }
+    })
+    .catch(function(){ if (balEl) balEl.textContent = '₦0'; });
+}
+window.loadWalletBalance = loadWalletBalance;
+
+function openWithdrawModal() {
+  if (!CU) { toast('Please sign in', 'fail'); return; }
+  if (CU.kycStatus !== 'verified') {
+    toast('Complete KYC verification first', 'fail');
+    switchDashTab('settings', document.getElementById('tab-settings'));
+    return;
+  }
+  /* Sync balance to modal */
+  var modalBal = document.getElementById('modal-balance');
+  if (modalBal) modalBal.textContent = '₦' + (CU.sellerBalance||0).toLocaleString();
+  var amtEl = document.getElementById('modal-withdraw-amount');
+  if (amtEl) amtEl.value = '';
+  var errEl = document.getElementById('withdraw-modal-err');
+  if (errEl) errEl.textContent = '';
+  loadModalWithdrawHistory();
+  oM('m-withdraw');
+}
+window.openWithdrawModal = openWithdrawModal;
+
+function submitWithdrawRequest() {
+  if (!CU) { toast('Please sign in', 'fail'); return; }
+  var amtEl = document.getElementById('modal-withdraw-amount');
+  var errEl = document.getElementById('withdraw-modal-err');
+  var btn   = document.getElementById('modal-withdraw-btn');
+  var amt   = parseFloat(amtEl ? amtEl.value : 0);
+
+  if (errEl) errEl.textContent = '';
+  if (!amt || amt < 2000) {
+    if (errEl) errEl.textContent = 'Minimum withdrawal is ₦2,000.';
+    return;
+  }
+  if (amt > (CU.sellerBalance || 0)) {
+    if (errEl) errEl.textContent = 'Amount exceeds your available balance.';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+
+  /* Save withdrawal REQUEST to DB — admin will approve and process */
+  fetch('/api/paystack?action=request-withdraw', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ userId: String(CU.id), amount: amt })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Withdrawal'; }
+    if (data.ok) {
+      toast('✅ Withdrawal request submitted! Admin will process it shortly.', 'ok');
+      cM('m-withdraw');
+      loadWalletBalance();
+    } else {
+      if (errEl) errEl.textContent = data.error || 'Request failed. Try again.';
+    }
+  })
+  .catch(function(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Withdrawal'; }
+    if (errEl) errEl.textContent = 'Network error. Please try again.';
+  });
+}
+window.submitWithdrawRequest = submitWithdrawRequest;
+
+function loadModalWithdrawHistory() {
+  var listEl = document.getElementById('modal-withdraw-history');
+  if (!listEl || !CU) return;
+  fetch('/api/paystack?action=withdrawals&userId=' + encodeURIComponent(String(CU.id)))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var rows = data.withdrawals || [];
+      if (!rows.length) { listEl.innerHTML = '<p style="color:var(--muted);font-size:.8rem">No withdrawals yet.</p>'; return; }
+      listEl.innerHTML = rows.slice(0,5).map(function(w) {
+        var sc = w.status === 'success' ? 'var(--green)' : w.status === 'failed' ? 'var(--red)' : 'var(--orange)';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<span style="font-weight:600">₦' + parseFloat(w.amount||0).toLocaleString() + '</span>'
+          + '<span style="color:' + sc + ';font-size:.72rem;font-weight:600;text-transform:uppercase">' + w.status + '</span>'
+          + '<span style="font-size:.72rem;color:var(--muted)">' + new Date(w.created_at||Date.now()).toLocaleDateString() + '</span>'
+          + '</div>';
+      }).join('');
+    }).catch(function(){});
+}
+window.loadModalWithdrawHistory = loadModalWithdrawHistory;
+
 function loadWithdrawBalance() {
   if (!CU) return;
   var balEl = document.getElementById('withdraw-balance');
@@ -4362,33 +4524,8 @@ function loadWithdrawBalance() {
 window.loadWithdrawBalance = loadWithdrawBalance;
 
 function requestWithdraw() {
-  if (!CU) { toast('Please sign in', 'fail'); return; }
-  if (CU.kycStatus !== 'verified') { toast('Complete KYC verification first', 'fail'); return; }
-  var amtEl = document.getElementById('withdraw-amount');
-  var amt   = parseFloat(amtEl ? amtEl.value : 0);
-  if (!amt || amt < 2000) { toast('Minimum withdrawal is ₦2,000', 'fail'); return; }
-  var btn = document.getElementById('withdraw-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
-  fetch('/api/paystack?action=withdraw', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: String(CU.id), amount: amt })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Payout'; }
-    if (data.ok) {
-      toast(data.message || 'Payout requested! ✅', 'ok');
-      loadWithdrawBalance();
-      loadWithdrawalHistory();
-    } else {
-      toast(data.error || 'Payout failed', 'fail');
-    }
-  })
-  .catch(function(err) {
-    if (btn) { btn.disabled = false; btn.textContent = '💸 Request Payout'; }
-    toast('Payout failed: ' + err.message, 'fail');
-  });
+  /* Alias — opens the modal */
+  openWithdrawModal();
 }
 window.requestWithdraw = requestWithdraw;
 
@@ -4531,6 +4668,34 @@ validateSell();
 })();
 
 </script>
+
+
+<!-- ═══ WITHDRAW MODAL ═══ -->
+<div class="ov" id="m-withdraw">
+  <div class="ms" style="max-width:420px">
+    <div class="mh">
+      <h3>💸 Withdraw Funds</h3>
+      <button class="mx" onclick="cM('m-withdraw')">✕</button>
+    </div>
+    <div class="mb">
+      <div style="background:var(--bg3);border-radius:8px;padding:16px;margin-bottom:16px;text-align:center">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Available Balance</div>
+        <div id="modal-balance" style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:700;color:var(--gold)">₦0</div>
+      </div>
+      <div class="fg">
+        <label>Amount to Withdraw (₦) <span class="rq">*</span></label>
+        <input class="fi" type="number" id="modal-withdraw-amount" placeholder="Min ₦2,000" min="2000" style="font-size:1.1rem"/>
+        <p class="hint">Minimum ₦2,000 · Funds sent to your registered bank account</p>
+      </div>
+      <div id="withdraw-modal-err" style="color:var(--red);font-size:.8rem;margin-bottom:10px;min-height:15px"></div>
+      <button onclick="submitWithdrawRequest()" id="modal-withdraw-btn" class="sbtn">💸 Request Withdrawal</button>
+      <div style="margin-top:16px">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Recent Withdrawals</div>
+        <div id="modal-withdraw-history"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
