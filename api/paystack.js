@@ -126,7 +126,37 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ balance: balance });
     }
 
-    /* REQUEST PAYOUT */
+    /* REQUEST WITHDRAWAL — saves to DB, admin processes later */
+    if (action === 'request-withdraw') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+      const { userId, amount } = req.body || {};
+      if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required.' });
+
+      const users = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      if (!users.length) return res.status(404).json({ error: 'User not found.' });
+      const user = users[0];
+
+      if (user.kyc_status !== 'verified')
+        return res.status(403).json({ error: 'KYC verification required.' });
+      if (!user.payout_acct || !user.payout_bank)
+        return res.status(400).json({ error: 'Add bank details in Payout Settings first.' });
+      if (amount < 2000)
+        return res.status(400).json({ error: 'Minimum withdrawal is ₦2,000.' });
+
+      const bal = parseFloat(user.seller_balance || 0);
+      if (amount > bal)
+        return res.status(400).json({ error: 'Amount exceeds your available balance of ₦' + bal.toLocaleString() + '.' });
+
+      /* Save withdrawal request — status 'pending' until admin approves */
+      await sql`
+        INSERT INTO withdrawals (user_id, amount, status, reference, created_at)
+        VALUES (${userId}, ${amount}, ${'pending'}, ${''}, NOW())
+      `;
+
+      return res.status(201).json({ ok: true, message: 'Withdrawal request submitted! Admin will process it shortly.' });
+    }
+
+    /* REQUEST PAYOUT — admin-triggered, processes immediately */
     if (action === 'withdraw') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
       const { userId, amount } = req.body || {};
@@ -192,3 +222,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Server error. Please try again.' });
   }
 };
+
