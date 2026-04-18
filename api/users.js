@@ -35,14 +35,31 @@ function toPublicUser(row) {
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const rows = await sql`SELECT * FROM users ORDER BY joined DESC`;
-    return res.status(200).json({ users: rows.map(toPublicUser) });
+    /* GET /api/users — fetch all users, or single user by ?userId= */
+    if (req.method === 'GET') {
+      const userId = req.query.userId;
+      if (userId) {
+        const rows = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+        if (!rows.length) return res.status(404).json({ error: 'User not found.' });
+        return res.status(200).json({ user: toPublicUser(rows[0]) });
+      }
+      const rows = await sql`SELECT * FROM users ORDER BY joined DESC`;
+      return res.status(200).json({ users: rows.map(toPublicUser) });
+    }
+
+    /* DELETE /api/users?userId= — admin deletes account */
+    if (req.method === 'DELETE') {
+      const userId = req.query.userId;
+      if (!userId) return res.status(400).json({ error: 'userId required.' });
+      await sql`DELETE FROM users WHERE id = ${userId}`;
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('[users.js error]', err);
     return res.status(500).json({ error: 'Failed to fetch users.' });
   }
 };
-
