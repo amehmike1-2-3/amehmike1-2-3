@@ -1,1 +1,16 @@
+# NeyoMarket Official - robots.txt
+# Organized by NeyoMarket Administration
+
+User-agent: *
+Allow: /
+
+# Block private and admin-level pages from public search
+Disallow: /#admin
+Disallow: /admin-gate
+Disallow: /dashboard
+Disallow: /api
+Disallow: /temp
+
+# Direct Google to our official product list
+Sitemap: https://neyo-market.vercel.app/sitemap.xml
 
