@@ -1,12 +1,1 @@
-# NeyoMarket — robots.txt
-# amehmike1-2-3.github.io
 
-User-agent: *
-Allow: /
-
-# Block admin pages from indexing
-Disallow: /#admin
-Disallow: /#admin-gate
-
-# Sitemap location
-Sitemap: https://neyo-market.vercel.app/sitemap.xml
