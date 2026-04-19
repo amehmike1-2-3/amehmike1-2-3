@@ -1373,6 +1373,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="asb" onclick="aTab('pr',this)">📦 Products</button>
       <button class="asb" onclick="aTab('od',this)">🧾 Orders</button>
       <div class="asl">Users</div>
+      <button class="asb" onclick="aTab('kyc',this)">🪪 KYC Review</button>
       <button class="asb" onclick="aTab('sel',this)">🏪 Sellers</button>
       <button class="asb" onclick="aTab('buy',this)">👥 Buyers</button>
       <button class="asb" onclick="aTab('aff2',this)">💸 Affiliates</button>
@@ -3786,231 +3787,438 @@ window.updateBottomNav = updateBottomNav;
 
 /* ═══ ADMIN ═══ */
 function aTab(tab, btn) {
-  document.querySelectorAll('.asb').forEach(function (b) { b.classList.remove('on'); });
+  document.querySelectorAll('.asb').forEach(function(b) { b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
-  var c = document.getElementById('adm-c'); if (!c) return;
-  var rev = ords.reduce(function (s, o) { return s + o.total; }, 0);
-  var plat = Math.round(rev * 0.10);
-  var pending = prods.filter(function (p) { return p.status === 'pending'; });
+  var c = document.getElementById('adm-c');
+  if (!c) return;
 
-  if (tab === 'ov') {
-    c.innerHTML = '<div class="ah"><h1>Admin Dashboard</h1><p>NeyoMarket Platform · All data live from database</p></div>'
-      + '<div class="sr">'
-      + '<div class="sc2"><div class="lb">Products</div><div class="vl">' + prods.length + '</div></div>'
-      + '<div class="sc2"><div class="lb">Users</div><div class="vl" id="adm-user-cnt">' + usrs.length + '</div></div>'
-      + '<div class="sc2"><div class="lb">Orders</div><div class="vl" id="adm-order-cnt">' + ords.length + '</div></div>'
-      + '<div class="sc2"><div class="lb">Platform Earnings</div><div class="vl" id="admin-balance-display">⏳</div><div class="ch">5% per sale</div></div>'
-      + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl" id="adm-rev-display">⏳</div><div class="ch">All sales</div></div>'
-      + '<div class="sc2"><div class="lb">Pending Review</div><div class="vl" style="color:var(--orange)">' + pending.length + '</div><div class="ch" style="color:var(--orange)">Needs review</div></div>'
-      + '</div>';
+  /* Show a loading skeleton instantly so admin sees feedback */
+  c.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading…</div>';
 
-    /* Fetch ALL orders + admin balance from DB */
-    Promise.all([
-      fetch('/api/orders').then(function(r){ return r.json(); }),
-      fetch('/api/users').then(function(r){ return r.json(); })
-    ]).then(function(results) {
-      var allOrders = (results[0].orders || []);
-      var allUsers  = (results[1].users  || []);
+  /* Every tab fetches live from Neon — no stale data */
+  fetch('/api/users').then(function(r){ return r.json(); }).then(function(uData) {
+  fetch('/api/orders').then(function(r){ return r.json(); }).then(function(oData) {
 
-      /* Real revenue from DB orders */
-      var totalRev  = allOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
-      var adminComm = allOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||0); }, 0);
+    var allUsers  = uData.users  || [];
+    var allOrders = oData.orders || [];
 
-      /* Also check admin user balance */
+    /* ─── OVERVIEW ─── */
+    if (tab === 'ov') {
+      var pending   = (window.prods || []).filter(function(p){ return p.status === 'pending'; });
+      var totalRev  = allOrders.reduce(function(s,o){ return s+parseFloat(o.total||0); }, 0);
+      var platFees  = allOrders.reduce(function(s,o){ return s+parseFloat(o.platformFee||o.platform_fee||0); }, 0);
       var adminUser = allUsers.find(function(u){ return u.role === 'admin'; });
-      var adminBal  = adminUser ? (parseFloat(adminUser.adminBalance || adminUser.admin_balance || 0)) : 0;
-      /* Use whichever is higher — orders sum or stored balance */
-      var displayBal = Math.max(adminComm, adminBal);
+      var adminBal  = adminUser ? parseFloat(adminUser.adminBalance||0) : 0;
+      var kycPend   = allUsers.filter(function(u){ return u.kycStatus === 'pending'; }).length;
+      var wPend     = 0; /* loaded below */
 
-      var balEl = document.getElementById('admin-balance-display');
-      var revEl = document.getElementById('adm-rev-display');
-      var ordEl = document.getElementById('adm-order-cnt');
-      var usrEl = document.getElementById('adm-user-cnt');
-      if (balEl) balEl.textContent = '₦' + Math.round(displayBal).toLocaleString();
-      if (revEl) revEl.textContent = '₦' + Math.round(totalRev).toLocaleString();
-      if (ordEl) ordEl.textContent = allOrders.length;
-      if (usrEl) usrEl.textContent = allUsers.length;
-
-      /* Update global ords for the table below */
-      ords = allOrders;
-    }).catch(function(e){ console.error('Admin stats error:', e); });
-      + '<div class="act"><h3>⏳ Pending Product Reviews (' + pending.length + ')</h3>'
-      + (pending.length ? pending.map(function (p) {
-        var ih = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>' : '<span style="font-size:1.6rem">' + (p.emoji||'📦') + '</span>';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
-          + ih + '<div style="flex:1;min-width:120px"><div style="font-weight:600;font-size:.88rem;color:var(--text)">' + p.name + '</div>'
-          + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px">by ' + p.seller + ' · ₦' + p.price.toLocaleString() + ' · ' + ((p.imgs && p.imgs.filter(Boolean).length) || 0) + ' images</div></div>'
-          + '<div class="ar2"><button class="at aok" onclick="apvP(' + p.id + ')">✓ Approve</button>'
-          + '<button class="at ade" onclick="rejP(' + p.id + ')">✕ Reject</button></div></div>';
-      }).join('') : '<div style="color:var(--muted);font-size:.84rem;padding:12px 0;text-align:center">✅ No pending product reviews.</div>')
-      + '</div>'
-      + '<div class="act" id="kyc-pending-section"><h3>🪪 Pending KYC Reviews</h3><div style="color:var(--muted);font-size:.84rem">⏳ Loading…</div></div>'
-      + '<div class="act"><h3>Recent Orders</h3>'
-      + (ords.length ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>'
-        + ords.slice(-6).reverse().map(function (o) {
-          return '<tr><td style="color:var(--gold);font-size:.78rem">' + o.id + '</td><td>' + o.customer.name + '</td><td>₦' + o.total.toLocaleString() + '</td>'
-            + '<td><span class="sb2 ' + (o.collected ? 's-ok' : 's-pend') + '">' + (o.collected ? 'Completed' : 'Escrow') + '</span></td><td>' + o.date + '</td></tr>';
-        }).join('') + '</table></div>'
-        : '<p style="color:var(--muted)">No orders yet.</p>')
-      + '</div>';
-  } else if (tab === 'pr') {
-    c.innerHTML = '<div class="ah"><h1>Products (' + prods.length + ')</h1></div>'
-      + '<div class="act"><h3>All Products</h3>'
-      + (prods.length ? '<div class="tbl-wrap"><table class="tbl"><tr><th>#</th><th>Product</th><th>Seller</th><th>Price</th><th>Imgs</th><th>Status</th><th>Actions</th></tr>'
-        + prods.map(function (p) {
-          return '<tr><td style="color:var(--muted);font-size:.74rem">' + String(p.id).slice(-6) + '</td>'
-            + '<td>' + p.emoji + ' ' + p.name.substring(0, 24) + '…</td><td>' + p.seller + '</td>'
-            + '<td>₦' + p.price.toLocaleString() + '</td>'
-            + '<td style="color:' + ((p.imgs && p.imgs.filter(Boolean).length >= 2) ? 'var(--green)' : 'var(--red)') + '">' + ((p.imgs && p.imgs.filter(Boolean).length) || 0) + '/5</td>'
-            + '<td><span class="sb2 ' + (p.status === 'pending' ? 's-pend' : p.status === 'rejected' ? 's-bad' : 's-ok') + '">' + p.status + '</span></td>'
-            + '<td class="ar2">' + (p.status === 'pending' ? '<button class="at aok" onclick="apvP(' + p.id + ')">Approve</button>' : '')
-            + '<button class="at ade" onclick="rejP(' + p.id + ')">Remove</button></td></tr>';
-        }).join('') + '</table></div>'
-        : '<p style="color:var(--muted)">No products.</p>')
-      + '</div>';
-  } else if (tab === 'od') {
-    c.innerHTML = '<div class="ah"><h1>Orders (' + ords.length + ')</h1></div>'
-      + '<div class="act"><h3>All Orders</h3>'
-      + (ords.length ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Ref</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th></tr>'
-        + ords.map(function (o) {
-          return '<tr><td style="font-size:.76rem;color:var(--gold)">' + o.id + '</td>'
-            + '<td>' + o.customer.name + '<br/><span style="font-size:.73rem;color:var(--muted)">' + o.customer.email + '</span></td>'
-            + '<td>' + o.items.length + '</td><td>₦' + o.total.toLocaleString() + '</td>'
-            + '<td><span class="sb2 ' + (o.collected ? 's-ok' : 's-pend') + '">' + (o.collected ? 'Done' : 'Escrow') + '</span></td>'
-            + '<td>' + o.date + '</td></tr>';
-        }).join('') + '</table></div>'
-        : '<p style="color:var(--muted)">No orders.</p>')
-      + '</div>';
-  } else if (tab === 'sel' || tab === 'buy' || tab === 'aff2') {
-    var role = tab === 'sel' ? 'seller' : tab === 'buy' ? 'buyer' : 'affiliate';
-    var fl = usrs.filter(function (u) { return u.role === role || (!u.role && role === 'buyer'); });
-    c.innerHTML = '<div class="ah"><h1>' + tab.charAt(0).toUpperCase() + tab.slice(1) + ' Users (' + fl.length + ')</h1></div>'
-      + '<div class="act"><h3>' + role + 's</h3>'
-      + (fl.length ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Action</th></tr>'
-        + fl.map(function (u) {
-          return '<tr><td>' + u.name + '</td><td style="color:var(--muted);font-size:.8rem">' + maskEmail(u.email) + '</td>'
-            + '<td>' + (u.phone || '—') + '</td><td>' + (u.joined || '—') + '</td>'
-            + '<td class="ar2">'
-            + '<button class="at ade" onclick="suspU(\'' + u.id + '\')">Suspend</button>'
-            + '<button class="at ade" style="background:rgba(220,38,38,.15)" onclick="deleteUser(\'' + u.id + '\')">Delete</button>'
-            + '</td></tr>';
-        }).join('') + '</table></div>'
-        : '<p style="color:var(--muted)">No ' + role + 's yet.</p>')
-      + '</div>';
-  } else if (tab === 'pay') {
-    /* Show loading immediately */
-    c.innerHTML = '<div class="ah"><h1>💰 Payouts & Withdrawals</h1><p>Live data from Neon database</p></div>'
-      + '<div id="pay-content"><div style="text-align:center;padding:40px;color:var(--muted)">⏳ Loading payout data…</div></div>';
-
-    Promise.all([
-      fetch('/api/users').then(function(r){ return r.json(); }),
-      fetch('/api/orders').then(function(r){ return r.json(); })
-    ]).then(function(results) {
-      var allUsers  = results[0].users  || [];
-      var allOrders = results[1].orders || [];
-      var sellers        = allUsers.filter(function(u){ return u.role === 'seller'; });
-      var pendingSellers = sellers.filter(function(u){ return u.payoutBank && u.payoutAcct && !u.subaccountCode; });
-      var activeSellers  = sellers.filter(function(u){ return u.subaccountCode; });
-      var totalRev  = allOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
-      var platComm  = allOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
-      var keyStatus = sessionStorage.getItem('master_key')
-        ? '<span style="color:var(--green);font-weight:600">✅ Paystack Key Active</span>'
-        : '<span style="color:var(--red);font-weight:600">❌ No Key — double-tap logo to inject</span>';
-
-      var html = '<div class="sr">'
-        + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦' + Math.round(totalRev).toLocaleString() + '</div></div>'
-        + '<div class="sc2"><div class="lb">Platform Commission</div><div class="vl">₦' + Math.round(platComm).toLocaleString() + '</div><div class="ch">5% per sale</div></div>'
-        + '<div class="sc2"><div class="lb">Active Sellers</div><div class="vl" style="color:var(--green)">' + activeSellers.length + '</div></div>'
-        + '<div class="sc2"><div class="lb">Pending Setup</div><div class="vl" style="color:var(--orange)">' + pendingSellers.length + '</div></div>'
+      c.innerHTML =
+        '<div class="ah"><h1>Admin Dashboard</h1><p>Live data · NeyoMarket Platform</p></div>'
+        + '<div class="sr">'
+        + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦'+Math.round(totalRev).toLocaleString()+'</div></div>'
+        + '<div class="sc2"><div class="lb">Platform Earned</div><div class="vl" style="color:var(--green)">₦'+Math.round(Math.max(platFees,adminBal)).toLocaleString()+'</div><div class="ch">5% per sale</div></div>'
+        + '<div class="sc2"><div class="lb">Orders</div><div class="vl">'+allOrders.length+'</div></div>'
+        + '<div class="sc2"><div class="lb">Users</div><div class="vl">'+allUsers.length+'</div></div>'
+        + '<div class="sc2"><div class="lb">KYC Pending</div><div class="vl" style="color:var(--orange)">'+kycPend+'</div><div class="ch">Need review</div></div>'
+        + '<div class="sc2"><div class="lb">Products</div><div class="vl">'+((window.prods||[]).length)+'</div></div>'
         + '</div>'
 
-        /* Paystack key */
-        + '<div class="act"><h3>🔑 Paystack Key Status</h3>'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">'
-        + '<div>' + keyStatus + '<div style="color:var(--muted);font-size:.78rem;margin-top:5px">Double-tap the NeyoMarket logo to inject your sk_live_... key.</div></div>'
-        + '<button onclick="injectKeyNow()" class="bg" style="padding:8px 16px">🔑 Inject Key</button>'
-        + '</div></div>'
-
-        /* Seller withdrawal requests from DB */
-        + '<div class="act" id="withdrawal-requests-section"><h3>💸 Seller Withdrawal Requests</h3>'
-        + '<div style="color:var(--muted);font-size:.82rem">⏳ Loading withdrawals…</div></div>'
-
-        /* Pending subaccounts */
-        + '<div class="act"><h3>⏳ Pending Subaccounts (' + pendingSellers.length + ')</h3>'
-        + (pendingSellers.length
-          ? pendingSellers.map(function(u) {
+        /* Pending product approvals */
+        + '<div class="act"><h3>⏳ Pending Product Approvals ('+pending.length+')</h3>'
+        + (pending.length
+          ? pending.map(function(p) {
+              var ih = (p.imgs&&p.imgs[0])
+                ? '<img src="'+p.imgs[0]+'" style="width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid var(--border)"/>'
+                : '<span style="font-size:1.8rem">'+(p.emoji||'📦')+'</span>';
               return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
-                + '<div style="flex:1;min-width:150px"><div style="font-weight:600">' + u.name + '</div>'
-                + '<div style="font-size:.75rem;color:var(--muted)">' + maskEmail(u.email) + '</div>'
-                + '<div style="font-size:.74rem;color:var(--muted)">🏦 ' + (u.payoutBank||'') + ' · ' + (u.payoutAcct||'') + '</div></div>'
-                + '<button onclick="adminActivateSplit(\'' + String(u.id) + '\')" class="bg" style="padding:8px 14px;font-size:.76rem">⚡ Activate</button>'
-                + '</div>';
+                + ih
+                + '<div style="flex:1;min-width:120px">'
+                + '<div style="font-weight:600;font-size:.9rem">'+p.name+'</div>'
+                + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px">by '+p.seller+' · ₦'+p.price.toLocaleString()+'</div>'
+                + '</div>'
+                + '<div class="ar2">'
+                + '<button class="at aok" onclick="apvP('+p.id+')">✓ Approve</button>'
+                + '<button class="at ade" onclick="rejP('+p.id+')">✕ Reject</button>'
+                + '</div></div>';
             }).join('')
-          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">All sellers activated ✅</div>')
+          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0;text-align:center">✅ No pending products.</div>')
         + '</div>'
 
-        /* Active sellers */
-        + '<div class="act"><h3>✅ Active Split Payments (' + activeSellers.length + ')</h3>'
-        + (activeSellers.length
-          ? '<div class="tbl-wrap"><table class="tbl"><tr><th>Seller</th><th>Bank</th><th>Balance</th><th>Code</th></tr>'
-            + activeSellers.map(function(u) {
+        /* Recent orders */
+        + '<div class="act"><h3>Recent Orders</h3>'
+        + (allOrders.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>'
+            + allOrders.slice().reverse().slice(0,8).map(function(o) {
+                var cust = o.customer||{};
                 return '<tr>'
-                  + '<td><strong>' + u.name + '</strong><br/><span style="font-size:.72rem;color:var(--muted)">' + maskEmail(u.email) + '</span></td>'
-                  + '<td>' + (u.payoutBank||'—') + '</td>'
-                  + '<td style="color:var(--green);font-weight:600">₦' + parseFloat(u.sellerBalance||0).toLocaleString() + '</td>'
-                  + '<td><code style="font-size:.74rem;color:var(--gold)">' + u.subaccountCode + '</code></td>'
+                  + '<td style="color:var(--gold);font-size:.76rem">'+o.id+'</td>'
+                  + '<td>'+(cust.name||'—')+'</td>'
+                  + '<td>₦'+parseFloat(o.total||0).toLocaleString()+'</td>'
+                  + '<td><span class="sb2 '+(o.status==='paid'||o.collected?'s-ok':'s-pend')+'">'+( o.collected?'Done':o.status||'Pending')+'</span></td>'
+                  + '<td style="font-size:.74rem;color:var(--muted)">'+(o.date||'')+'</td>'
                   + '</tr>';
               }).join('')
             + '</table></div>'
-          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active subaccounts yet.</div>')
+          : '<p style="color:var(--muted)">No orders yet.</p>')
         + '</div>';
 
-      var payContent = document.getElementById('pay-content');
-      if (payContent) payContent.innerHTML = html;
+    /* ─── KYC REVIEW ─── */
+    } else if (tab === 'kyc') {
+      var kycPending  = allUsers.filter(function(u){ return u.kycStatus === 'pending'; });
+      var kycVerified = allUsers.filter(function(u){ return u.kycStatus === 'verified'; });
+      var kycFailed   = allUsers.filter(function(u){ return u.kycStatus === 'failed'; });
 
-      /* Load withdrawal requests separately */
+      function kycRow(u, showActions) {
+        var kycBadge = u.kycStatus === 'verified'
+          ? '<span class="sb2 s-ok">✓ Verified</span>'
+          : u.kycStatus === 'pending'
+          ? '<span class="sb2 s-pend">⏳ Pending</span>'
+          : u.kycStatus === 'failed'
+          ? '<span class="sb2 s-bad">✗ Failed</span>'
+          : '<span class="sb2" style="background:var(--bg3);color:var(--muted)">Unverified</span>';
+
+        return '<tr>'
+          + '<td><strong>'+u.name+'</strong><br/><span style="font-size:.72rem;color:var(--muted)">'+maskEmail(u.email)+'</span></td>'
+          + '<td style="font-size:.78rem">ID: '+String(u.id).slice(-8)+'<br/>'+u.role+'</td>'
+          + '<td style="text-transform:uppercase;font-size:.78rem;font-weight:600">'+(u.kycType||'—')+'</td>'
+          + '<td>'+kycBadge+'</td>'
+          + (showActions
+            ? '<td class="ar2">'
+              + '<button class="at aok" onclick="adminSetKYC(\''+u.id+'\',\'verified\')">✓ Approve</button>'
+              + '<button class="at ade" onclick="adminSetKYC(\''+u.id+'\',\'failed\')">✕ Reject</button>'
+              + '</td>'
+            : '<td style="color:var(--muted);font-size:.78rem">No action needed</td>')
+          + '</tr>';
+      }
+
+      c.innerHTML =
+        '<div class="ah"><h1>🪪 KYC Review</h1><p>Verify seller identities before they can list products</p></div>'
+
+        /* Stats */
+        + '<div class="sr">'
+        + '<div class="sc2"><div class="lb">Pending</div><div class="vl" style="color:var(--orange)">'+kycPending.length+'</div></div>'
+        + '<div class="sc2"><div class="lb">Verified</div><div class="vl" style="color:var(--green)">'+kycVerified.length+'</div></div>'
+        + '<div class="sc2"><div class="lb">Failed</div><div class="vl" style="color:var(--red)">'+kycFailed.length+'</div></div>'
+        + '</div>'
+
+        /* Pending — needs action NOW */
+        + '<div class="act">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+        + '<h3 style="margin:0">⏳ Awaiting Review ('+kycPending.length+')</h3>'
+        + (kycPending.length ? '<span style="font-size:.74rem;background:var(--orange-bg);color:var(--orange);padding:3px 10px;border-radius:50px;font-weight:600">Action required</span>' : '')
+        + '</div>'
+        + (kycPending.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>User</th><th>ID</th><th>Type</th><th>Status</th><th>Action</th></tr>'
+            + kycPending.map(function(u){ return kycRow(u, true); }).join('')
+            + '</table></div>'
+          : '<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:.88rem">✅ All caught up — no pending KYC submissions.</div>')
+        + '</div>'
+
+        /* Verified history */
+        + '<div class="act">'
+        + '<h3>✅ Verified Sellers ('+kycVerified.length+')</h3>'
+        + (kycVerified.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>User</th><th>ID</th><th>Type</th><th>Status</th><th>Action</th></tr>'
+            + kycVerified.map(function(u){ return kycRow(u, false); }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No verified users yet.</div>')
+        + '</div>'
+
+        /* Failed / rejected */
+        + (kycFailed.length
+          ? '<div class="act"><h3>✗ Rejected ('+kycFailed.length+')</h3>'
+            + '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>User</th><th>ID</th><th>Type</th><th>Status</th><th>Action</th></tr>'
+            + kycFailed.map(function(u){ return kycRow(u, true); }).join('')
+            + '</table></div></div>'
+          : '');
+
+    /* ─── PAYOUTS ─── */
+    } else if (tab === 'pay') {
+      var sellers        = allUsers.filter(function(u){ return u.role==='seller'; });
+      var pendingSellers = sellers.filter(function(u){ return u.payoutBank && u.payoutAcct && !u.subaccountCode; });
+      var activeSellers  = sellers.filter(function(u){ return u.subaccountCode; });
+      var totalRev       = allOrders.reduce(function(s,o){ return s+parseFloat(o.total||0); }, 0);
+      var platComm       = allOrders.reduce(function(s,o){ return s+parseFloat(o.platformFee||o.platform_fee||0); }, 0);
+      var keyStatus      = sessionStorage.getItem('master_key')
+        ? '<span style="color:var(--green);font-weight:600">✅ Paystack Key Active</span>'
+        : '<span style="color:var(--red);font-weight:600">❌ No Key — double-tap logo to inject</span>';
+
+      c.innerHTML =
+        '<div class="ah"><h1>💰 Payouts & Withdrawals</h1><p>Live balances from Neon database</p></div>'
+        + '<div class="sr">'
+        + '<div class="sc2"><div class="lb">Total Revenue</div><div class="vl">₦'+Math.round(totalRev).toLocaleString()+'</div></div>'
+        + '<div class="sc2"><div class="lb">Platform Commission</div><div class="vl" style="color:var(--green)">₦'+Math.round(platComm).toLocaleString()+'</div><div class="ch">5% per sale</div></div>'
+        + '<div class="sc2"><div class="lb">Active Sellers</div><div class="vl">'+activeSellers.length+'</div></div>'
+        + '<div class="sc2"><div class="lb">Pending Setup</div><div class="vl" style="color:var(--orange)">'+pendingSellers.length+'</div></div>'
+        + '</div>'
+
+        /* Withdrawal requests — loaded async below */
+        + '<div class="act" id="withdrawal-requests-section">'
+        + '<h3>💸 Pending Withdrawal Requests</h3>'
+        + '<div style="color:var(--muted);font-size:.84rem">⏳ Loading…</div>'
+        + '</div>'
+
+        /* Seller balances */
+        + '<div class="act"><h3>💳 Seller Wallet Balances</h3>'
+        + (sellers.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>Seller</th><th>Bank</th><th>Account</th><th>Balance</th><th>KYC</th></tr>'
+            + sellers.map(function(u) {
+                var kycBadge = u.kycStatus==='verified'
+                  ? '<span class="sb2 s-ok">✓</span>'
+                  : u.kycStatus==='pending'
+                  ? '<span class="sb2 s-pend">Pending</span>'
+                  : '<span class="sb2 s-bad">None</span>';
+                return '<tr>'
+                  + '<td><strong>'+u.name+'</strong><br/><span style="font-size:.72rem;color:var(--muted)">'+maskEmail(u.email)+'</span></td>'
+                  + '<td style="font-size:.78rem">'+(u.payoutBank||'—')+'</td>'
+                  + '<td style="font-size:.78rem">'+(u.payoutAcct||'—')+'</td>'
+                  + '<td style="font-weight:700;color:var(--gold)">₦'+parseFloat(u.sellerBalance||0).toLocaleString()+'</td>'
+                  + '<td>'+kycBadge+'</td>'
+                  + '</tr>';
+              }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No sellers yet.</div>')
+        + '</div>'
+
+        /* Subaccount setup */
+        + '<div class="act"><h3>⚡ Paystack Setup</h3>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">'
+        + '<div>'+keyStatus+'<div style="color:var(--muted);font-size:.76rem;margin-top:4px">Double-tap logo to inject sk_live key</div></div>'
+        + '<button onclick="injectKeyNow()" class="bg" style="padding:8px 16px">🔑 Inject Key</button>'
+        + '</div>'
+        + (pendingSellers.length
+          ? '<div style="font-size:.8rem;font-weight:600;margin-bottom:10px;color:var(--orange)">⏳ '+pendingSellers.length+' seller(s) need subaccount activation:</div>'
+            + pendingSellers.map(function(u) {
+                return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border);flex-wrap:wrap">'
+                  + '<div style="flex:1"><div style="font-weight:600;font-size:.88rem">'+u.name+'</div>'
+                  + '<div style="font-size:.74rem;color:var(--muted)">'+maskEmail(u.email)+' · '+( u.payoutBank||'')+'</div></div>'
+                  + '<button onclick="adminActivateSplit(\''+String(u.id)+'\')" class="bg" style="padding:7px 14px;font-size:.75rem">⚡ Activate</button>'
+                  + '</div>';
+              }).join('')
+          : '<div style="color:var(--muted);font-size:.84rem">All sellers with bank details have active subaccounts ✅</div>')
+        + '</div>';
+
+      /* Load withdrawals async */
       fetch('/api/paystack?action=withdrawals&userId=all')
         .then(function(r){ return r.json(); })
         .then(function(wData) {
-          var wdraw = (wData.withdrawals || []).filter(function(w){ return w.status === 'pending'; });
-          var wSection = document.getElementById('withdrawal-requests-section');
-          if (!wSection) return;
+          var wdraw   = (wData.withdrawals||[]).filter(function(w){ return w.status==='pending'; });
+          var section = document.getElementById('withdrawal-requests-section');
+          if (!section) return;
+
           if (!wdraw.length) {
-            wSection.innerHTML = '<h3>💸 Seller Withdrawal Requests</h3><div style="color:var(--muted);font-size:.84rem;padding:10px 0">No pending requests.</div>';
+            section.innerHTML = '<h3>💸 Pending Withdrawal Requests</h3>'
+              + '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No pending requests. ✅</div>';
             return;
           }
-          wSection.innerHTML = '<h3>💸 Seller Withdrawal Requests (' + wdraw.length + ')</h3>'
-            + '<div class="tbl-wrap"><table class="tbl"><tr><th>Seller</th><th>Amount</th><th>Bank</th><th>Date</th><th>Action</th></tr>'
+
+          section.innerHTML = '<h3>💸 Pending Withdrawal Requests ('+wdraw.length+')</h3>'
+            + '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>Seller</th><th>Amount</th><th>Bank</th><th>Account No.</th><th>Account Name</th><th>Requested</th><th>Action</th></tr>'
             + wdraw.map(function(w) {
-                var u = allUsers.find(function(x){ return String(x.id) === String(w.user_id); }) || {};
-                return '<tr>'
-                  + '<td><strong>' + (u.name||'—') + '</strong><br/><span style="font-size:.72rem;color:var(--muted)">' + maskEmail(u.email||'') + '</span></td>'
-                  + '<td style="font-weight:700;color:var(--gold)">₦' + parseFloat(w.amount||0).toLocaleString() + '</td>'
-                  + '<td style="font-size:.78rem">' + (u.payoutBank||'—') + '<br/>' + (u.payoutAcct||'—') + '</td>'
-                  + '<td style="font-size:.74rem;color:var(--muted)">' + new Date(w.created_at||Date.now()).toLocaleDateString() + '</td>'
-                  + '<td><button onclick="adminProcessWithdraw(\''+w.id+'\',\''+String(w.user_id)+'\',\''+w.amount+'\')" class="at aok">Process</button></td>'
+                var u = allUsers.find(function(x){ return String(x.id)===String(w.user_id); })||{};
+                var wid = String(w.id); var uid = String(w.user_id); var amt = String(w.amount);
+                return '<tr id="wrow-'+wid+'">'
+                  + '<td><strong>'+(u.name||'Unknown')+'</strong><br/><span style="font-size:.72rem;color:var(--muted)">'+maskEmail(u.email||'')+'</span></td>'
+                  + '<td style="font-weight:700;color:var(--gold);font-size:1rem">₦'+parseFloat(w.amount||0).toLocaleString()+'</td>'
+                  + '<td style="font-size:.8rem">'+(u.payoutBank||'—')+'</td>'
+                  + '<td style="font-size:.8rem;font-family:monospace">'+(u.payoutAcct||'—')+'</td>'
+                  + '<td style="font-size:.8rem">'+(u.payoutAname||'—')+'</td>'
+                  + '<td style="font-size:.74rem;color:var(--muted)">'+new Date(w.created_at||Date.now()).toLocaleDateString()+'</td>'
+                  + '<td>'
+                  + '<button id="wbtn-'+wid+'" class="at aok" onclick="adminApprovePayout(\''+wid+'\',\''+uid+'\',\''+amt+'\')" style="white-space:nowrap">✓ Approve</button>'
+                  + '</td>'
                   + '</tr>';
               }).join('')
             + '</table></div>';
-        }).catch(function(){});
+        }).catch(function(){
+          var section = document.getElementById('withdrawal-requests-section');
+          if (section) section.innerHTML = '<h3>💸 Withdrawal Requests</h3><div style="color:var(--red);font-size:.84rem">Failed to load.</div>';
+        });
 
-    }).catch(function(e) {
-      var pc = document.getElementById('pay-content');
-      if (pc) pc.innerHTML = '<div style="color:var(--red);padding:16px">Error loading data: ' + e.message + '</div>';
-    });
+    /* ─── SELLERS / BUYERS / AFFILIATES ─── */
+    } else if (tab === 'sel' || tab === 'buy' || tab === 'aff2') {
+      var roleMap = { sel:'seller', buy:'buyer', aff2:'affiliate' };
+      var roleLabel = { sel:'Sellers', buy:'Buyers', aff2:'Affiliates' };
+      var role = roleMap[tab];
+      var fl   = allUsers.filter(function(u){ return u.role === role || (!u.role && role==='buyer'); });
 
-  } else if (tab === 'dis') {
-    c.innerHTML = '<div class="ah"><h1>Disputes</h1></div><div class="act"><h3>Active Disputes (0)</h3><p style="color:var(--muted)">No active disputes. All orders protected by escrow.</p></div>';
-  } else if (tab === 'set') {
-    c.innerHTML = '<div class="ah"><h1>Settings</h1></div>'
-      + '<div class="act"><h3>Platform Settings</h3>'
-      + '<div class="fg"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px">Site Name</label><input class="fi" value="NeyoMarket"/></div>'
-      + '<div class="fg"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px">Support Phone</label><input class="fi" value="' + SUPPORT_PHONE + '"/></div>'
-      + '<div class="fg"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:6px">Platform Fee %</label><input class="fi" type="number" value="10" style="width:100px"/></div>'
-      + '<button class="bg" style="padding:9px 22px;margin-top:4px" onclick="toast(\'Settings saved ✓\',\'ok\')">Save Settings</button></div>';
-  }
+      c.innerHTML = '<div class="ah"><h1>'+roleLabel[tab]+' ('+fl.length+')</h1></div>'
+        + '<div class="act"><h3>'+roleLabel[tab]+' List</h3>'
+        + (fl.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>Name</th><th>Email</th><th>Phone</th>'
+            + (role==='seller' ? '<th>Balance</th><th>KYC</th>' : '')
+            + '<th>Joined</th><th>Action</th></tr>'
+            + fl.map(function(u) {
+                var kycBadge = role==='seller'
+                  ? (u.kycStatus==='verified'
+                    ? '<td><span class="sb2 s-ok">✓ Verified</span></td>'
+                    : u.kycStatus==='pending'
+                    ? '<td><span class="sb2 s-pend">Pending</span></td>'
+                    : '<td><span class="sb2 s-bad">None</span></td>')
+                  : '';
+                var balCell = role==='seller'
+                  ? '<td style="font-weight:600;color:var(--gold)">₦'+parseFloat(u.sellerBalance||0).toLocaleString()+'</td>'
+                  : '';
+                return '<tr>'
+                  + '<td><strong>'+u.name+'</strong></td>'
+                  + '<td style="font-size:.8rem;color:var(--muted)">'+maskEmail(u.email)+'</td>'
+                  + '<td style="font-size:.8rem">'+(u.phone||'—')+'</td>'
+                  + balCell + kycBadge
+                  + '<td style="font-size:.74rem;color:var(--muted)">'+(u.joined||'—')+'</td>'
+                  + '<td class="ar2">'
+                  + '<button class="at ade" onclick="suspU(\''+u.id+'\')">Suspend</button>'
+                  + '<button class="at ade" style="background:rgba(220,38,38,.15)" onclick="deleteUser(\''+u.id+'\')">Delete</button>'
+                  + '</td></tr>';
+              }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem;padding:16px 0">No '+role+'s yet.</div>')
+        + '</div>';
+
+    /* ─── PRODUCTS ─── */
+    } else if (tab === 'pr') {
+      var prods2 = window.prods || [];
+      c.innerHTML = '<div class="ah"><h1>Products ('+prods2.length+')</h1></div>'
+        + '<div class="act"><h3>All Products</h3>'
+        + (prods2.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>#</th><th>Product</th><th>Seller</th><th>Price</th><th>Type</th><th>Status</th><th>Actions</th></tr>'
+            + prods2.map(function(p) {
+                return '<tr>'
+                  + '<td style="color:var(--muted);font-size:.72rem">'+String(p.id).slice(-6)+'</td>'
+                  + '<td>'+(p.emoji||'')+'&nbsp;'+p.name.substring(0,22)+'</td>'
+                  + '<td style="font-size:.8rem">'+p.seller+'</td>'
+                  + '<td>₦'+p.price.toLocaleString()+'</td>'
+                  + '<td style="font-size:.76rem;text-transform:uppercase">'+(p.type||'digital')+'</td>'
+                  + '<td><span class="sb2 '+(p.status==='pending'?'s-pend':p.status==='rejected'?'s-bad':'s-ok')+'">'+p.status+'</span></td>'
+                  + '<td class="ar2">'
+                  + (p.status==='pending'?'<button class="at aok" onclick="apvP('+p.id+')">Approve</button>':'')
+                  + '<button class="at ade" onclick="rejP('+p.id+')">Remove</button>'
+                  + '</td></tr>';
+              }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem">No products.</div>')
+        + '</div>';
+
+    /* ─── ORDERS ─── */
+    } else if (tab === 'od') {
+      c.innerHTML = '<div class="ah"><h1>Orders ('+allOrders.length+')</h1></div>'
+        + '<div class="act"><h3>All Orders</h3>'
+        + (allOrders.length
+          ? '<div class="tbl-wrap"><table class="tbl">'
+            + '<tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Seller Payout</th><th>Status</th><th>Date</th></tr>'
+            + allOrders.slice().reverse().map(function(o) {
+                var cust = o.customer||{};
+                return '<tr>'
+                  + '<td style="font-size:.74rem;color:var(--gold)">'+o.id+'</td>'
+                  + '<td>'+(cust.name||'—')+'<br/><span style="font-size:.72rem;color:var(--muted)">'+(cust.email||'')+'</span></td>'
+                  + '<td>'+(o.items||[]).length+'</td>'
+                  + '<td style="font-weight:600">₦'+parseFloat(o.total||0).toLocaleString()+'</td>'
+                  + '<td style="color:var(--green)">₦'+parseFloat(o.sellerPayout||o.seller_payout||0).toLocaleString()+'</td>'
+                  + '<td><span class="sb2 '+(o.collected||o.status==='paid'?'s-ok':'s-pend')+'">'+(o.collected?'Done':o.status||'Pending')+'</span></td>'
+                  + '<td style="font-size:.74rem;color:var(--muted)">'+(o.date||'')+'</td>'
+                  + '</tr>';
+              }).join('')
+            + '</table></div>'
+          : '<div style="color:var(--muted);font-size:.84rem">No orders.</div>')
+        + '</div>';
+
+    /* ─── DISPUTES ─── */
+    } else if (tab === 'dis') {
+      c.innerHTML = '<div class="ah"><h1>Disputes</h1></div>'
+        + '<div class="act"><h3>Active Disputes</h3>'
+        + '<div style="text-align:center;padding:28px 0;color:var(--muted)">'
+        + '<div style="font-size:2rem;margin-bottom:8px">⚖️</div>'
+        + '<div style="font-size:.88rem">No active disputes. All orders are escrow-protected.</div>'
+        + '</div></div>';
+
+    /* ─── SETTINGS ─── */
+    } else if (tab === 'set') {
+      c.innerHTML = '<div class="ah"><h1>Settings</h1></div>'
+        + '<div class="act"><h3>Platform Settings</h3>'
+        + '<div class="fg"><label>Site Name</label><input class="fi" value="NeyoMarket"/></div>'
+        + '<div class="fg"><label>Support Phone</label><input class="fi" value="'+SUPPORT_PHONE+'"/></div>'
+        + '<div class="fg"><label>Platform Fee %</label><input class="fi" type="number" value="5" style="width:100px"/></div>'
+        + '<button class="bg" style="padding:9px 22px;margin-top:4px" onclick="toast(\'Settings saved ✓\',\'ok\')">Save Settings</button>'
+        + '</div>';
+    }
+
+  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading orders: '+e.message+'</div>'; });
+  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading users: '+e.message+'</div>'; });
 }
 window.aTab = aTab;
+
+/* ════════════════════════════════════════════════
+   ADMIN KYC APPROVAL
+════════════════════════════════════════════════ */
+function adminSetKYC(userId, status) {
+  var label = status === 'verified' ? 'APPROVE' : 'REJECT';
+  if (!confirm(label + ' KYC for this user? This will ' + (status === 'verified' ? 'unlock their seller features.' : 'block them from listing products.'))) return;
+
+  fetch('/api/auth?action=update-profile', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ userId: userId, kycStatus: status })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.user || data.ok) {
+      toast(status === 'verified' ? '✅ KYC Approved — seller can now list products.' : '❌ KYC Rejected.', status === 'verified' ? 'ok' : 'warn');
+      /* Refresh KYC tab */
+      aTab('kyc', document.querySelector('.asb[onclick*="kyc"]'));
+    } else {
+      toast(data.error || 'Update failed', 'fail');
+    }
+  })
+  .catch(function(){ toast('Network error — try again', 'fail'); });
+}
+window.adminSetKYC = adminSetKYC;
+
+/* ════════════════════════════════════════════════
+   ADMIN APPROVE PAYOUT
+   1. Triggers Paystack Transfer API
+   2. Deducts from seller_balance in Neon
+   3. Marks withdrawal as 'success' in DB
+════════════════════════════════════════════════ */
+function adminApprovePayout(withdrawalId, userId, amount) {
+  var amt = parseFloat(amount);
+  if (!confirm('Approve payout of ₦' + amt.toLocaleString() + '? Paystack transfer triggered, seller balance deducted. Cannot be undone.')) return;
+
+  var btn = document.getElementById('wbtn-' + withdrawalId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
+
+  fetch('/api/paystack?action=approve-payout', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ withdrawalId: withdrawalId, userId: userId, amount: amt })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      toast('✅ Payout of ₦' + amt.toLocaleString() + ' approved & sent!', 'ok');
+      /* Remove the row from the table */
+      var row = document.getElementById('wrow-' + withdrawalId);
+      if (row) row.style.cssText = 'opacity:.4;text-decoration:line-through';
+      if (btn) { btn.textContent = '✓ Done'; btn.style.background = 'var(--green-bg)'; }
+      /* Refresh payouts tab after 1.5s */
+      setTimeout(function(){ aTab('pay', document.querySelector('.asb[onclick*="pay"]')); }, 1500);
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
+      toast('❌ ' + (data.error || 'Payout failed'), 'fail');
+    }
+  })
+  .catch(function(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
+    toast('Network error: ' + e.message, 'fail');
+  });
+}
+window.adminApprovePayout = adminApprovePayout;
 
 function adminActivateSplit(userId) {
   var u = usrs.find(function(x){ return String(x.id) === String(userId); });
