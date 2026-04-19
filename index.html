@@ -1367,31 +1367,40 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         <label>Bank Name <span style="color:var(--red)">*</span></label>
         <select class="fi" id="sel-bank">
           <option value="">— Select your bank —</option>
-          <option value="Access Bank">Access Bank</option>
-          <option value="First Bank">First Bank</option>
-          <option value="GTBank">GTBank (Guaranty Trust)</option>
-          <option value="UBA">UBA (United Bank for Africa)</option>
-          <option value="Zenith Bank">Zenith Bank</option>
-          <option value="Sterling Bank">Sterling Bank</option>
-          <option value="Union Bank">Union Bank</option>
-          <option value="Fidelity Bank">Fidelity Bank</option>
-          <option value="Ecobank">Ecobank</option>
-          <option value="Wema Bank">Wema Bank</option>
-          <option value="Stanbic IBTC">Stanbic IBTC</option>
-          <option value="FCMB">FCMB</option>
-          <option value="Keystone Bank">Keystone Bank</option>
-          <option value="Polaris Bank">Polaris Bank</option>
-          <option value="Heritage Bank">Heritage Bank</option>
-          <option value="Opay">Opay</option>
-          <option value="Palmpay">Palmpay</option>
-          <option value="Kuda">Kuda Bank</option>
-          <option value="Moniepoint">Moniepoint MFB</option>
-          <option value="VFD MFB">VFD Microfinance Bank</option>
+          <option value="044">Access Bank</option>
+          <option value="023">Citibank</option>
+          <option value="050">Ecobank</option>
+          <option value="070">Fidelity Bank</option>
+          <option value="011">First Bank</option>
+          <option value="214">FCMB</option>
+          <option value="058">GTBank (Guaranty Trust)</option>
+          <option value="030">Heritage Bank</option>
+          <option value="301">Jaiz Bank</option>
+          <option value="082">Keystone Bank</option>
+          <option value="526">Kuda Bank</option>
+          <option value="50211">Moniepoint MFB</option>
+          <option value="999992">Opay</option>
+          <option value="999991">Palmpay</option>
+          <option value="076">Polaris Bank</option>
+          <option value="101">Providus Bank</option>
+          <option value="221">Stanbic IBTC</option>
+          <option value="232">Sterling Bank</option>
+          <option value="032">Union Bank</option>
+          <option value="033">UBA</option>
+          <option value="215">Unity Bank</option>
+          <option value="035">Wema Bank</option>
+          <option value="057">Zenith Bank</option>
         </select>
       </div>
-      <div class="fg"><label>Account Number <span style="color:var(--red)">*</span></label><input class="fi" type="tel" id="sel-acct" placeholder="10-digit account number" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'');liveVerifyAccount()"/></div>
-      <div id="sel-acct-verify" style="font-size:.8rem;margin-top:-8px;margin-bottom:10px;min-height:16px"></div>
-      <div class="fg"><label>Account Name <span style="color:var(--red)">*</span></label><input class="fi" type="text" id="sel-aname" placeholder="Must match your bank account name exactly"/></div>
+      <div class="fg"><label>Account Number <span style="color:var(--red)">*</span></label>
+        <input class="fi" type="tel" id="sel-acct" placeholder="10-digit account number" maxlength="10"
+          oninput="this.value=this.value.replace(/\D/g,'');if(this.value.length===10)resolveSellerAcct()"/>
+        <div id="sel-acct-verify" style="font-size:.78rem;margin-top:5px;min-height:16px"></div>
+      </div>
+      <div class="fg"><label>Account Name <span style="color:var(--red)">*</span></label>
+        <input class="fi" type="text" id="sel-aname" placeholder="Auto-filled after account lookup" readonly style="background:var(--bg3);cursor:not-allowed"/>
+        <p class="hint">Resolved automatically from your bank + account number.</p>
+      </div>
       <div id="sel-payout-ok" style="display:none;border-radius:9px;padding:11px 14px;font-size:.83rem;margin-bottom:10px"></div>
       <button class="bg" style="padding:10px 22px;width:100%" id="sel-save-btn" onclick="saveSellerPayout()">💳 Save &amp; Activate Split Payment</button>
     </div>
@@ -3476,6 +3485,33 @@ var BANK_CODES = {
 
 /* Live account name verification via vault */
 var verifyTimer = null;
+/* Resolve account name for seller dashboard bank form */
+function resolveSellerAcct() {
+  var bank  = gv('sel-bank');
+  var acct  = gv('sel-acct');
+  var stEl  = document.getElementById('sel-acct-verify');
+  var nEl   = document.getElementById('sel-aname');
+  if (!bank || !acct || acct.length !== 10) return;
+  if (stEl) { stEl.textContent = '⏳ Looking up account…'; stEl.style.color = 'var(--muted)'; }
+  if (nEl)  { nEl.value = ''; }
+  fetch('/api/paystack?action=resolve-account&accountNumber=' + acct + '&bankCode=' + bank)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.accountName) {
+        if (nEl)  { nEl.value = data.accountName; nEl.style.background = 'var(--green-bg)'; }
+        if (stEl) { stEl.textContent = '✓ Account found: ' + data.accountName; stEl.style.color = 'var(--green)'; }
+      } else {
+        if (nEl)  { nEl.value = ''; nEl.style.background = 'var(--bg3)'; nEl.readOnly = false; nEl.style.cursor = 'text'; }
+        if (stEl) { stEl.textContent = (data.error||'Account not found — enter name manually'); stEl.style.color = 'var(--orange)'; }
+      }
+    })
+    .catch(function() {
+      if (stEl) { stEl.textContent = 'Lookup unavailable — enter name manually'; stEl.style.color = 'var(--orange)'; }
+      if (nEl)  { nEl.readOnly = false; nEl.style.background = '#fff'; nEl.style.cursor = 'text'; }
+    });
+}
+window.resolveSellerAcct = resolveSellerAcct;
+
 function liveVerifyAccount() {
   var acct  = gv('sel-acct');
   var bank  = gv('sel-bank');
@@ -3569,11 +3605,17 @@ function saveSellerPayout() {
 
   createPaystackSubaccount(CU.name, bank, acct, function (subCode, errMsg) {
     /* Always save bank details locally regardless */
-    CU.payoutBank       = bank;
+    CU.payoutBank       = bank;  /* now a bank code e.g. "058" */
     CU.payoutAcct       = acct;
     CU.payoutAname      = aname;
     CU.subaccountCode   = subCode || CU.subaccountCode || null;
     CU.subaccountStatus = subCode ? 'active' : 'pending';
+
+    /* Persist bank details to Neon immediately */
+    fetch('/api/auth?action=update-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: String(CU.id), payoutBank: bank, payoutAcct: acct, payoutAname: aname })
+    }).catch(function(){});
 
     var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
     if (idx > -1) { usrs[idx] = CU; saveAll(); }
@@ -3906,17 +3948,23 @@ function aTab(tab, btn) {
   c.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading…</div>';
 
   /* Every tab fetches live from Neon — products, users, orders all fresh */
-  fetch('/api/products').then(function(r){ return r.json(); }).then(function(pData) {
-  fetch('/api/users').then(function(r){ return r.json(); }).then(function(uData) {
-  fetch('/api/orders').then(function(r){ return r.json(); }).then(function(oData) {
-
-    /* Update global prods cache with ALL statuses so admin can see pending */
-    var allProds  = pData.products || [];
+  Promise.all([
+    fetch('/api/products').then(function(r){ return r.json(); }),
+    fetch('/api/users').then(function(r){ return r.json(); }),
+    fetch('/api/orders').then(function(r){ return r.json(); })
+  ]).then(function(results) {
+    var pData = results[0];
+    var uData = results[1];
+    var oData = results[2];
+    /* Update global prods with ALL statuses so admin sees pending */
+    var allProds  = (pData && pData.products) || [];
     window.prods  = allProds;
     prods         = allProds;
-
-    var allUsers  = uData.users  || [];
-    var allOrders = oData.orders || [];
+    var allUsers  = (uData && uData.users)  || [];
+    var allOrders = (oData && oData.orders) || [];
+    /* dummy nested-then closer to keep block structure */
+    (function(){
+    (function(){
 
     /* ─── OVERVIEW ─── */
     if (tab === 'ov') {
@@ -4265,9 +4313,12 @@ function aTab(tab, btn) {
         + '</div>';
     }
 
-  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading orders: '+e.message+'</div>'; });
-  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading users: '+e.message+'</div>'; });
-  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading products: '+e.message+'</div>'; });
+    })(); /* close dummy user then */
+    })(); /* close dummy order then */
+  }).catch(function(e){
+    console.error('[aTab] fetch error:', e.message);
+    c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.88rem">Error loading dashboard data: '+e.message+'<br/><br/><button onclick="location.reload()" class="bg" style="padding:8px 16px">Retry</button></div>';
+  });
 }
 window.aTab = aTab;
 
