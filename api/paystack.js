@@ -156,6 +156,91 @@ module.exports = async function handler(req, res) {
       return res.status(201).json({ ok: true, message: 'Withdrawal request submitted! Admin will process it shortly.' });
     }
 
+    /* ══════════════════════════════════════════════════════
+       APPROVE PAYOUT — admin clicks 'Approve' on a pending request
+       1. Creates Paystack transfer recipient
+       2. Triggers Paystack Transfer API
+       3. Deducts amount from seller_balance in Neon
+       4. Marks withdrawal as 'success' in withdrawals table
+    ══════════════════════════════════════════════════════ */
+    if (action === 'approve-payout') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+      const { withdrawalId, userId, amount } = req.body || {};
+      if (!withdrawalId || !userId || !amount)
+        return res.status(400).json({ error: 'withdrawalId, userId and amount required.' });
+
+      /* Load user */
+      const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
+      if (!users.length) return res.status(404).json({ error: 'User not found.' });
+      const user = users[0];
+
+      if (!user.payout_acct || !user.payout_bank)
+        return res.status(400).json({ error: 'Seller has no bank details saved.' });
+
+      const bal = parseFloat(user.seller_balance || 0);
+      const amt = parseFloat(amount);
+      if (amt > bal)
+        return res.status(400).json({ error: `Seller balance (₦${bal.toLocaleString()}) is less than requested (₦${amt.toLocaleString()}).` });
+
+      let transferRef = 'MAN-' + Date.now();
+      let transferOk  = false;
+
+      /* Attempt Paystack Transfer if key is available */
+      if (PSK) {
+        /* Step 1: Create recipient */
+        const recipRes = await paystackAPI('/transferrecipient', 'POST', {
+          type:           'nuban',
+          name:           user.payout_aname || user.name,
+          account_number: user.payout_acct,
+          bank_code:      user.payout_bank,
+          currency:       'NGN'
+        });
+
+        if (!recipRes.status)
+          return res.status(400).json({ error: 'Could not create recipient: ' + (recipRes.message || 'Check bank details') });
+
+        /* Step 2: Initiate transfer */
+        const transferRes = await paystackAPI('/transfer', 'POST', {
+          source:    'balance',
+          amount:    Math.floor(amt * 100), /* kobo */
+          recipient: recipRes.data.recipient_code,
+          reason:    'NeyoMarket seller payout — ' + user.name
+        });
+
+        if (!transferRes.status)
+          return res.status(400).json({ error: 'Transfer failed: ' + (transferRes.message || 'Try again') });
+
+        transferRef = transferRes.data.reference || transferRef;
+        transferOk  = true;
+      } else {
+        /* No PSK — mark as manually approved (admin handles bank transfer themselves) */
+        transferOk = true;
+      }
+
+      if (transferOk) {
+        /* Step 3: Deduct from seller_balance in Neon */
+        await sql`
+          UPDATE users
+          SET seller_balance = COALESCE(seller_balance, 0) - ${amt}
+          WHERE id = ${String(userId)}
+        `;
+
+        /* Step 4: Mark withdrawal as success */
+        await sql`
+          UPDATE withdrawals
+          SET status    = 'success',
+              reference = ${transferRef}
+          WHERE id = ${String(withdrawalId)}
+        `;
+      }
+
+      return res.status(200).json({
+        ok:        true,
+        reference: transferRef,
+        message:   '₦' + amt.toLocaleString() + ' sent to ' + (user.payout_aname || user.name)
+      });
+    }
+
     /* REQUEST PAYOUT — admin-triggered, processes immediately */
     if (action === 'withdraw') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -207,11 +292,13 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    /* WITHDRAWAL HISTORY */
+    /* WITHDRAWAL HISTORY — supports ?userId=all for admin */
     if (action === 'withdrawals') {
       const userId = req.query.userId;
       if (!userId) return res.status(400).json({ error: 'userId required.' });
-      const rows = await sql`SELECT * FROM withdrawals WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 20`;
+      const rows = userId === 'all'
+        ? await sql`SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT 200`
+        : await sql`SELECT * FROM withdrawals WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 50`;
       return res.status(200).json({ withdrawals: rows });
     }
 
@@ -222,4 +309,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Server error. Please try again.' });
   }
 };
-
