@@ -81,6 +81,8 @@
 
 <!-- ═══ PAYSTACK ═══ -->
 <script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
 
 <!-- ═══ EMAILJS — sends real password reset emails from the browser ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -4613,18 +4615,32 @@ function submitKYC() {
   var errEl  = document.getElementById('kyc-err');
   var btn    = document.getElementById('kyc-btn');
 
+  /* Clear previous errors */
   if (errEl) errEl.textContent = '';
+
+  /* Client-side validation */
   if (!type)   { if (errEl) errEl.textContent = 'Please select NIN or BVN.'; return; }
   if (!number) { if (errEl) errEl.textContent = 'Please enter your ' + type.toUpperCase() + '.'; return; }
-  if (!/^[0-9]{10,11}$/.test(number)) { if (errEl) errEl.textContent = type.toUpperCase() + ' must be 10-11 digits, numbers only.'; return; }
+  if (!/^[0-9]{10,11}$/.test(number)) {
+    if (errEl) errEl.textContent = type.toUpperCase() + ' must be 10–11 digits, numbers only.';
+    return;
+  }
   if (!CU) { toast('Please sign in first', 'fail'); return; }
 
-  /* ONE-CLICK rule — disable immediately */
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifying…'; }
+  /* ONE-CLICK: disable button immediately */
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
-  /* Build request with timeout */
+  /* Optimistically update local session to 'pending' right now
+     so the admin dashboard sees it immediately even before the
+     API responds */
+  CU.kycStatus = 'pending';
+  CU.kycType   = type;
+  localStorage.setItem('nm_current_user', JSON.stringify(CU));
+  sessionStorage.setItem('nm_session',    JSON.stringify(CU));
+
+  /* Timeout controller — 25 seconds */
   var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  var timeoutId  = controller ? setTimeout(function(){ controller.abort(); }, 30000) : null;
+  var timeoutId  = controller ? setTimeout(function(){ controller.abort(); }, 25000) : null;
 
   var fetchOpts = {
     method:  'POST',
@@ -4633,45 +4649,119 @@ function submitKYC() {
   };
   if (controller) fetchOpts.signal = controller.signal;
 
-  fetch('/api/paystack?action=kyc', fetchOpts)
-  .then(function(r) {
-    if (timeoutId) clearTimeout(timeoutId);
-    /* Safe JSON parse */
-    return r.text().then(function(txt) {
-      if (!txt || txt.trim() === '') throw new Error('Verification service is warming up. Please try again.');
-      try { return JSON.parse(txt); } catch(e) { throw new Error('Unexpected response. Please try again.'); }
-    });
-  })
-  .then(function(data) {
-    if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
-    if (data.ok) {
-      CU.kycStatus = data.kycStatus || 'pending';
-      CU.kycType   = type;
-      localStorage.setItem('nm_current_user', JSON.stringify(CU));
-      sessionStorage.setItem('nm_session', JSON.stringify(CU));
-      /* Auto UI update — no manual refresh needed */
-      renderKYCStatus();
-      updNav();
-      if (data.kycStatus === 'verified') {
-        toast('✅ Identity Verified! You can now list products.', 'ok');
-        /* Unlock sell button immediately */
-        var sellBtn = document.getElementById('sell-btn');
-        if (sellBtn) sellBtn.disabled = false;
-      } else {
-        toast('⏳ ' + (data.message || 'Submitted — under review.'), 'ok');
+  fetch('/api/auth?action=kyc', fetchOpts)
+    .then(function(r) {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      /* Use r.ok — don't care about empty body edge cases */
+      if (r.ok) {
+        return r.text().then(function(txt) {
+          /* Parse JSON if present, otherwise treat as success */
+          if (!txt || txt.trim() === '') return { ok: true, kycStatus: 'pending' };
+          try { return JSON.parse(txt); } catch(e) { return { ok: true, kycStatus: 'pending' }; }
+        });
       }
-    } else {
-      if (errEl) errEl.textContent = data.error || 'Verification failed. Check your details.';
-    }
-  })
-  .catch(function(err) {
-    if (timeoutId) clearTimeout(timeoutId);
-    if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
-    var msg = err.message || 'Connection error. Please try again.';
-    if (msg.includes('abort') || msg.includes('AbortError')) msg = 'Request timed out. Please try again.';
-    if (errEl) errEl.textContent = msg;
-    toast(msg, 'fail');
-  });
+
+      /* Non-2xx: try to parse error message */
+      return r.text().then(function(txt) {
+        var msg = 'Submission failed. Please try again.';
+        try { var d = JSON.parse(txt); msg = d.error || msg; } catch(e) {}
+        throw new Error(msg);
+      });
+    })
+    .then(function(data) {
+      if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
+
+      if (data.ok || data.kycStatus) {
+        /* Confirm status in local session */
+        CU.kycStatus = data.kycStatus || 'pending';
+        CU.kycType   = type;
+        localStorage.setItem('nm_current_user', JSON.stringify(CU));
+        sessionStorage.setItem('nm_session',    JSON.stringify(CU));
+
+        if (data.kycStatus === 'verified') {
+          /* Immediately verified (e.g. Paystack confirmed) */
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              icon:             'success',
+              title:            'Identity Verified! ✅',
+              text:             'Your identity has been confirmed. You can now list products.',
+              confirmButtonText:'Go to Dashboard',
+              confirmButtonColor:'#c9922a',
+              allowOutsideClick: false
+            }).then(function() {
+              renderKYCStatus();
+              updNav();
+              switchDashTab('seller', document.getElementById('tab-seller'));
+            });
+          } else {
+            renderKYCStatus(); updNav();
+            toast('✅ Identity Verified! You can now list products.', 'ok');
+          }
+        } else {
+          /* Pending review — show SweetAlert then refresh KYC panel */
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              icon:              'success',
+              title:             'Verification Submitted!',
+              html:              '<p style="color:#374151;font-size:.95rem;line-height:1.6">'
+                                + 'Our team will review your <strong>' + type.toUpperCase() + '</strong> details shortly.<br/><br/>'
+                                + 'You will be notified once your account is approved.</p>',
+              confirmButtonText: 'OK, Got it',
+              confirmButtonColor:'#c9922a',
+              allowOutsideClick: false
+            }).then(function() {
+              /* After OK — refresh the KYC status panel so user sees "Pending" */
+              renderKYCStatus();
+              updNav();
+            });
+          } else {
+            renderKYCStatus(); updNav();
+            toast('⏳ Submitted! Our team will review your ' + type.toUpperCase() + ' shortly.', 'ok');
+          }
+        }
+
+      } else {
+        /* Server returned ok:false with an error message */
+        if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
+        /* Revert optimistic status update */
+        CU.kycStatus = 'unverified';
+        localStorage.setItem('nm_current_user', JSON.stringify(CU));
+        sessionStorage.setItem('nm_session',    JSON.stringify(CU));
+        var errMsg = data.error || 'Submission failed. Please check your details.';
+        if (errEl) errEl.textContent = errMsg;
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({ icon:'error', title:'Submission Failed', text: errMsg, confirmButtonColor:'#c9922a' });
+        } else {
+          toast(errMsg, 'fail');
+        }
+      }
+    })
+    .catch(function(err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (btn) { btn.disabled = false; btn.textContent = '🔐 Submit for Verification'; }
+
+      var msg = err.message || 'Connection error. Please try again.';
+      if (msg.toLowerCase().includes('abort') || msg.toLowerCase().includes('aborted')) {
+        msg = 'Request timed out. Please check your connection and try again.';
+      }
+
+      /* On network error, keep the optimistic 'pending' status — the DB write
+         may have succeeded even if the response was lost */
+      if (errEl) errEl.textContent = msg;
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon:  'warning',
+          title: 'Network Issue',
+          html:  '<p style="color:#374151">' + msg + '</p>'
+               + '<p style="color:#6b7280;font-size:.85rem;margin-top:8px">Your submission may have saved. Check your status below or try again.</p>',
+          confirmButtonColor: '#c9922a'
+        }).then(function(){ renderKYCStatus(); });
+      } else {
+        toast(msg, 'warn');
+        renderKYCStatus();
+      }
+    });
 }
 window.submitKYC = submitKYC;
 
