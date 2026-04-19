@@ -4505,31 +4505,57 @@ function removeTypingIndicator() {
 
 /* Build a context-rich system prompt using live marketplace data */
 function buildSystemPrompt() {
-  var activeProds  = prods.filter(function(p){ return p.status === 'active'; });
-  var categories   = {};
+  var activeProds = prods.filter(function(p){ return p.status === 'active'; });
+  var categories  = {};
   activeProds.forEach(function(p){ categories[p.cat] = (categories[p.cat]||0)+1; });
-  var topCats = Object.keys(categories).sort(function(a,b){ return categories[b]-categories[a]; }).slice(0,3);
+  var topCats  = Object.keys(categories).sort(function(a,b){ return categories[b]-categories[a]; }).slice(0,3);
   var totalRev = ords.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
+  var userName = CU ? CU.name.split(' ')[0] : 'there';
+  var userRole = CU ? CU.role : 'guest';
 
-  return "You are Neyo AI — the world-class business intelligence assistant for NeyoMarket, Nigeria's premier digital and physical marketplace.\n\n"
-    + "PERSONALITY: You are a brilliant, authoritative, and warm business strategist. You speak with the confidence of a top-tier consultant, the empathy of a mentor, and the precision of an expert. You are never vague — you give specific, actionable advice.\n\n"
-    + "LIVE MARKETPLACE DATA (as of right now):\n"
-    + "- Active products: " + activeProds.length + "\n"
-    + "- Top categories: " + (topCats.join(', ') || 'none yet') + "\n"
-    + "- Total platform revenue: ₦" + Math.round(totalRev).toLocaleString() + "\n"
-    + "- Logged-in user: " + (CU ? CU.name + " (" + CU.role + ")" : "Guest") + "\n\n"
-    + "PLATFORM FACTS (never contradict these):\n"
-    + "- Payment split: 90% seller, 5% affiliate, 5% platform\n"
-    + "- All payments via Paystack with 256-bit SSL escrow protection\n"
-    + "- Minimum withdrawal: ₦2,000 — requires KYC (NIN/BVN) verification\n"
-    + "- Affiliate commission: 5% per referred sale, tracked via ?ref= links\n"
-    + "- Admin approves product listings within 24 hours\n"
-    + "- Digital products deliver instantly after payment via download link\n"
-    + "- Physical products: buyer marks 'Collected' to release escrow\n"
-    + "- Zero Scam Guarantee: funds never go directly to sellers until confirmed\n"
-    + "- Support: +2349072212496 (WhatsApp/call, 8am–8pm WAT)\n\n"
-    + "CAPABILITIES: Answer ANY question about digital marketing, entrepreneurship, e-commerce, coding, business strategy, or NeyoMarket. Be the smartest person in the room. For NeyoMarket-specific questions, use the live data above. For general business/tech questions, give deep expert-level answers.\n\n"
-    + "FORMAT: Use **bold** for key terms. Keep responses concise but substantive — under 150 words unless the question demands depth. Never hallucinate platform features that don't exist above.";
+  return [
+    "You are Neyo AI — a street-smart, professional, and genuinely helpful AI assistant built into NeyoMarket, Nigeria's digital marketplace.",
+    "",
+    "## YOUR PERSONALITY",
+    "- Street-smart and direct: you give real answers, not corporate fluff",
+    "- Warm and encouraging: you treat every user like a smart friend who deserves straight talk",
+    "- Entrepreneurial mindset: you see opportunity in everything and love helping people build income",
+    "- You never open with a menu or list of options — you answer the actual question first, every time",
+    "- After answering, you may briefly connect it to business or earning if it's natural. Never force it.",
+    "- You use a conversational Nigerian-friendly tone. Light humour is welcome when appropriate.",
+    "",
+    "## ANSWER ANYTHING",
+    "You are NOT restricted to marketplace topics. If someone asks about:",
+    "- Cooking, relationships, health, sports, tech, science, movies, creativity — answer it fully and well",
+    "- Business, marketing, investing, hustle strategies — go deep with practical insight",
+    "- Coding, writing, design — give real, useful guidance",
+    "- NeyoMarket features — use the live data below to give precise help",
+    "The ONLY rule: answer the question first. Be genuinely useful. Then, only if it feels natural,",
+    "connect it back to business or their NeyoMarket journey — one sentence max.",
+    "",
+    "## LIVE MARKETPLACE DATA",
+    "- Logged-in user: " + userName + " (" + userRole + ")",
+    "- Active products: " + activeProds.length,
+    "- Top categories: " + (topCats.join(', ') || 'none listed yet'),
+    "- Total platform revenue: ₦" + Math.round(totalRev).toLocaleString(),
+    "",
+    "## NEYOMARKET FACTS (only use when relevant, never contradict)",
+    "- Payment split: 90% seller · 5% affiliate · 5% platform",
+    "- All payments via Paystack — 256-bit SSL, escrow-protected",
+    "- Sellers must complete KYC (NIN or BVN) to list products",
+    "- Minimum withdrawal: ₦2,000",
+    "- Affiliate commission: 5% per referred sale via ?ref= link",
+    "- Digital products: instant download after payment",
+    "- Physical products: buyer confirms receipt to release escrow",
+    "- Zero Scam Guarantee: escrow holds funds until delivery confirmed",
+    "- Support: +2349072212496 (WhatsApp/call, 8am–8pm WAT)",
+    "",
+    "## FORMAT",
+    "- Use **bold** for key terms and important figures",
+    "- Match your length to the question: quick question = quick answer, deep question = detailed answer",
+    "- Never show a bullet-point menu when someone asks a specific question",
+    "- Never say 'I can help you with X, Y, Z' — just answer what they actually asked"
+  ].join("\n");
 }
 
 function sendMsg() {
@@ -4553,7 +4579,7 @@ function sendMsg() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model:      'claude-sonnet-4-20250514',
-      max_tokens: 400,
+      max_tokens: 600,
       system:     buildSystemPrompt(),
       messages:   chatHistory
     })
@@ -4583,27 +4609,50 @@ function sendMsg() {
 }
 window.sendMsg = sendMsg;
 
-/* Local fallback for when API is unavailable */
+/* Local fallback — used when Claude API is unreachable */
 function getLocalFallback(input) {
-  var q = input.toLowerCase();
-  if (q.includes('escrow') || q.includes('safe') || q.includes('scam'))
-    return "🛡️ **Zero Scam Guarantee:** All payments held in escrow via Paystack. Money only releases after you confirm receipt. Full refund if anything goes wrong.";
-  if (q.includes('sell') || q.includes('list'))
-    return "To sell: go to **Sell** in the nav → upload 2+ photos → fill details → submit. Admin approves within 24hrs. You keep **90%** of every sale! 🏪";
-  if (q.includes('pay') || q.includes('paystack'))
-    return "All payments use **Paystack** — Nigeria's most trusted gateway. 256-bit SSL encrypted. Your money is escrow-protected until delivery confirmed. ✅";
-  if (q.includes('withdraw') || q.includes('payout'))
-    return "Go to **Profile → Settings → Withdrawal**. Minimum ₦2,000. Requires KYC verification (NIN/BVN). Payments sent directly to your bank. 🏦";
-  if (q.includes('affiliate') || q.includes('earn'))
-    return "Share your affiliate link and earn **5% commission** on every sale! Find your link in **Profile → Affiliate tab**. Get paid every Monday. 💸";
-  return "I'm here to help! Ask me about selling, buying, payments, withdrawals, affiliates, or anything business-related. 🤖";
+  var q = input.toLowerCase().trim();
+
+  /* NeyoMarket-specific questions */
+  if (q.includes('escrow') || q.includes('scam') || q.includes('safe'))
+    return "Every payment on NeyoMarket is held in **escrow** by Paystack. The seller only gets paid after you confirm you received what you ordered. Zero scam, guaranteed. 🛡️";
+  if (q.includes('sell') || q.includes('how to list') || q.includes('upload product'))
+    return "Tap **Sell** in the nav, fill in your product details, upload at least 2 photos, and submit. Admin reviews within 24 hours. Once live, you keep **90%** of every sale automatically. 🏪";
+  if (q.includes('withdraw') || q.includes('payout') || q.includes('my money'))
+    return "Go to **Profile → Seller tab → Withdraw Funds**. Minimum is ₦2,000. You'll need to complete KYC first (NIN or BVN) — takes 2 minutes. Money goes straight to your bank. 💳";
+  if (q.includes('affiliate') || q.includes('referral') || q.includes('commission'))
+    return "Your affiliate link is in **Profile → Affiliate tab**. Share it anywhere. Every sale made through your link earns you **5% commission**, credited to your wallet instantly. 💸";
+  if (q.includes('kyc') || q.includes('verify') || q.includes('nin') || q.includes('bvn'))
+    return "KYC takes 2 minutes. Go to **Profile → Settings** and enter your NIN or BVN. Admin reviews it and unlocks your seller features, usually within a few hours. 🪪";
+  if (q.includes('paystack') || q.includes('payment') || q.includes('pay'))
+    return "All payments go through **Paystack** — Nigeria's most trusted gateway. 256-bit SSL encrypted, escrow-protected, and your money never touches a seller's account until you confirm delivery. ✅";
+  if (q.includes('download') || q.includes('digital') || q.includes('course') || q.includes('ebook'))
+    return "Digital products are delivered **instantly** after payment. Go to **Profile → My Orders** — you'll see a Download button as soon as your payment clears. ⬇️";
+
+  /* General questions — give a real answer, not a menu */
+  if (q.includes('motivat') || q.includes('give up') || q.includes('hard') || q.includes('struggle'))
+    return "Every successful entrepreneur has a chapter they don't read aloud. The struggle means you're in the game. Stay consistent — most people quit right before their breakthrough. Keep going. 💪";
+  if (q.includes('money') || q.includes('rich') || q.includes('income') || q.includes('broke'))
+    return "Building income online is real — but it takes a product, an audience, and consistency. Start small: one good digital product on NeyoMarket, one audience (even 100 people on WhatsApp), and show up every day. The money follows the value.";
+  if (q.includes('market') || q.includes('promote') || q.includes('advertis'))
+    return "For digital products, **WhatsApp status** is still Nigeria's most underrated marketing tool. Post value daily, not just sales pitches. Combine that with your NeyoMarket affiliate link and you have a system that earns while you sleep.";
+  if (q.includes('hi') || q.includes('hello') || q.includes('hey') || q.includes('good morning') || q.includes('sup'))
+    return "Hey! 👋 I'm **Neyo AI** — ask me anything. Business advice, marketplace help, life questions — I've got you. What's on your mind?";
+  if (q.includes('who are you') || q.includes('what are you') || q.includes('what can you do'))
+    return "I'm **Neyo AI** — built into NeyoMarket to be genuinely useful. Ask me anything: business strategy, how to sell, how to earn with affiliates, or honestly just anything on your mind. I'll give you a real answer. 🤖";
+
+  /* Absolute fallback — still doesn't show a menu */
+  return "Good question. I'm thinking through that one — my live connection is temporarily offline. Try me again in a moment, or ask about selling, withdrawals, affiliates, or anything business-related. I'll give you a straight answer. 💡";
 }
 
 function tChat() {
   chatOpen2 = !chatOpen2;
   document.getElementById('chat-p').classList.toggle('open', chatOpen2);
   if (chatOpen2 && !document.getElementById('chat-ms').children.length) {
-    addBotMsg("Hello! I'm **Neyo AI** 👋 — your marketplace intelligence assistant.\n\nI can help you with selling strategies, buying safely, understanding escrow, affiliate marketing, and anything business-related. What would you like to know?");
+    var greet = CU
+      ? "Hey " + CU.name.split(' ')[0] + "! 👋 I'm **Neyo AI**. Ask me anything — business, marketplace, life, whatever's on your mind. I'll give you a straight answer."
+      : "Hey! 👋 I'm **Neyo AI**. Ask me anything — selling tips, how to earn, business ideas, or honestly just whatever's on your mind. What do you want to know?";
+    addBotMsg(greet);
   }
 }
 window.tChat = tChat;
