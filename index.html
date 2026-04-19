@@ -3905,9 +3905,15 @@ function aTab(tab, btn) {
   /* Show a loading skeleton instantly so admin sees feedback */
   c.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading…</div>';
 
-  /* Every tab fetches live from Neon — no stale data */
+  /* Every tab fetches live from Neon — products, users, orders all fresh */
+  fetch('/api/products').then(function(r){ return r.json(); }).then(function(pData) {
   fetch('/api/users').then(function(r){ return r.json(); }).then(function(uData) {
   fetch('/api/orders').then(function(r){ return r.json(); }).then(function(oData) {
+
+    /* Update global prods cache with ALL statuses so admin can see pending */
+    var allProds  = pData.products || [];
+    window.prods  = allProds;
+    prods         = allProds;
 
     var allUsers  = uData.users  || [];
     var allOrders = oData.orders || [];
@@ -4261,6 +4267,7 @@ function aTab(tab, btn) {
 
   }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading orders: '+e.message+'</div>'; });
   }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading users: '+e.message+'</div>'; });
+  }).catch(function(e){ c.innerHTML = '<div style="color:var(--red);padding:20px">Error loading products: '+e.message+'</div>'; });
 }
 window.aTab = aTab;
 
@@ -4410,20 +4417,40 @@ function adminRejectKYC(userId) {
 window.adminRejectKYC = adminRejectKYC;
 
 function apvP(id) {
-  var p = prods.find(function (x) { return x.id === id; });
-  if (p) {
-    p.status = 'active'; p.badge = '';
-    saveAll();
-    apiCall('/products', 'PATCH', { id: id, status: 'active', badge: '' }).catch(function(){});
-    aTab('ov', null); toast('Product approved ✓', 'ok');
-  }
+  fetch('/api/products', {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ id: id, status: 'active', badge: '' })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok !== false) {
+      /* Update local cache */
+      var p = prods.find(function(x){ return String(x.id) === String(id); });
+      if (p) { p.status = 'active'; p.badge = ''; }
+      toast('✅ Product approved and now live!', 'ok');
+      /* Refresh admin panel */
+      aTab('ov', document.querySelector('.asb.on'));
+    } else {
+      toast(data.error || 'Approval failed', 'fail');
+    }
+  })
+  .catch(function(){ toast('Network error — try again', 'fail'); });
 }
 window.apvP = apvP;
 function rejP(id) {
-  prods = prods.filter(function (x) { return x.id !== id; });
-  saveAll();
-  apiCall('/products', 'DELETE', { id: id }).catch(function(){});
-  aTab('ov', null); toast('Product removed.', '');
+  fetch('/api/products', {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ id: id, status: 'rejected' })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function() {
+    prods = prods.filter(function(x){ return String(x.id) !== String(id); });
+    toast('Product rejected.', 'warn');
+    aTab('ov', document.querySelector('.asb.on'));
+  })
+  .catch(function(){ toast('Network error — try again', 'fail'); });
 }
 window.rejP = rejP;
 function suspU(id) {
@@ -4573,36 +4600,51 @@ function sendMsg() {
 
   addTypingIndicator();
 
-  /* Call Claude API */
-  fetch('https://api.anthropic.com/v1/messages', {
+  /* ── Call /api/chat (our Vercel serverless proxy) ──
+     The proxy holds ANTHROPIC_API_KEY securely in env vars.
+     We pass the dynamic system prompt + conversation history. */
+  /* Build context snapshot to send to the backend */
+  var activeProds2 = (window.prods||[]).filter(function(p){ return p.status==='active'; });
+  var cats2 = {}; activeProds2.forEach(function(p){ cats2[p.cat]=(cats2[p.cat]||0)+1; });
+  var topCats2 = Object.keys(cats2).sort(function(a,b){ return cats2[b]-cats2[a]; }).slice(0,3);
+  var rev2 = (window.ords||[]).reduce(function(s,o){ return s+parseFloat(o.total||0); },0);
+
+  fetch('/api/chat', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 600,
-      system:     buildSystemPrompt(),
-      messages:   chatHistory
+      messages:    chatHistory,
+      contextData: {
+        userName:       CU ? CU.name.split(' ')[0] : null,
+        userRole:       CU ? CU.role : 'guest',
+        activeProducts: activeProds2.length,
+        topCategories:  topCats2.join(', ') || 'none yet',
+        totalRevenue:   '₦' + Math.round(rev2).toLocaleString()
+      }
     })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r) { return r.json(); })
   .then(function(data) {
     removeTypingIndicator();
     if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
-    var reply = '';
-    if (data.content && data.content[0] && data.content[0].text) {
-      reply = data.content[0].text;
-    } else if (data.error) {
-      reply = 'Sorry, I had a hiccup. Please try again! 🤔';
-    }
-    if (reply) {
-      chatHistory.push({ role: 'assistant', content: reply });
-      addBotMsg(reply);
+
+    if (data.ok && data.reply) {
+      chatHistory.push({ role: 'assistant', content: data.reply });
+      addBotMsg(data.reply);
+    } else {
+      /* Server returned an error object */
+      var errMsg = data.error || 'Something went wrong. Please try again.';
+      console.warn('[Neyo AI] API error:', errMsg);
+      /* Show error inline but also offer a local fallback answer */
+      var fallback = getLocalFallback(text);
+      addBotMsg(fallback);
     }
   })
   .catch(function(err) {
     removeTypingIndicator();
     if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
-    /* Fallback to local replies if API fails */
+    console.warn('[Neyo AI] Network error:', err.message);
+    /* Offline fallback — still gives a useful reply */
     var fallback = getLocalFallback(text);
     addBotMsg(fallback);
   });
