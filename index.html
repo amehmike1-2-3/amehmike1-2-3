@@ -1164,11 +1164,57 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <!-- Payout Settings -->
       <div class="dc">
         <h3>🏦 Payout Settings</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Where to send your earnings and affiliate commissions.</p>
-        <div class="fg"><label>Bank Name</label><input class="fi" type="text" id="po-bank" placeholder="e.g. GTBank, Opay, Palmpay"/></div>
-        <div class="fg"><label>Account Number</label><input class="fi" type="text" id="po-acct" placeholder="10-digit account number" maxlength="10"/></div>
-        <div class="fg"><label>Account Name</label><input class="fi" type="text" id="po-aname" placeholder="Account holder name"/></div>
-        <button class="bg" style="padding:9px 20px" onclick="savePayout()">Save Payout Details</button>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.6">
+          Add your bank details to receive your earnings. Minimum withdrawal is <strong>₦2,000</strong>. 
+          Your account name must exactly match your bank records.
+        </p>
+        <div id="po-status" style="margin-bottom:12px"></div>
+        <div class="fg">
+          <label>Bank <span class="rq">*</span></label>
+          <select class="fi" id="po-bank">
+            <option value="">— Select your bank —</option>
+            <option value="044">Access Bank</option>
+            <option value="023">Citibank</option>
+            <option value="050">Ecobank</option>
+            <option value="070">Fidelity Bank</option>
+            <option value="011">First Bank</option>
+            <option value="214">First City Monument Bank (FCMB)</option>
+            <option value="058">GTBank (Guaranty Trust)</option>
+            <option value="030">Heritage Bank</option>
+            <option value="301">Jaiz Bank</option>
+            <option value="082">Keystone Bank</option>
+            <option value="526">Kuda Bank</option>
+            <option value="50211">Moniepoint MFB</option>
+            <option value="999992">Opay</option>
+            <option value="999991">Palmpay</option>
+            <option value="076">Polaris Bank</option>
+            <option value="101">Providus Bank</option>
+            <option value="221">Stanbic IBTC</option>
+            <option value="068">Standard Chartered</option>
+            <option value="232">Sterling Bank</option>
+            <option value="100">Suntrust Bank</option>
+            <option value="032">Union Bank</option>
+            <option value="033">UBA</option>
+            <option value="215">Unity Bank</option>
+            <option value="035">Wema Bank</option>
+            <option value="057">Zenith Bank</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Account Number <span class="rq">*</span></label>
+          <input class="fi" type="tel" id="po-acct" placeholder="10-digit account number" maxlength="10"
+            oninput="this.value=this.value.replace(/\D/g,'');if(this.value.length===10)resolvePayoutAcct()"/>
+          <div id="po-acct-status" style="font-size:.78rem;margin-top:5px;min-height:16px"></div>
+        </div>
+        <div class="fg">
+          <label>Account Name <span class="rq">*</span></label>
+          <input class="fi" type="text" id="po-aname" placeholder="Auto-filled after account lookup" readonly
+            style="background:var(--bg3);cursor:not-allowed"/>
+          <p class="hint">Account name is resolved automatically from your bank account number.</p>
+        </div>
+        <button class="bg" style="padding:12px 22px;width:100%;margin-top:4px" id="po-save-btn" onclick="savePayout()">
+          💳 Save Bank Details
+        </button>
       </div>
 
       <!-- Change Password -->
@@ -3595,22 +3641,84 @@ function renderSellerSubaccountStatus() {
 }
 window.renderSellerSubaccountStatus = renderSellerSubaccountStatus;
 
+/* Resolve account name from Paystack account lookup API */
+function resolvePayoutAcct() {
+  var bank  = gv('po-bank');
+  var acct  = gv('po-acct');
+  var stEl  = document.getElementById('po-acct-status');
+  var nEl   = document.getElementById('po-aname');
+  if (!bank || !acct || acct.length !== 10) return;
+  if (stEl) { stEl.textContent = '⏳ Looking up account…'; stEl.style.color = 'var(--muted)'; }
+  if (nEl) { nEl.value = ''; }
+  fetch('/api/paystack?action=resolve-account&accountNumber=' + acct + '&bankCode=' + bank)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.accountName) {
+        if (nEl) { nEl.value = data.accountName; nEl.style.background = 'var(--green-bg)'; }
+        if (stEl) { stEl.textContent = '✓ Account found'; stEl.style.color = 'var(--green)'; }
+      } else {
+        if (nEl) { nEl.value = ''; nEl.style.background = 'var(--bg3)'; }
+        if (stEl) { stEl.textContent = (data.error || 'Account not found — check number and bank'); stEl.style.color = 'var(--red)'; }
+      }
+    })
+    .catch(function() {
+      if (stEl) { stEl.textContent = 'Lookup failed — enter name manually'; stEl.style.color = 'var(--orange)'; }
+      if (nEl) { nEl.readOnly = false; nEl.style.background = '#fff'; nEl.style.cursor = 'text'; }
+    });
+}
+window.resolvePayoutAcct = resolvePayoutAcct;
+
 function savePayout() {
-  var bank = gv('po-bank'), acct = gv('po-acct'), aname = gv('po-aname');
-  if (!bank || !acct || !aname) { toast('Fill all payout fields', 'fail'); return; }
-  if (CU) {
-    CU.payoutBank = bank; CU.payoutAcct = acct; CU.payoutAname = aname;
-    var uStr = JSON.stringify(CU);
-    localStorage.setItem('nm_current_user', uStr);
-    sessionStorage.setItem('nm_session', uStr);
-    var idx = usrs.findIndex(function (u) { return u.id === CU.id; });
-    if (idx > -1) { usrs[idx] = CU; saveAll(); }
-    /* Sync to DB */
-    apiCall('/auth?action=update-profile', 'POST', {
-      userId: CU.id, payoutBank: bank, payoutAcct: acct, payoutAname: aname
-    }).catch(function(){});
-    toast('Payout details saved ✓', 'ok');
-  }
+  var bankCode = gv('po-bank');
+  var acct     = gv('po-acct');
+  var aname    = gv('po-aname');
+  var stEl     = document.getElementById('po-status');
+  var btn      = document.getElementById('po-save-btn');
+
+  if (!bankCode) { toast('Please select your bank', 'fail'); return; }
+  if (!acct || acct.length !== 10) { toast('Account number must be 10 digits', 'fail'); return; }
+  if (!aname) { toast('Account name is required — wait for auto-lookup or enter manually', 'fail'); return; }
+  if (!CU) { toast('Please sign in first', 'fail'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+  /* Save to Neon via auth API */
+  fetch('/api/auth?action=update-profile', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      userId:     String(CU.id),
+      payoutBank: bankCode,
+      payoutAcct: acct,
+      payoutAname: aname
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Save Bank Details'; }
+    if (data.user || data.ok) {
+      /* Update local session */
+      CU.payoutBank  = bankCode;
+      CU.payoutAcct  = acct;
+      CU.payoutAname = aname;
+      var uStr = JSON.stringify(CU);
+      localStorage.setItem('nm_current_user', uStr);
+      sessionStorage.setItem('nm_session', uStr);
+      if (stEl) {
+        stEl.innerHTML = '<div style="background:var(--green-bg);border:1px solid rgba(5,150,105,.2);border-radius:6px;padding:10px 14px;font-size:.82rem;color:var(--green);font-weight:600">✅ Bank details saved! You can now request withdrawals from the Seller tab.</div>';
+      }
+      toast('Bank details saved ✓', 'ok');
+      /* Refresh wallet balance */
+      if (typeof loadWalletBalance === 'function') loadWalletBalance();
+    } else {
+      if (stEl) stEl.innerHTML = '<div style="color:var(--red);font-size:.82rem">' + (data.error||'Save failed') + '</div>';
+      toast(data.error || 'Save failed', 'fail');
+    }
+  })
+  .catch(function(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Save Bank Details'; }
+    toast('Network error — try again', 'fail');
+  });
 }
 window.savePayout = savePayout;
 
