@@ -45,6 +45,22 @@ module.exports = async function handler(req, res) {
 
   try {
 
+    /* RESOLVE ACCOUNT — looks up account name from bank code + account number */
+    if (action === 'resolve-account') {
+      const accountNumber = req.query.accountNumber;
+      const bankCode      = req.query.bankCode;
+      if (!accountNumber || !bankCode)
+        return res.status(400).json({ error: 'accountNumber and bankCode required.' });
+      if (!PSK)
+        return res.status(200).json({ error: 'Paystack key not configured — enter name manually.' });
+
+      const result = await paystackAPI('/bank/resolve?account_number=' + accountNumber + '&bank_code=' + bankCode);
+      if (result.status && result.data) {
+        return res.status(200).json({ accountName: result.data.account_name });
+      }
+      return res.status(200).json({ error: result.message || 'Account not found.' });
+    }
+
     /* KYC — Validate NIN/BVN */
     if (action === 'kyc') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
