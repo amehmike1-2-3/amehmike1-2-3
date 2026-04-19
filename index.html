@@ -4573,39 +4573,36 @@ function sendMsg() {
 
   addTypingIndicator();
 
-  /* ── Call /api/chat (our Vercel serverless proxy) ──
-     The proxy holds ANTHROPIC_API_KEY securely in env vars.
-     We pass the dynamic system prompt + conversation history. */
-  fetch('/api/chat', {
+  /* Call Claude API */
+  fetch('https://api.anthropic.com/v1/messages', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      messages:     chatHistory,
-      systemPrompt: buildSystemPrompt()   /* live marketplace data baked in */
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      system:     buildSystemPrompt(),
+      messages:   chatHistory
     })
   })
-  .then(function(r) { return r.json(); })
+  .then(function(r){ return r.json(); })
   .then(function(data) {
     removeTypingIndicator();
     if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
-
-    if (data.ok && data.reply) {
-      chatHistory.push({ role: 'assistant', content: data.reply });
-      addBotMsg(data.reply);
-    } else {
-      /* Server returned an error object */
-      var errMsg = data.error || 'Something went wrong. Please try again.';
-      console.warn('[Neyo AI] API error:', errMsg);
-      /* Show error inline but also offer a local fallback answer */
-      var fallback = getLocalFallback(text);
-      addBotMsg(fallback);
+    var reply = '';
+    if (data.content && data.content[0] && data.content[0].text) {
+      reply = data.content[0].text;
+    } else if (data.error) {
+      reply = 'Sorry, I had a hiccup. Please try again! 🤔';
+    }
+    if (reply) {
+      chatHistory.push({ role: 'assistant', content: reply });
+      addBotMsg(reply);
     }
   })
   .catch(function(err) {
     removeTypingIndicator();
     if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤'; }
-    console.warn('[Neyo AI] Network error:', err.message);
-    /* Offline fallback — still gives a useful reply */
+    /* Fallback to local replies if API fails */
     var fallback = getLocalFallback(text);
     addBotMsg(fallback);
   });
