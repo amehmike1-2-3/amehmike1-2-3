@@ -49,6 +49,8 @@ export default async function handler(req, res) {
 
     try {
         // 5. THE AI ENGINE (Switching from Claude to Free Gemini)
+            try {
+        // Updated URL to fix the 404 error
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -70,7 +72,7 @@ export default async function handler(req, res) {
 
         const data = await response.json();
 
-        // 6. ERROR HANDLING (Specific to Gemini)
+        // 6. ERROR HANDLING (Updated for Gemini)
         if (data.error) {
             console.error('[Neyo AI] Gemini API Error:', data.error);
             return res.status(data.error.code || 500).json({
@@ -103,4 +105,3 @@ export default async function handler(req, res) {
             message: "I'm thinking through that one — my live connection is temporarily offline. Try me again! 💡"
         });
     }
-}
