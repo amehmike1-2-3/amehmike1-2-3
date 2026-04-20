@@ -1,232 +1,201 @@
-// api/chat.js — Neyo AI serverless function (Vercel)
-// Model: gemini-1.5-flash on stable v1 endpoint
-// Env var: GEMINI_API_KEY
-// Free key: https://aistudio.google.com/app/apikey
-
+// api/chat.js — Neyo AI (Vercel Serverless)
+// Tries every known Gemini model until one works with your key
 'use strict';
 
-var GEMINI_KEY = process.env.GEMINI_API_KEY;
+var KEY = process.env.GEMINI_API_KEY;
 
-// v1 is the stable endpoint, available in all regions including Nigeria
-// v1beta has restricted model access depending on key region
-var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
+// ALL known Gemini models across both endpoints, ordered by capability
+// The function tries each until one responds — your key will work with at least one
+var CANDIDATES = [
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',         sys: true  },
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',  sys: true  },
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent',     sys: true  },
+  { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',             sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-001:generateContent',         sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',               sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent',                   sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent',           sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent',               sys: false },
+  { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro-001:generateContent',       sys: false }
+];
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control',                'no-store');
+  res.setHeader('Cache-Control', 'no-store');
 }
 
-// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
 function buildSystem(ctx) {
-  var userName = (ctx && ctx.userName)       ? String(ctx.userName)      : 'there';
-  var userRole = (ctx && ctx.userRole)       ? String(ctx.userRole)      : 'guest';
-  var numProds = (ctx && ctx.activeProducts) ? ctx.activeProducts        : 0;
-  var topCats  = (ctx && ctx.topCategories)  ? String(ctx.topCategories) : 'none yet';
-  var revenue  = (ctx && ctx.totalRevenue)   ? String(ctx.totalRevenue)  : '₦0';
-
+  var u = (ctx && ctx.userName)       ? String(ctx.userName)      : 'there';
+  var r = (ctx && ctx.userRole)       ? String(ctx.userRole)      : 'guest';
+  var p = (ctx && ctx.activeProducts) ? ctx.activeProducts        : 0;
+  var c = (ctx && ctx.topCategories)  ? String(ctx.topCategories) : 'none yet';
+  var v = (ctx && ctx.totalRevenue)   ? String(ctx.totalRevenue)  : '₦0';
   return [
     'You are Neyo AI — a street-smart, professional, and genuinely helpful AI assistant',
     'embedded in NeyoMarket, Nigeria\'s premier digital and physical marketplace.',
     '',
-    '## PERSONALITY',
-    '- Street-smart and direct: give real answers, not corporate fluff.',
-    '- Warm and encouraging: treat every user like a smart friend who deserves straight talk.',
-    '- Entrepreneurial mindset: see opportunity everywhere, help people build real income.',
-    '- NEVER open with a menu — answer the actual question first, every single time.',
-    '- After answering, briefly connect to business only if it feels natural (one sentence max).',
-    '- Nigerian-friendly tone. Light humour welcome. You are a mentor, not a robot.',
+    'PERSONALITY: Street-smart and direct. Warm and encouraging. Entrepreneurial mindset.',
+    'NEVER open with a menu — answer the actual question first, every single time.',
+    'After answering, briefly connect to business only if natural (one sentence max).',
+    'Nigerian-friendly tone. Light humour welcome. You are a mentor, not a robot.',
     '',
-    '## ANSWER ANYTHING',
-    'You are NOT restricted to marketplace topics. Answer questions on cooking, relationships,',
-    'health, sports, tech, science, creativity, business, investing, coding, writing — anything.',
-    'One rule: answer the question first. Be genuinely useful.',
+    'ANSWER ANYTHING — not just marketplace topics. Cooking, relationships, health,',
+    'sports, tech, science, business, investing, coding, writing — answer it all.',
+    'Rule: answer the question first. Be genuinely useful.',
     '',
-    '## LIVE CONTEXT',
-    '- Current user: ' + userName + ' (' + userRole + ')',
-    '- Active products: ' + numProds,
-    '- Top categories: ' + topCats,
-    '- Platform revenue: ' + revenue,
+    'LIVE CONTEXT: User=' + u + '(' + r + ') Products=' + p + ' Categories=' + c + ' Revenue=' + v,
     '',
-    '## NEYOMARKET FACTS  (only cite when directly relevant)',
-    '- Payment split: 90% seller · 5% affiliate · 5% platform',
-    '- All payments via Paystack — 256-bit SSL, escrow-protected',
-    '- KYC required (NIN or BVN) before listing products',
-    '- Minimum withdrawal: ₦2,000, paid directly to seller\'s bank',
-    '- Affiliate commission: 5% per referred sale via ?ref= link',
-    '- Digital products: instant download after payment confirmed',
-    '- Physical products: buyer confirms receipt before escrow releases',
-    '- Zero Scam Guarantee: money held in escrow until buyer confirms',
-    '- Support: +2349072212496 (WhatsApp/call, 8am–8pm WAT)',
+    'NEYOMARKET FACTS (cite only when relevant):',
+    'Split: 90% seller, 5% affiliate, 5% platform. Paystack escrow. KYC=NIN/BVN.',
+    'Min withdrawal ₦2000. Affiliate 5% via ?ref= link. Digital=instant download.',
+    'Physical=buyer confirms receipt. Support: +2349072212496 (8am-8pm WAT).',
     '',
-    '## FORMAT',
-    '- Use **bold** for key terms and figures.',
-    '- Match length to question — short question = short answer.',
-    '- Never show a bullet menu when someone asks a specific question.',
-    '- Never say "I can help with X, Y, Z" — just answer what was asked.',
-    '- Stay under 200 words unless depth is genuinely needed.'
+    'FORMAT: Bold key terms. Short answer for short question. No bullet menus.',
+    'Never say "I can help with X,Y,Z" — just answer. Under 200 words unless needed.'
   ].join('\n');
 }
 
-// ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   setCors(res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' });
 
-  if (req.method === 'OPTIONS') { return res.status(200).end(); }
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+  if (!KEY) {
+    console.error('[chat.js] GEMINI_API_KEY missing. Add it in Vercel → Settings → Environment Variables. Free key: https://aistudio.google.com/app/apikey');
+    return res.status(500).json({ error: 'AI not configured. GEMINI_API_KEY missing from Vercel env vars.' });
   }
 
-  // API key guard
-  if (!GEMINI_KEY) {
-    console.error(
-      '[chat.js] GEMINI_API_KEY is missing.\n' +
-      '  Fix: Vercel Dashboard → Project → Settings → Environment Variables\n' +
-      '  Add: GEMINI_API_KEY = AIza...\n' +
-      '  Free key: https://aistudio.google.com/app/apikey'
-    );
-    return res.status(500).json({
-      error: 'AI not configured. GEMINI_API_KEY is missing from Vercel environment variables.'
-    });
-  }
+  var body     = req.body        || {};
+  var messages = body.messages   || [];
+  var ctx      = body.contextData || {};
 
-  // Parse request
-  var body        = req.body         || {};
-  var messages    = body.messages    || [];
-  var contextData = body.contextData || {};
+  if (!Array.isArray(messages) || !messages.length)
+    return res.status(400).json({ error: 'messages array required.' });
 
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: 'messages array is required.' });
-  }
-
-  // Build contents array — Gemini uses role "user"/"model", text in parts[{text}]
+  // Build clean contents array (Gemini format)
   var contents = [];
-  var recent   = messages.slice(-20);
-
-  for (var i = 0; i < recent.length; i++) {
-    var m = recent[i];
-    if (!m || typeof m.content !== 'string' || !m.content.trim()) { continue; }
-    if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'model') { continue; }
+  messages.slice(-20).forEach(function(m) {
+    if (!m || typeof m.content !== 'string' || !m.content.trim()) return;
+    if (!['user','assistant','model'].includes(m.role)) return;
     contents.push({
       role:  (m.role === 'assistant' || m.role === 'model') ? 'model' : 'user',
       parts: [{ text: m.content.slice(0, 4000) }]
     });
-  }
-
-  // Must start with user turn
-  while (contents.length > 0 && contents[0].role !== 'user') { contents.shift(); }
-
-  if (contents.length === 0) {
-    return res.status(400).json({ error: 'No valid user messages found.' });
-  }
-
-  // On v1, system_instruction is NOT supported — inject as first user/model pair instead
-  var systemText = buildSystem(contextData);
-  var fullContents = [
-    {
-      role:  'user',
-      parts: [{ text: 'SYSTEM INSTRUCTIONS — follow these for the entire conversation:\n\n' + systemText }]
-    },
-    {
-      role:  'model',
-      parts: [{ text: 'Understood. I am Neyo AI — street-smart, direct, and helpful. I will answer every question fully before mentioning NeyoMarket. Ready.' }]
-    }
-  ].concat(contents);
-
-  var payload = {
-    contents: fullContents,
-    generationConfig: {
-      maxOutputTokens: 512,
-      temperature:     0.8,
-      topP:            0.9
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-    ]
-  };
-
-  // Call Gemini
-  var geminiRes;
-  try {
-    geminiRes = await fetch(GEMINI_URL + '?key=' + GEMINI_KEY, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    });
-  } catch (netErr) {
-    console.error('[chat.js] Network error:', netErr.message);
-    return res.status(502).json({ error: 'Could not reach the AI service. Please try again.' });
-  }
-
-  // Read response
-  var rawText;
-  try {
-    rawText = await geminiRes.text();
-  } catch (readErr) {
-    console.error('[chat.js] Read error:', readErr.message);
-    return res.status(502).json({ error: 'Failed to read AI response. Please try again.' });
-  }
-
-  if (!rawText || rawText.trim() === '') {
-    console.error('[chat.js] Empty response. Status:', geminiRes.status);
-    return res.status(502).json({ error: 'AI returned empty response. Please try again.' });
-  }
-
-  var data;
-  try {
-    data = JSON.parse(rawText);
-  } catch (parseErr) {
-    console.error('[chat.js] Parse error. Raw:', rawText.slice(0, 200));
-    return res.status(502).json({ error: 'Unexpected response from AI. Please try again.' });
-  }
-
-  // Handle Gemini errors
-  if (!geminiRes.ok) {
-    var status = geminiRes.status;
-    var errMsg = (data.error && data.error.message) || 'Unknown error';
-    console.error('[chat.js] Gemini HTTP ' + status + ':', errMsg);
-
-    var userMsg;
-    if      (status === 400) userMsg = 'Request error. Please rephrase and try again.';
-    else if (status === 403) userMsg = 'Invalid API key. Check GEMINI_API_KEY in Vercel.';
-    else if (status === 404) userMsg = 'AI model not found. Contact support.';
-    else if (status === 429) userMsg = 'AI rate limit reached. Please wait a moment and try again.';
-    else if (status === 500) userMsg = 'Gemini server error. Try again in a few seconds.';
-    else                     userMsg = 'AI error (' + status + '). Please try again.';
-
-    return res.status(status).json({ error: userMsg });
-  }
-
-  // Extract reply
-  var candidate    = data.candidates && data.candidates[0];
-  var finishReason = candidate && candidate.finishReason;
-
-  if (finishReason === 'SAFETY') {
-    return res.status(200).json({
-      ok:    true,
-      reply: "I can't help with that specific request — ask me anything else! 💡"
-    });
-  }
-
-  var replyText = candidate &&
-    candidate.content &&
-    candidate.content.parts &&
-    candidate.content.parts[0] &&
-    candidate.content.parts[0].text;
-
-  if (!replyText) {
-    console.error('[chat.js] No reply text. Response:', JSON.stringify(data).slice(0, 300));
-    return res.status(502).json({ error: 'AI returned unexpected format. Please try again.' });
-  }
-
-  return res.status(200).json({
-    ok:    true,
-    reply: replyText.trim(),
-    usage: data.usageMetadata || null
   });
+  while (contents.length && contents[0].role !== 'user') contents.shift();
+  if (!contents.length) return res.status(400).json({ error: 'No valid user messages.' });
+
+  var sysText = buildSystem(ctx);
+
+  // System prepended as conversation pair — works on ALL model versions
+  var sysPair = [
+    { role: 'user',  parts: [{ text: 'SYSTEM: ' + sysText }] },
+    { role: 'model', parts: [{ text: 'Understood. I am Neyo AI — street-smart, direct, helpful. Ready.' }] }
+  ];
+
+  var safetySettings = [
+    { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+  ];
+
+  var genConfig = { maxOutputTokens: 512, temperature: 0.8, topP: 0.9 };
+
+  // Try every candidate until one works
+  for (var i = 0; i < CANDIDATES.length; i++) {
+    var cand = CANDIDATES[i];
+
+    // Build payload — with or without system_instruction depending on endpoint support
+    var payload;
+    if (cand.sys) {
+      payload = {
+        system_instruction: { parts: [{ text: sysText }] },
+        contents: contents,
+        generationConfig: genConfig,
+        safetySettings: safetySettings
+      };
+    } else {
+      payload = {
+        contents: sysPair.concat(contents),
+        generationConfig: genConfig,
+        safetySettings: safetySettings
+      };
+    }
+
+    var resp, raw, data;
+    try {
+      resp = await fetch(cand.url + '?key=' + KEY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      raw  = await resp.text();
+      data = JSON.parse(raw);
+    } catch(e) {
+      console.warn('[chat.js] Error on ' + cand.url + ':', e.message);
+      continue;
+    }
+
+    // 404 or "not found" 400 → try next
+    if (resp.status === 404 || (resp.status === 400 && raw.includes('not found'))) {
+      console.warn('[chat.js] Skip 404:', cand.url.split('/models/')[1]);
+      continue;
+    }
+
+    // system_instruction not supported → retry same model without it
+    if (resp.status === 400 && raw.includes('system_instruction')) {
+      console.warn('[chat.js] system_instruction rejected, retrying without it:', cand.url.split('/models/')[1]);
+      try {
+        resp = await fetch(cand.url + '?key=' + KEY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: sysPair.concat(contents),
+            generationConfig: genConfig,
+            safetySettings: safetySettings
+          })
+        });
+        raw  = await resp.text();
+        data = JSON.parse(raw);
+      } catch(e2) { continue; }
+    }
+
+    // Rate limit or auth error — stop, don't try more models
+    if (resp.status === 429) {
+      console.error('[chat.js] Rate limit on:', cand.url.split('/models/')[1]);
+      return res.status(429).json({ error: 'AI rate limit reached. Please wait a moment and try again.' });
+    }
+    if (resp.status === 403) {
+      console.error('[chat.js] Auth error — check GEMINI_API_KEY in Vercel.');
+      return res.status(403).json({ error: 'Invalid API key. Check GEMINI_API_KEY in Vercel environment variables.' });
+    }
+
+    // Other non-ok — try next model
+    if (!resp.ok) {
+      console.warn('[chat.js] HTTP ' + resp.status + ' on ' + cand.url.split('/models/')[1] + ':', raw.slice(0,120));
+      continue;
+    }
+
+    // Extract reply
+    var cand0  = data.candidates && data.candidates[0];
+    var finish = cand0 && cand0.finishReason;
+    if (finish === 'SAFETY') {
+      return res.status(200).json({ ok: true, reply: "I can't help with that — ask me anything else! 💡" });
+    }
+
+    var reply = cand0 && cand0.content && cand0.content.parts && cand0.content.parts[0] && cand0.content.parts[0].text;
+    if (!reply) {
+      console.warn('[chat.js] No text in response from:', cand.url.split('/models/')[1]);
+      continue;
+    }
+
+    console.log('[chat.js] Success with:', cand.url.split('/models/')[1]);
+    return res.status(200).json({ ok: true, reply: reply.trim(), usage: data.usageMetadata || null });
+  }
+
+  console.error('[chat.js] All models failed for key region.');
+  return res.status(503).json({ error: 'AI temporarily unavailable. Please try again shortly.' });
 };
