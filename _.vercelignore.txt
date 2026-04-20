@@ -1,0 +1,10 @@
+# Exclude draft/duplicate API files — only the canonical files below are deployed
+api/affiliate_fixed.js
+api/auth_final.js
+api/orders_new.js
+api/payment_final.js
+api/payment_prod.js
+api/paystack_fixed.js
+api/products_final.js
+api/products_new.js
+api/users_new.js
