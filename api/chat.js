@@ -1,5 +1,5 @@
 // api/chat.js — Neyo AI serverless function (Vercel)
-// Uses Google Gemini API — free tier
+// Model: gemini-1.5-flash on stable v1 endpoint
 // Env var: GEMINI_API_KEY
 // Free key: https://aistudio.google.com/app/apikey
 
@@ -7,16 +7,9 @@
 
 var GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-// Models that support system_instruction (v1beta only feature)
-// Tried in order — first one that works wins
-var MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-001',
-  'gemini-1.5-pro',
-  'gemini-1.0-pro'
-];
-
-var BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
+// v1 is the stable endpoint, available in all regions including Nigeria
+// v1beta has restricted model access depending on key region
+var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 function setCors(res) {
@@ -77,131 +70,11 @@ function buildSystem(ctx) {
   ].join('\n');
 }
 
-// ─── INJECT SYSTEM PROMPT AS FIRST USER/MODEL EXCHANGE ────────────────────────
-// For models that don't accept system_instruction, we prepend the system
-// prompt as a user message + brief model acknowledgement at the start.
-function buildContentsWithSystem(messages, systemText) {
-  var contents = [];
-
-  // Build from message history
-  for (var i = 0; i < messages.length; i++) {
-    var m = messages[i];
-    if (!m || typeof m.content !== 'string' || !m.content.trim()) { continue; }
-    if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'model') { continue; }
-    contents.push({
-      role:  (m.role === 'assistant' || m.role === 'model') ? 'model' : 'user',
-      parts: [{ text: m.content.slice(0, 4000) }]
-    });
-  }
-
-  // Must start with user turn
-  while (contents.length > 0 && contents[0].role !== 'user') {
-    contents.shift();
-  }
-
-  // Prepend system as a user→model pair at the very start
-  // This works universally across all Gemini model versions
-  var systemPair = [
-    {
-      role:  'user',
-      parts: [{ text: 'SYSTEM INSTRUCTIONS (follow these for the entire conversation):\n\n' + systemText }]
-    },
-    {
-      role:  'model',
-      parts: [{ text: 'Understood. I am Neyo AI — street-smart, helpful, and ready. I\'ll answer questions directly without showing menus. What would you like to know?' }]
-    }
-  ];
-
-  return systemPair.concat(contents);
-}
-
-// ─── CALL ONE MODEL ───────────────────────────────────────────────────────────
-async function tryModel(modelName, contents, systemText, key) {
-  // Build payload — try with system_instruction first (v1beta feature)
-  // If we get a 400 "Cannot find field", we fall back to prepended-system approach
-  var url     = BASE + modelName + ':generateContent?key=' + key;
-  var payload = {
-    system_instruction: { parts: [{ text: systemText }] },
-    contents: contents,
-    generationConfig: { maxOutputTokens: 512, temperature: 0.8, topP: 0.9 },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-    ]
-  };
-
-  var resp, raw, data;
-
-  try {
-    resp = await fetch(url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    });
-    raw  = await resp.text();
-    data = JSON.parse(raw);
-  } catch (e) {
-    return { skip: true, reason: 'network/parse: ' + e.message };
-  }
-
-  // 404 — model not available on this key/region
-  if (resp.status === 404) {
-    return { skip: true, reason: '404 model not found: ' + modelName };
-  }
-
-  // 400 with "Cannot find field" → model doesn't support system_instruction
-  // Retry the same model without it, using prepended-system contents instead
-  if (resp.status === 400 &&
-      raw && raw.includes('Cannot find field')) {
-    console.warn('[chat.js] system_instruction not supported by ' + modelName + ', retrying with prepended system');
-
-    var contentsWithSys = buildContentsWithSystem(
-      contents.map(function(c) {
-        return { role: c.role === 'model' ? 'assistant' : 'user', content: c.parts[0].text };
-      }),
-      systemText
-    );
-
-    var payload2 = {
-      contents: contentsWithSys,
-      generationConfig: { maxOutputTokens: 512, temperature: 0.8, topP: 0.9 },
-      safetySettings: payload.safetySettings
-    };
-
-    try {
-      resp = await fetch(url, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload2)
-      });
-      raw  = await resp.text();
-      data = JSON.parse(raw);
-    } catch (e2) {
-      return { skip: true, reason: 'retry network/parse: ' + e2.message };
-    }
-
-    if (!resp.ok) {
-      return { skip: false, status: resp.status, data: data };
-    }
-  }
-
-  // 429 or 500 — hard error, stop trying
-  if (!resp.ok) {
-    return { skip: false, status: resp.status, data: data };
-  }
-
-  // Success
-  return { skip: false, status: 200, data: data };
-}
-
 // ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   setCors(res);
 
   if (req.method === 'OPTIONS') { return res.status(200).end(); }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
@@ -210,7 +83,7 @@ module.exports = async function handler(req, res) {
   if (!GEMINI_KEY) {
     console.error(
       '[chat.js] GEMINI_API_KEY is missing.\n' +
-      '  Fix: Vercel Dashboard → Your Project → Settings → Environment Variables\n' +
+      '  Fix: Vercel Dashboard → Project → Settings → Environment Variables\n' +
       '  Add: GEMINI_API_KEY = AIza...\n' +
       '  Free key: https://aistudio.google.com/app/apikey'
     );
@@ -228,7 +101,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'messages array is required.' });
   }
 
-  // Build clean contents array
+  // Build contents array — Gemini uses role "user"/"model", text in parts[{text}]
   var contents = [];
   var recent   = messages.slice(-20);
 
@@ -242,79 +115,118 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // Must start with user
+  // Must start with user turn
   while (contents.length > 0 && contents[0].role !== 'user') { contents.shift(); }
 
   if (contents.length === 0) {
     return res.status(400).json({ error: 'No valid user messages found.' });
   }
 
+  // On v1, system_instruction is NOT supported — inject as first user/model pair instead
   var systemText = buildSystem(contextData);
-  var lastResult = null;
-
-  // Try each model in order
-  for (var mi = 0; mi < MODELS.length; mi++) {
-    console.log('[chat.js] Trying model:', MODELS[mi]);
-    var result = await tryModel(MODELS[mi], contents, systemText, GEMINI_KEY);
-
-    if (result.skip) {
-      console.warn('[chat.js] Skipping:', result.reason);
-      continue;
+  var fullContents = [
+    {
+      role:  'user',
+      parts: [{ text: 'SYSTEM INSTRUCTIONS — follow these for the entire conversation:\n\n' + systemText }]
+    },
+    {
+      role:  'model',
+      parts: [{ text: 'Understood. I am Neyo AI — street-smart, direct, and helpful. I will answer every question fully before mentioning NeyoMarket. Ready.' }]
     }
+  ].concat(contents);
 
-    lastResult = result;
+  var payload = {
+    contents: fullContents,
+    generationConfig: {
+      maxOutputTokens: 512,
+      temperature:     0.8,
+      topP:            0.9
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+    ]
+  };
 
-    if (result.status !== 200) {
-      // Hard error — report it, don't try more models
-      var status  = result.status;
-      var errMsg  = (result.data && result.data.error && result.data.error.message) || 'Unknown error';
-      console.error('[chat.js] Gemini HTTP ' + status + ':', errMsg);
+  // Call Gemini
+  var geminiRes;
+  try {
+    geminiRes = await fetch(GEMINI_URL + '?key=' + GEMINI_KEY, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+  } catch (netErr) {
+    console.error('[chat.js] Network error:', netErr.message);
+    return res.status(502).json({ error: 'Could not reach the AI service. Please try again.' });
+  }
 
-      var userMsg;
-      if      (status === 400) userMsg = 'Request error. Please rephrase and try again.';
-      else if (status === 403) userMsg = 'Invalid API key. Check GEMINI_API_KEY in Vercel.';
-      else if (status === 429) userMsg = 'AI rate limit reached. Please wait a moment and try again.';
-      else if (status === 500) userMsg = 'Gemini server error. Try again in a few seconds.';
-      else                     userMsg = 'AI service error (' + status + '). Please try again.';
+  // Read response
+  var rawText;
+  try {
+    rawText = await geminiRes.text();
+  } catch (readErr) {
+    console.error('[chat.js] Read error:', readErr.message);
+    return res.status(502).json({ error: 'Failed to read AI response. Please try again.' });
+  }
 
-      return res.status(status).json({ error: userMsg });
-    }
+  if (!rawText || rawText.trim() === '') {
+    console.error('[chat.js] Empty response. Status:', geminiRes.status);
+    return res.status(502).json({ error: 'AI returned empty response. Please try again.' });
+  }
 
-    // Extract reply
-    var data      = result.data;
-    var candidate = data.candidates && data.candidates[0];
+  var data;
+  try {
+    data = JSON.parse(rawText);
+  } catch (parseErr) {
+    console.error('[chat.js] Parse error. Raw:', rawText.slice(0, 200));
+    return res.status(502).json({ error: 'Unexpected response from AI. Please try again.' });
+  }
 
-    if (candidate && candidate.finishReason === 'SAFETY') {
-      return res.status(200).json({
-        ok:    true,
-        reply: "I can't help with that specific request — ask me anything else! 💡"
-      });
-    }
+  // Handle Gemini errors
+  if (!geminiRes.ok) {
+    var status = geminiRes.status;
+    var errMsg = (data.error && data.error.message) || 'Unknown error';
+    console.error('[chat.js] Gemini HTTP ' + status + ':', errMsg);
 
-    var replyText = candidate &&
-      candidate.content &&
-      candidate.content.parts &&
-      candidate.content.parts[0] &&
-      candidate.content.parts[0].text;
+    var userMsg;
+    if      (status === 400) userMsg = 'Request error. Please rephrase and try again.';
+    else if (status === 403) userMsg = 'Invalid API key. Check GEMINI_API_KEY in Vercel.';
+    else if (status === 404) userMsg = 'AI model not found. Contact support.';
+    else if (status === 429) userMsg = 'AI rate limit reached. Please wait a moment and try again.';
+    else if (status === 500) userMsg = 'Gemini server error. Try again in a few seconds.';
+    else                     userMsg = 'AI error (' + status + '). Please try again.';
 
-    if (!replyText) {
-      console.warn('[chat.js] No text in response, trying next model. Data:', JSON.stringify(data).slice(0, 200));
-      continue;
-    }
+    return res.status(status).json({ error: userMsg });
+  }
 
-    // Success
-    console.log('[chat.js] Got reply from:', MODELS[mi]);
+  // Extract reply
+  var candidate    = data.candidates && data.candidates[0];
+  var finishReason = candidate && candidate.finishReason;
+
+  if (finishReason === 'SAFETY') {
     return res.status(200).json({
       ok:    true,
-      reply: replyText.trim(),
-      model: MODELS[mi],
-      usage: data.usageMetadata || null
+      reply: "I can't help with that specific request — ask me anything else! 💡"
     });
   }
 
-  // All models failed
-  console.error('[chat.js] All models exhausted. Last result:', JSON.stringify(lastResult).slice(0, 200));
-  return res.status(503).json({
-    error: 'AI is temporarily unavailable. Please try again in a moment.'
+  var replyText = candidate &&
+    candidate.content &&
+    candidate.content.parts &&
+    candidate.content.parts[0] &&
+    candidate.content.parts[0].text;
+
+  if (!replyText) {
+    console.error('[chat.js] No reply text. Response:', JSON.stringify(data).slice(0, 300));
+    return res.status(502).json({ error: 'AI returned unexpected format. Please try again.' });
+  }
+
+  return res.status(200).json({
+    ok:    true,
+    reply: replyText.trim(),
+    usage: data.usageMetadata || null
   });
 };
