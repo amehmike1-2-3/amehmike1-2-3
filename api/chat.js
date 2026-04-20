@@ -9,7 +9,7 @@ var GEMINI_KEY = process.env.GEMINI_API_KEY;
 
 // Ordered list of models to try — if the first 404s, the next is attempted automatically
 var GEMINI_MODELS = [
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent',
   'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
   'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent'
