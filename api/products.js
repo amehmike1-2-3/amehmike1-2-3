@@ -1,113 +1,157 @@
-// /api/products.js — NeyoMarket Products API (Neon Postgres)
+// /api/products.js — NeyoMarket Products API
+// Supports: discount_price, is_on_sale, sale_ends_at, shipping_fee, seller_verified
+
 const { neon } = require('@neondatabase/serverless');
+
 const sql = neon(process.env.DATABASE_URL);
 
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 function toProduct(r) {
+  let imgs = r.imgs;
+  if (typeof imgs === 'string') {
+    try { imgs = JSON.parse(imgs); } catch(e) { imgs = []; }
+  }
   return {
-    id:          Number(r.id),
-    name:        r.name,
-    type:        r.type,
-    cat:         r.cat,
-    price:       parseFloat(r.price),
-    commission:  parseFloat(r.commission || 0),
-    desc:        r.description || '',
-    description: r.description || '',
-    seller:      r.seller,
-    sellerId:    r.seller_id || null,
-    sellerEmail: r.seller_email,
-    rating:      parseFloat(r.rating  || 0),
-    reviews:     parseInt(r.reviews   || 0),
-    emoji:       r.emoji,
-    imgs:        Array.isArray(r.imgs) ? r.imgs : (r.imgs ? JSON.parse(r.imgs) : []),
-    status:      r.status,
-    badge:       r.badge,
-    date:        r.date,
-    escrow:      r.escrow,
-    fileExt:     r.file_ext  || null,
-    fileName:    r.file_name || null,
+    id:               r.id,
+    name:             r.name,
+    type:             r.type             || 'digital',
+    cat:              r.cat              || 'other',
+    price:            parseFloat(r.price || 0),
+    discountPrice:    r.discount_price   ? parseFloat(r.discount_price) : null,
+    isOnSale:         r.is_on_sale       || false,
+    saleEndsAt:       r.sale_ends_at     || null,
+    shippingFee:      r.shipping_fee     ? parseFloat(r.shipping_fee) : 0,
+    sellerVerified:   r.seller_verified  || false,
+    commission:       parseFloat(r.commission || 0),
+    description:      r.description      || r.desc || '',
+    seller:           r.seller           || '',
+    sellerId:         r.seller_id        || null,
+    sellerEmail:      r.seller_email     || '',
+    sellerWhatsapp:   r.seller_whatsapp  || '',
+    rating:           parseFloat(r.rating  || 0),
+    reviews:          parseInt(r.reviews   || 0, 10),
+    emoji:            r.emoji            || '📦',
+    imgs:             Array.isArray(imgs) ? imgs : [],
+    status:           r.status           || 'pending',
+    badge:            r.badge            || '',
+    date:             r.date             || '',
+    escrow:           r.escrow           !== false,
+    fileExt:          r.file_ext         || null,
+    fileName:         r.file_name        || null,
+    createdAt:        r.created_at       || null,
   };
 }
 
-async function handler(req, res) {
+module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+
+    /* ── GET — fetch all products (all statuses for admin; active for public) ── */
     if (req.method === 'GET') {
-      const rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
+      const adminMode = req.query.admin === 'true';
+      const sellerId  = req.query.sellerId;
+
+      let rows;
+      if (sellerId) {
+        rows = await sql`
+          SELECT * FROM products WHERE seller_id = ${String(sellerId)}
+          ORDER BY created_at DESC
+        `;
+      } else if (adminMode) {
+        rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
+      } else {
+        rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
+      }
       return res.status(200).json({ products: rows.map(toProduct) });
     }
 
+    /* ── POST — create new product ── */
     if (req.method === 'POST') {
       const p = req.body || {};
       if (!p.name || !p.price)
-        return res.status(400).json({ error: 'Name and price required.' });
+        return res.status(400).json({ error: 'Product name and price are required.' });
 
-      const imgs = (p.imgs || []).filter(function(img) {
-        return img && typeof img === 'string' && img.indexOf('http') === 0;
-      });
+      const id = p.id || Date.now();
 
-      await sql`
+      const rows = await sql`
         INSERT INTO products (
-          id, name, type, cat, price, commission, description,
-          seller, seller_id, seller_email, rating, reviews, emoji,
-          imgs, status, badge, date, escrow,
+          id, name, type, cat, price,
+          discount_price, is_on_sale, sale_ends_at, shipping_fee,
+          commission, description, seller, seller_id, seller_email, seller_whatsapp,
+          rating, reviews, emoji, imgs, status, badge, date, escrow,
           file_ext, file_name, created_at
         ) VALUES (
-          ${p.id || Date.now()},
+          ${id},
           ${p.name},
-          ${p.type || 'physical'},
-          ${p.cat  || 'other'},
-          ${p.price},
-          ${p.commission || 0},
-          ${p.desc || ''},
-          ${p.seller   || ''},
-          ${p.sellerId || ''},
-          ${p.sellerEmail || ''},
-          ${0}, ${0},
-          ${p.emoji || ''},
-          ${JSON.stringify(imgs)},
+          ${p.type          || 'digital'},
+          ${p.cat           || 'other'},
+          ${parseFloat(p.price)},
+          ${p.discountPrice ? parseFloat(p.discountPrice) : null},
+          ${p.isOnSale      || false},
+          ${p.saleEndsAt    || null},
+          ${p.shippingFee   ? parseFloat(p.shippingFee) : 0},
+          ${parseFloat(p.commission || 0)},
+          ${p.description   || ''},
+          ${p.seller        || ''},
+          ${p.sellerId      ? String(p.sellerId) : null},
+          ${p.sellerEmail   || ''},
+          ${p.sellerWhatsapp || ''},
+          ${0},
+          ${0},
+          ${p.emoji         || '📦'},
+          ${JSON.stringify(p.imgs || [])},
           ${'pending'},
-          ${'Pending Review'},
-          ${p.date || new Date().toLocaleDateString()},
-          ${true},
-          ${p.fileExt  || null},
-          ${p.fileName || null},
+          ${p.badge         || ''},
+          ${new Date().toLocaleDateString()},
+          ${p.escrow !== false},
+          ${p.fileExt   || null},
+          ${p.fileName  || null},
           NOW()
         )
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          status = EXCLUDED.status
+        RETURNING *
       `;
-      return res.status(201).json({ ok: true });
+      return res.status(201).json({ ok: true, product: toProduct(rows[0]) });
     }
 
+    /* ── PATCH — update product (status, discount, sale fields) ── */
     if (req.method === 'PATCH') {
-      const { id, status, badge } = req.body || {};
-      if (!id) return res.status(400).json({ error: 'id required' });
-      await sql`UPDATE products SET status=${status||'active'}, badge=${badge||''} WHERE id=${id}`;
+      const p = req.body || {};
+      if (!p.id) return res.status(400).json({ error: 'Product id is required.' });
+
+      await sql`
+        UPDATE products SET
+          status         = COALESCE(${p.status          ?? null}, status),
+          badge          = COALESCE(${p.badge           ?? null}, badge),
+          discount_price = COALESCE(${p.discountPrice != null ? parseFloat(p.discountPrice) : null}, discount_price),
+          is_on_sale     = COALESCE(${p.isOnSale        ?? null}, is_on_sale),
+          sale_ends_at   = COALESCE(${p.saleEndsAt      ?? null}, sale_ends_at),
+          shipping_fee   = COALESCE(${p.shippingFee != null ? parseFloat(p.shippingFee) : null}, shipping_fee),
+          seller_verified = COALESCE(${p.sellerVerified ?? null}, seller_verified),
+          seller_whatsapp = COALESCE(${p.sellerWhatsapp ?? null}, seller_whatsapp)
+        WHERE id = ${p.id}
+      `;
       return res.status(200).json({ ok: true });
     }
 
+    /* ── DELETE — remove product ── */
     if (req.method === 'DELETE') {
-      const { id } = req.body || {};
-      if (!id) return res.status(400).json({ error: 'id required' });
-      await sql`DELETE FROM products WHERE id=${id}`;
+      const id = req.query.id || (req.body && req.body.id);
+      if (!id) return res.status(400).json({ error: 'Product id is required.' });
+      await sql`DELETE FROM products WHERE id = ${id}`;
       return res.status(200).json({ ok: true });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed.' });
 
   } catch (err) {
-    console.error('[products.js]', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    console.error('[products.js]', err.message);
+    return res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
-}
-
-module.exports = handler;
+};
