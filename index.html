@@ -1884,11 +1884,11 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!key || !key.trim()) return;
       key = key.trim();
       if (!key.startsWith('sk_live_') && !key.startsWith('sk_test_')) {
-        alert('❌ Invalid key format.\nMust start with sk_live_ or sk_test_');
+        toast('❌ Invalid key. Must start with sk_live_ or sk_test_', 'fail');
         return;
       }
       sessionStorage.setItem('master_key', key);
-      alert('✅ Paystack Key Injected!\n\nKey: ' + key.substring(0, 14) + '...' + key.slice(-4) + '\nStatus: Active for this session\n\nGo to Admin → Payouts to process seller subaccounts.');
+      toast('✅ Paystack key injected! Go to Admin → Payouts to process seller accounts.', 'ok');
       return;
     }
 
@@ -1904,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', function () {
         sessionStorage.setItem('nm_session', uStr);
         updNav(); toast('Admin access granted 🔐', 'ok'); go('admin');
       } else {
-        alert('❌ Incorrect password.\n\nThis access attempt has been logged.');
+        toast('❌ Incorrect password. This attempt has been logged.', 'fail');
       }
     }
   });
@@ -1939,7 +1939,7 @@ var IMGBB_KEY = 'b2c01e6615189dbcad9377d41098676e'; /* free ImgBB key */
 
 function onImgPick(e) {
   var f = e.target.files[0]; if (!f) return;
-  if (f.size > 5 * 1024 * 1024) { alert('Image too large. Max 5MB.'); return; }
+  if (f.size > 5 * 1024 * 1024) { toast('Image too large. Maximum size is 5MB.', 'fail'); return; }
   var slot = activeSlot;
   var sl = document.getElementById('sl-' + slot);
 
@@ -2006,7 +2006,7 @@ function onFilePick(e) {
   /* Warn if file is very large (base64 bloats by ~33%) */
   var sizeMB = f.size / (1024 * 1024);
   if (sizeMB > 15) {
-    alert('⚠ File is ' + sizeMB.toFixed(1) + ' MB. Large files may not save correctly in the browser.\n\nFor files over 15MB, consider uploading to Google Drive and pasting a shareable link in your product description instead.');
+    toast('⚠️ File is ' + sizeMB.toFixed(1) + 'MB. For files over 15MB, use Google Drive and paste a link in the description.', 'warn');
   }
 
   var ext = f.name.lastIndexOf('.') > -1 ? f.name.substring(f.name.lastIndexOf('.')) : '';
@@ -2021,7 +2021,7 @@ function onFilePick(e) {
     validateSell();
   };
   reader.onerror = function () {
-    alert('Could not read the file. Please try again.');
+    toast('Could not read the file. Please try again.', 'fail');
     dReady = false;
     validateSell();
   };
@@ -2077,7 +2077,7 @@ function submitProduct() {
     }
   }
   var imgN = cntImgs();
-  if (imgN < 2) { alert('Please upload at least 2 product images'); return; }
+  if (imgN < 2) { toast('Please upload at least 2 product images.', 'fail'); return; }
   var btn = document.getElementById('sell-btn');
   if (btn && btn.disabled) return;
 
@@ -2125,7 +2125,6 @@ function submitProduct() {
   try {
     payloadStr = JSON.stringify(payload);
   } catch(e) {
-    alert('JSON Error: ' + e.message + '\nImgs: ' + JSON.stringify(cleanImgs));
     toast('Could not prepare product data: ' + e.message, 'fail');
     return;
   }
@@ -2138,8 +2137,7 @@ function submitProduct() {
   })
   .then(function(r) {
     return r.text().then(function(txt) {
-      alert('Server response: ' + txt.substring(0, 300));
-      try { return JSON.parse(txt); } catch(e) { throw new Error('Server returned: ' + txt.substring(0, 200)); }
+      try { return JSON.parse(txt); } catch(e) { throw new Error('Server returned non-JSON. Check Vercel logs.'); }
     });
   })
   .then(function(data) {
@@ -2148,16 +2146,29 @@ function submitProduct() {
       uploadedImages = [];
       resetSell();
       if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
-      toast('Product submitted for review! 🎉', 'ok');
-      go(CU && CU.role === 'admin' ? 'admin' : 'seller');
+      /* Beautiful success feedback — no raw JSON */
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon:             'success',
+          title:            'Product Listed! 🎉',
+          html:             '<p style="color:#374151;line-height:1.7">Your product has been submitted for admin review.<br/><strong>It will go live within 24 hours.</strong></p>',
+          confirmButtonText:'View My Listings',
+          confirmButtonColor:'#c9922a',
+          allowOutsideClick: false
+        }).then(function() {
+          go(CU && CU.role === 'admin' ? 'admin' : 'seller');
+        });
+      } else {
+        toast('✅ Product submitted for review! Goes live within 24 hours.', 'ok');
+        go(CU && CU.role === 'admin' ? 'admin' : 'seller');
+      }
     } else {
-      throw new Error(data.error || 'Submission failed');
+      throw new Error(data.error || 'Submission failed — check Vercel logs');
     }
   })
   .catch(function(err) {
     if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
-    alert('Full error: ' + err.message);
-    toast('Failed: ' + (err.message || 'Please try again'), 'fail');
+    toast('Submission failed: ' + (err.message || 'Please try again'), 'fail');
   });
 }
 window.submitProduct = submitProduct;
@@ -2257,7 +2268,9 @@ window.doSrt = doSrt;
 
 /* ═══ PRODUCT DETAIL ═══ */
 function opn(id) {
-  var p = prods.find(function (x) { return x.id === id; }); if (!p) return;
+  /* Normalize: Neon returns numeric IDs; onclick may pass string or number */
+  var numId = Number(id);
+  var p = prods.find(function (x) { return Number(x.id) === numId; }); if (!p) return;
   document.getElementById('pd-title').textContent = p.name;
   var gi = p.imgs && p.imgs.length ? p.imgs : [];
   var mh = gi[0] ? '<img class="pdmi" id="pd-mi" src="' + gi[0] + '" alt="' + p.name + '"/>' : '<div class="pdmi emj">' + p.emoji + '</div>';
@@ -2375,7 +2388,7 @@ function submitReview(productId) {
     if (data.ok) {
       toast('Review submitted! ⭐', 'ok');
       /* Update local product rating */
-      var p = prods.find(function(x){ return x.id === productId; });
+      var p = prods.find(function(x){ return Number(x.id) === Number(productId); });
       if (p) { p.rating = parseFloat(data.rating); p.reviews = data.reviews; sv('nm_products', prods); }
       loadReviews(productId);
     } else {
@@ -2419,8 +2432,9 @@ window.generateAffiliateLink = generateAffiliateLink;
 
 /* ═══ CART ═══ */
 function addCart(id) {
-  var p = prods.find(function (x) { return x.id === id; }); if (!p) return;
-  var ex = cart.find(function (x) { return x.id === id; });
+  var numId = Number(id);
+  var p = prods.find(function (x) { return Number(x.id) === numId; }); if (!p) return;
+  var ex = cart.find(function (x) { return Number(x.id) === numId; });
   if (ex) ex.qty = (ex.qty || 1) + 1;
   else cart.push(Object.assign({}, p, { qty: 1 }));
   updBadge(); toast(p.name.substring(0, 28) + '… added ✓', 'ok');
@@ -2438,12 +2452,28 @@ function openCart() {
     body.innerHTML = '<div class="emc"><div style="font-size:2.5rem">🛒</div><p style="color:var(--muted);margin-top:10px">Your cart is empty</p><button class="bg" style="margin-top:14px;padding:10px 22px" onclick="cM(\'m-cart\');go(\'market\')">Shop Now</button></div>';
     oM('m-cart'); return;
   }
-  var total = 0; cart.forEach(function (i) { total += i.price * (i.qty || 1); });
+  var total = 0;
+  cart.forEach(function (i) {
+    var qty  = i.qty || 1;
+    var base = parseFloat(i.price || 0);
+    var disc = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0 ? parseFloat(i.discountPrice || i.discount_price) : base;
+    var ship = (i.type === 'physical') ? parseFloat(i.shippingFee || i.shipping_fee || 0) : 0;
+    total += (disc + ship) * qty;
+  });
   body.innerHTML = cart.map(function (i) {
-    var imgH = (i.imgs && i.imgs[0]) ? '<img class="ctimg" src="' + i.imgs[0] + '" alt=""/>' : '<div class="ctimg">' + i.emoji + '</div>';
+    var qty  = i.qty || 1;
+    var base = parseFloat(i.price || 0);
+    var disc = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0 ? parseFloat(i.discountPrice || i.discount_price) : base;
+    var ship = (i.type === 'physical') ? parseFloat(i.shippingFee || i.shipping_fee || 0) : 0;
+    var lineT = (disc + ship) * qty;
+    var imgH = (i.imgs && i.imgs[0]) ? '<img class="ctimg" src="' + i.imgs[0] + '" alt=""/>' : '<div class="ctimg">' + (i.emoji || '📦') + '</div>';
+    var priceHtml = (disc < base)
+      ? '<span style="text-decoration:line-through;font-size:.72rem;color:var(--muted)">₦' + (base*qty).toLocaleString() + '</span> <span style="color:var(--red)">₦' + lineT.toLocaleString() + '</span>'
+      : '₦' + lineT.toLocaleString();
     return '<div class="cti">' + imgH
-      + '<div class="ctin"><h4>' + i.name.substring(0, 32) + '…</h4><p>Qty: ' + (i.qty || 1) + ' · ' + i.type + '</p></div>'
-      + '<span class="ctp">₦' + (i.price * (i.qty || 1)).toLocaleString() + '</span>'
+      + '<div class="ctin"><h4>' + i.name.substring(0, 28) + (i.name.length > 28 ? '…' : '') + '</h4>'
+      + '<p style="font-size:.72rem;color:var(--muted)">Qty: ' + qty + ' · ' + i.type + (ship > 0 ? ' · +₦' + ship.toLocaleString() + ' shipping' : '') + '</p></div>'
+      + '<span class="ctp">' + priceHtml + '</span>'
       + '<button class="rmbtn" onclick="rmCart(' + i.id + ')">🗑</button></div>';
   }).join('')
     + '<div class="ctr"><span>Total</span><span class="ctrc">₦' + total.toLocaleString() + '</span></div>'
@@ -2452,7 +2482,7 @@ function openCart() {
 }
 window.openCart = openCart;
 
-function rmCart(id) { cart = cart.filter(function (i) { return i.id !== id; }); updBadge(); openCart(); }
+function rmCart(id) { var numId = Number(id); cart = cart.filter(function (i) { return Number(i.id) !== numId; }); updBadge(); openCart(); }
 window.rmCart = rmCart;
 
 /* ═══ CHECKOUT ROUTING — digital skips shipping, goes straight to Paystack ═══ */
@@ -2507,11 +2537,34 @@ function startPurchase(isPhysical) {
 window.startPurchase = startPurchase;
 
 function bSum(pageId) {
-  var total = 0; cart.forEach(function (i) { total += i.price * (i.qty || 1); });
-  var fee = Math.round(total * 0.10), seller = total - fee;
-  var html = '<div class="cor"><span>Subtotal</span><span>₦' + total.toLocaleString() + '</span></div>'
-    + '<div class="cor"><span>Platform Fee (10%)</span><span>₦' + fee.toLocaleString() + '</span></div>'
-    + '<div class="cor"><span>Seller Receives (90%)</span><span style="color:var(--green)">₦' + seller.toLocaleString() + '</span></div>'
+  /* Total = (price - discount) + shipping, per item × qty */
+  var subtotal = 0;
+  var shipping = 0;
+  var savings  = 0;
+  cart.forEach(function (i) {
+    var qty   = i.qty || 1;
+    var base  = parseFloat(i.price || 0);
+    var disc  = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0
+                ? parseFloat(i.discountPrice || i.discount_price)
+                : base;
+    var ship  = (i.type === 'physical' || i.type === 'Physical')
+                ? parseFloat(i.shippingFee || i.shipping_fee || 0)
+                : 0;
+    subtotal += disc * qty;
+    shipping += ship * qty;
+    savings  += (base - disc) * qty;
+  });
+  var total  = subtotal + shipping;
+  var platFee = Math.round(total * 0.05);
+  var sellerPay = total - platFee;
+
+  var html = (savings > 0
+    ? '<div class="cor" style="color:var(--green)"><span>You Save</span><span>-₦' + savings.toLocaleString() + '</span></div>'
+    : '')
+    + '<div class="cor"><span>Subtotal</span><span>₦' + subtotal.toLocaleString() + '</span></div>'
+    + (shipping > 0 ? '<div class="cor"><span>Shipping</span><span>₦' + shipping.toLocaleString() + '</span></div>' : '')
+    + '<div class="cor"><span>Platform Fee (5%)</span><span>₦' + platFee.toLocaleString() + '</span></div>'
+    + '<div class="cor"><span>Seller Receives (95%)</span><span style="color:var(--green)">₦' + sellerPay.toLocaleString() + '</span></div>'
     + '<div class="cot"><span>You Pay</span><span style="color:var(--gold)">₦' + total.toLocaleString() + '</span></div>';
   var sid = pageId === 'shipping' ? 'ship-sum' : 'co-sum';
   var el = document.getElementById(sid); if (el) el.innerHTML = html;
@@ -2550,13 +2603,22 @@ function processPaystack(mode) {
   if (nameEl  && !nameEl.value)  nameEl.value  = name;
   if (waEl    && !waEl.value)    waEl.value     = wa;
 
-  if (!email) { alert('Please enter your email address to continue.'); return; }
-  if (!name)  { alert('Please enter your full name to continue.'); return; }
-  if (isPhys && !addr) { alert('Please enter your delivery address.'); return; }
+  if (!email) { toast('Please enter your email address to continue.', 'fail'); return; }
+  if (!name)  { toast('Please enter your full name to continue.', 'fail'); return; }
+  if (isPhys && !addr) { toast('Please enter your delivery address.', 'fail'); return; }
 
+  /* Total = (discounted price + shipping) × qty */
   var total = 0;
-  cart.forEach(function (i) { total += i.price * (i.qty || 1); });
-  if (total <= 0) { alert('Your cart is empty.'); return; }
+  cart.forEach(function (i) {
+    var qty  = i.qty || 1;
+    var base = parseFloat(i.price || 0);
+    var disc = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0
+               ? parseFloat(i.discountPrice || i.discount_price)
+               : base;
+    var ship = isPhys ? parseFloat(i.shippingFee || i.shipping_fee || 0) : 0;
+    total += (disc + ship) * qty;
+  });
+  if (total <= 0) { toast('Your cart is empty.', 'fail'); return; }
 
   var trackId = 'NYO-' + Math.floor(1000 + Math.random() * 9000);
 
@@ -2702,14 +2764,14 @@ function processPaystack(mode) {
   }
 
   if (typeof PaystackPop === 'undefined') {
-    alert('Paystack did not load. Check your internet connection and refresh.');
+    toast('Paystack did not load. Please check your connection and refresh.', 'fail');
     return;
   }
 
   try {
     PaystackPop.setup(cfg).openIframe();
   } catch (err) {
-    alert('Paystack error: ' + (err.message || 'Unknown') + '\n\nPlease refresh and try again.');
+    toast('Paystack error: ' + (err.message || 'Unknown') + '. Please refresh and try again.', 'fail');
   }
 }
 window.processPaystack = processPaystack;
@@ -2877,7 +2939,7 @@ function markDL(id) {
         + 'Your escrow has been released to the seller.\n\n'
         + '📧 The seller will be notified to send your download link.\n\n'
         + '💡 Note: For instant downloads, sellers must upload their file directly when listing the product on the Sell page.';
-      alert(msg);
+      toast(msg, 'fail');
     }, 400);
   }
 }
@@ -3319,8 +3381,9 @@ function renderSellerDash() {
 function deleteProduct(productId) {
   if (!CU) { toast('Please sign in first', 'fail'); return; }
 
-  var p = prods.find(function (x) { return x.id === productId; });
-  if (!p) { toast('Product not found', 'fail'); return; }
+  var numPId = Number(productId);
+  var p = prods.find(function (x) { return Number(x.id) === numPId; });
+  if (!p) { toast('Product not found — try refreshing', 'fail'); return; }
 
   // Security check: sellerId must match OR user is admin
   var ownsIt = (p.sellerId && String(p.sellerId) === String(CU.id))
@@ -3336,7 +3399,7 @@ function deleteProduct(productId) {
   if (!confirm('Delete "' + p.name.substring(0, 40) + '"?\n\nThis cannot be undone.')) return;
 
   // Remove from array and persist
-  prods = prods.filter(function (x) { return x.id !== productId; });
+  prods = prods.filter(function (x) { return Number(x.id) !== numPId; });
   saveAll();
   apiCall('/products', 'DELETE', { id: productId }).catch(function(){});
 
@@ -3548,7 +3611,7 @@ function injectKeyNow() {
   if (!key || !key.trim()) return;
   key = key.trim();
   if (!key.startsWith('sk_live_') && !key.startsWith('sk_test_')) {
-    alert('❌ Invalid key format. Must start with sk_live_ or sk_test_'); return;
+    toast('❌ Invalid key format. Must start with sk_live_ or sk_test_', 'fail'); return;
   }
   sessionStorage.setItem('master_key', key);
   toast('✅ Paystack key injected! Ready to process subaccounts.', 'ok');
@@ -3560,7 +3623,7 @@ window.injectKeyNow = injectKeyNow;
 function processSubaccount(userId, sellerName, bankName, accountNumber, accountName) {
   var PSK = getPSK();
   if (!PSK) {
-    alert('❌ No Paystack key injected.\n\nDouble-tap the NeyoMarket logo (2 taps) to inject your sk_live_... key, then click Process again.');
+    toast('❌ No Paystack key found. Double-tap the NeyoMarket logo to inject your sk_live_ key.', 'fail');
     return;
   }
   var btnEl    = document.getElementById('btn-' + userId);
