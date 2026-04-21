@@ -664,6 +664,75 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         display:flex;align-items:center;justify-content:center;gap:8px}
 .dl-btn:active{opacity:.88;transform:scale(.99)}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+/* ── SALE / DISCOUNT BADGE ── */
+.sale-badge{
+  position:absolute;top:8px;left:8px;
+  background:linear-gradient(135deg,#dc2626,#b91c1c);
+  color:#fff;padding:3px 8px;border-radius:4px;
+  font-size:.62rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  box-shadow:0 2px 6px rgba(220,38,38,.4);z-index:2
+}
+.savings-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  background:#fef2f2;border:1px solid #fecaca;color:#dc2626;
+  padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;
+  margin-bottom:6px
+}
+.price-original{
+  font-size:.78rem;color:var(--muted);text-decoration:line-through;margin-right:6px
+}
+.sale-timer{
+  font-size:.66rem;color:var(--orange);font-weight:600;margin-bottom:6px
+}
+
+/* ── VERIFIED CAMPUS BADGE ── */
+.verified-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:linear-gradient(135deg,#1d4ed8,#1e40af);
+  color:#fff;padding:2px 7px;border-radius:4px;
+  font-size:.58rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+  margin-left:4px;vertical-align:middle
+}
+.verified-badge svg{width:9px;height:9px;fill:#fff}
+
+/* ── DELIVERY VERIFICATION CODE ── */
+.dvc-wrap{
+  background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+  border:2px solid #86efac;border-radius:10px;
+  padding:18px;margin-top:12px;text-align:center
+}
+.dvc-code{
+  font-family:'Cormorant Garamond',serif;
+  font-size:2.8rem;font-weight:700;letter-spacing:12px;
+  color:var(--text);background:#fff;
+  border:2px dashed #22c55e;border-radius:8px;
+  padding:10px 20px;margin:10px 0;display:inline-block
+}
+.dvc-input{
+  width:100%;text-align:center;font-size:1.8rem;font-weight:700;
+  letter-spacing:8px;border:2px solid var(--border);border-radius:8px;
+  padding:12px;background:#fff;outline:none;font-family:'Cormorant Garamond',serif
+}
+.dvc-input:focus{border-color:var(--green)}
+
+/* ── WHATSAPP CONTACT BUTTON ── */
+.wa-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;background:#25d366;color:#fff;border:none;
+  padding:12px;border-radius:6px;font-weight:700;font-size:.85rem;
+  cursor:pointer;transition:var(--tr);touch-action:manipulation;
+  box-shadow:0 2px 8px rgba(37,211,102,.35)
+}
+.wa-btn:active{opacity:.88;transform:scale(.99)}
+
+/* ── DISPUTE REFUND ROW ── */
+.dispute-row{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:14px;margin-bottom:10px;
+}
+.dispute-row.unresolved{border-left:3px solid var(--red)}
+.dispute-row.resolved{border-left:3px solid var(--green)}
 </style>
 </head>
 <body>
@@ -891,6 +960,33 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       </div>
       <div class="fg"><label>Price (₦) <span class="rq">*</span></label><input class="fi" type="number" id="s-price" placeholder="e.g. 5000" min="100" oninput="validateSell()"/></div>
       <div class="fg"><label>Affiliate Commission % <span class="rq">*</span></label><input class="fi" type="number" id="s-comm" placeholder="5 – 40" min="5" max="40" oninput="validateSell()"/></div>
+
+      <!-- Discount / Sale Price -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--gold);margin-bottom:10px">🔥 Discount & Sale Settings (Optional)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="fg" style="margin:0">
+            <label>Sale Price (₦)</label>
+            <input class="fi" type="number" id="s-discount-price" placeholder="e.g. 3500" min="0"/>
+            <p class="hint">Set lower than full price to activate sale badge</p>
+          </div>
+          <div class="fg" style="margin:0">
+            <label>Sale Ends (optional)</label>
+            <input class="fi" type="datetime-local" id="s-sale-ends"/>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="s-on-sale" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer"/>
+          <label for="s-on-sale" style="font-size:.82rem;cursor:pointer;color:var(--muted)">Enable sale badge (requires a sale price above)</label>
+        </div>
+      </div>
+
+      <!-- Shipping Fee (physical only) -->
+      <div class="fg" id="s-shipping-wrap" style="display:none">
+        <label>Shipping Fee (₦)</label>
+        <input class="fi" type="number" id="s-shipping-fee" placeholder="e.g. 500 (0 for free shipping)" min="0" value="0"/>
+        <p class="hint">Charged in addition to product price. Enter 0 for free shipping.</p>
+      </div>
       <div class="fg"><label>Description <span class="rq">*</span></label><textarea class="fi" id="s-desc" rows="4" placeholder="What's included? Who is this for? Why buy it?" oninput="validateSell()"></textarea></div>
 
       <div class="fg" id="dfile-wrap" style="display:none">
@@ -1436,7 +1532,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="asb" onclick="aTab('aff2',this)">💸 Affiliates</button>
       <div class="asl">Finance</div>
       <button class="asb" onclick="aTab('pay',this)">💰 Payouts</button>
-      <button class="asb" onclick="aTab('dis',this)">⚖️ Disputes</button>
+      <button class="asb" onclick="aTab('dis',this)">⚖️ Disputes & Refunds</button>
       <div class="asl">System</div>
       <button class="asb" onclick="aTab('set',this)">⚙️ Settings</button>
       <div style="margin-top:14px;padding:0 3px">
@@ -1935,6 +2031,8 @@ window.onFilePick = onFilePick;
 
 function onType() {
   var t = document.getElementById('s-type').value;
+  var shippingWrap = document.getElementById('s-shipping-wrap');
+  if (shippingWrap) shippingWrap.style.display = (t === 'physical') ? 'block' : 'none';
   document.getElementById('dfile-wrap').style.display = (t === 'digital' || t === 'course') ? 'block' : 'none';
   if (t !== 'digital' && t !== 'course') dReady = false;
 }
@@ -2004,6 +2102,11 @@ function submitProduct() {
     id:          Date.now(),
     name:        gv('s-name'),
     type:        gv('s-type') || 'physical',
+    discountPrice:  parseFloat(gv('s-discount-price') || '0') || null,
+    isOnSale:       document.getElementById('s-on-sale') ? document.getElementById('s-on-sale').checked : false,
+    saleEndsAt:     gv('s-sale-ends') || null,
+    shippingFee:    parseFloat(gv('s-shipping-fee') || '0') || 0,
+    sellerWhatsapp: CU && CU.phone ? CU.phone : '',
     cat:         gv('s-cat')  || 'other',
     price:       parseFloat(gv('s-price')) || 0,
     commission:  parseFloat(gv('s-comm'))  || 0,
@@ -2061,7 +2164,7 @@ window.submitProduct = submitProduct;
 
 function resetSell() {
   uploadedImages = []; dReady = false; digitalFileData = null;
-  ['s-name','s-type','s-cat','s-price','s-comm','s-desc','s-email'].forEach(function (id) { sval(id, ''); });
+  ['s-name','s-type','s-cat','s-price','s-comm','s-desc','s-email','s-discount-price','s-sale-ends','s-shipping-fee'].forEach(function (id) { sval(id, ''); });
   var cb = document.getElementById('sell-cb'); if (cb) cb.checked = false;
   var dw = document.getElementById('dfile-wrap'); if (dw) dw.style.display = 'none';
   var fn = document.getElementById('dfile-name'); if (fn) fn.textContent = 'Tap to Choose File';
@@ -2081,16 +2184,46 @@ function rGrid(cid, items) {
     var mi = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" alt="' + p.name + '"/>' : '<div class="eph">' + p.emoji + '</div>';
     var tc = (p.type === 'digital' || p.type === 'course') ? 'dt' : 'pt';
     var tl = p.type === 'digital' ? '⚡ Digital' : p.type === 'course' ? '🎓 Course' : '📦 Physical';
+
+    /* Sale / discount logic */
+    var isOnSale    = p.isOnSale || p.is_on_sale || false;
+    var discPrice   = p.discountPrice || p.discount_price || null;
+    var saleEnds    = p.saleEndsAt  || p.sale_ends_at  || null;
+    var saleActive  = isOnSale && discPrice && discPrice < p.price &&
+                      (!saleEnds || new Date(saleEnds) > new Date());
+    var displayPrice = saleActive ? discPrice : p.price;
+    var saving       = saleActive ? Math.round(p.price - discPrice) : 0;
+
+    /* Sale timer string */
+    var timerStr = '';
+    if (saleActive && saleEnds) {
+      var diff = Math.max(0, new Date(saleEnds) - new Date());
+      var hrs  = Math.floor(diff / 3600000);
+      var mins = Math.floor((diff % 3600000) / 60000);
+      timerStr = hrs > 0 ? 'Ends in ' + hrs + 'h ' + mins + 'm' : 'Ends in ' + mins + 'm';
+    }
+
+    /* Verified badge */
+    var verBadge = (p.sellerVerified || p.seller_verified)
+      ? '<span class="verified-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>'
+      : '';
+
     return '<div class="pcard" onclick="opn(' + p.id + ')">'
       + '<div class="pci">' + mi
-      + (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : '')
+      + (saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
       + '<span class="pb2 ' + tc + '">' + tl + '</span>'
       + '<span class="el">🛡 Escrow</span></div>'
-      + '<div class="pcb"><h4>' + p.name + '</h4>'
+      + '<div class="pcb"><h4>' + p.name + verBadge + '</h4>'
       + '<div class="pcs">by ' + p.seller + (p.reviews > 0 ? ' · ⭐' + p.rating : '') + '</div>'
-      + '<div class="pcf"><span class="pcp">₦' + p.price.toLocaleString() + '</span>'
+      + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ₦' + saving.toLocaleString() + '</div>' : '')
+      + (timerStr ? '<div class="sale-timer">⏰ ' + timerStr + '</div>' : '')
+      + '<div class="pcf">'
+      + '<div>'
+      + (saleActive ? '<span class="price-original">₦' + p.price.toLocaleString() + '</span>' : '')
+      + '<span class="pcp' + (saleActive ? '" style="color:var(--red)' : '') + '">₦' + displayPrice.toLocaleString() + '</span>'
+      + '</div>'
       + (p.reviews > 0 ? '<span class="pcr">⭐' + p.rating + '</span>' : '<span style="font-size:.7rem;color:var(--muted)">New</span>')
-      + '</div><button class="addbtn" onclick="event.stopPropagation();addCart(' + p.id + ')">Add to Cart</button></div></div>';
+      + '</div><button class="addbtn" onclick="event.stopPropagation();addCart(' + p.id + ')">🛒 Add to Cart</button></div></div>';
   }).join('');
 }
 
@@ -2145,14 +2278,32 @@ function opn(id) {
     + '<span class="pdt">💸 ' + p.commission + '% affiliate</span>'
     + '<span class="pdt">🛡 Escrow</span></div>'
     + (p.reviews > 0 ? '<div style="margin-bottom:8px;font-size:1.1rem">' + starsHtml + '</div>' : '')
-    + '<div class="pdprice">₦' + p.price.toLocaleString() + '</div>'
-    + '<p class="pddesc">' + (p.description || p.desc || '') + '</p>'
-    + '<div class="prot">🛡️ <strong>Buyer Protected:</strong> Funds held in escrow until you confirm receipt. Full refund if not as described.</div>'
-    + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:12px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong></p>'
-    + '<div class="pdbtns">'
-    + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">🛒 Add to Cart</button>'
-    + '<button onclick="cpyAffProd(' + p.id + ')" style="background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">🔗 Affiliate Link</button>'
-    + '</div>'
+    + (function(){
+        var isOnSale   = !!(p.isOnSale || p.is_on_sale);
+        var discPrice  = parseFloat(p.discountPrice || p.discount_price || 0);
+        var saleEndsAt = p.saleEndsAt || p.sale_ends_at || null;
+        var saleActive = isOnSale && discPrice > 0 && discPrice < p.price && (!saleEndsAt || new Date(saleEndsAt) > new Date());
+        var displayP   = saleActive ? discPrice : p.price;
+        var saving     = saleActive ? Math.round(p.price - discPrice) : 0;
+        var verBadge   = (p.sellerVerified || p.seller_verified) ? ' <span class="verified-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>' : '';
+        var waPhone = String(p.sellerWhatsapp || p.seller_whatsapp || '');
+        var waMsg   = encodeURIComponent('Hi! I am interested in your ' + p.name + ' listed at \u20a6' + displayP.toLocaleString() + ' on NeyoMarket.');
+        var waLink  = waPhone ? 'https://wa.me/' + waPhone.replace(/[^0-9]/g,'') + '?text=' + waMsg : '';
+        var waBtn   = (CU && waLink) ? '<a href="' + waLink + '" target="_blank" rel="noopener" class="wa-btn">\uD83D\uDCAC Contact Seller on WhatsApp</a>' : '<button onclick="toast(\' Sign in to contact seller\',\'warn\'" class="wa-btn" style="background:var(--bg3);color:var(--muted);box-shadow:none">\uD83D\uDCAC Sign In to Contact Seller</button>';
+        return '<div class="pdprice">'
+          + (saleActive ? '<span class="price-original">\u20a6' + p.price.toLocaleString() + '</span> ' : '')
+          + '<span style="' + (saleActive ? 'color:var(--red)' : '') + '">\u20a6' + displayP.toLocaleString() + '</span>'
+          + (saving > 0 ? ' <span class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + '</span>' : '')
+          + '</div>'
+          + '<p class="pddesc">' + (p.description || p.desc || '') + '</p>'
+          + '<div class="prot">\uD83D\uDEE1\uFE0F <strong>Buyer Protected:</strong> Funds in escrow until you confirm receipt. Full refund if not as described.</div>'
+          + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong>' + verBadge + '</p>'
+          + '<div style="margin-bottom:10px">' + waBtn + '</div>'
+          + '<div class="pdbtns">'
+          + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">\uD83D\uDED2 Add to Cart</button>'
+          + '<button onclick="cpyAffProd(' + p.id + ')" style="background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">\uD83D\uDD17 Affiliate Link</button>'
+          + '</div>';
+      })()
     + '<div id="reviews-section-' + p.id + '" style="margin-top:22px">'
     + '<h4 style="font-size:.92rem;margin-bottom:12px;border-top:1px solid var(--border);padding-top:14px">⭐ Reviews</h4>'
     + '<div id="reviews-list-' + p.id + '"><p style="color:var(--muted);font-size:.82rem">Loading reviews…</p></div>'
@@ -2605,7 +2756,16 @@ function renderOrders() {
         } else if (isDone) {
           actionBtn = '<div style="color:var(--green);font-size:.84rem;font-weight:600;margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:6px;text-align:center">✅ Order Complete</div>';
         } else if (isPhys && isPaid) {
-          actionBtn = '<button onclick="markCol(\'' + o.id + '\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:15px;border-radius:6px;font-weight:700;font-size:.9rem;cursor:pointer;margin-top:10px;touch-action:manipulation">📦 Mark as Collected</button>';
+          /* Physical: buyer gets DVC code; seller enters it to release */
+          var isBuyer  = CU && (o.userId === String(CU.id) || (o.customer && o.customer.email === maskEmail(CU.email)));
+          var isSeller = CU && o.items && o.items.some(function(i){ return i.sellerId === String(CU.id) || i.seller === CU.name; });
+          if (isBuyer) {
+            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">🔐 Get Delivery Code</button>';
+          } else if (isSeller) {
+            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">✓ Enter Delivery Code</button>';
+          } else {
+            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Delivery Verification</button>';
+          }
         } else {
           actionBtn = '<div style="color:var(--orange);font-size:.78rem;margin-top:8px;padding:8px 12px;background:var(--orange-bg);border-radius:6px;text-align:center">⏳ Awaiting payment confirmation…</div>';
         }
@@ -3265,9 +3425,12 @@ function renderSellerPage() {
           + '<span style="font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:50px;' + statusStyle + '">' + statusMsg + '</span>'
           + '</div>'
           + '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
+          + '<button onclick="analyzeProductWithAI(' + p.id + ')" style="background:rgba(201,146,42,.08);border:1px solid var(--gold);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">🤖 AI Analyze</button>'
           + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
           + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
-          + '</div></div>';
+          + '</div>'
+          + '<div id="ai-insight-' + p.id + '" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px;font-size:.8rem;width:100%"></div>'
+          + '</div>';
       }).join('');
     }
   }
@@ -4295,12 +4458,77 @@ function aTab(tab, btn) {
 
     /* ─── DISPUTES ─── */
     } else if (tab === 'dis') {
-      c.innerHTML = '<div class="ah"><h1>Disputes</h1></div>'
-        + '<div class="act"><h3>Active Disputes</h3>'
-        + '<div style="text-align:center;padding:28px 0;color:var(--muted)">'
-        + '<div style="font-size:2rem;margin-bottom:8px">⚖️</div>'
-        + '<div style="font-size:.88rem">No active disputes. All orders are escrow-protected.</div>'
-        + '</div></div>';
+      c.innerHTML = '<div class="ah"><h1>⚖️ Disputes & Refunds</h1><p>One-click Paystack refunds for unresolved deliveries</p></div>'
+        + '<div id="disputes-content"><div style="text-align:center;padding:30px;color:var(--muted)">⏳ Loading disputes…</div></div>';
+
+      /* Load orders that are in escrow and older than 3 days — candidates for disputes */
+      Promise.all([
+        fetch('/api/orders').then(function(r){ return r.json(); }),
+        fetch('/api/users').then(function(r){ return r.json(); })
+      ]).then(function(res) {
+        var orders  = (res[0].orders  || []);
+        var users   = (res[1].users   || []);
+        var cutoff  = Date.now() - (3 * 24 * 60 * 60 * 1000); /* 3 days */
+
+        /* Escrow orders: paid but not collected */
+        var escrow = orders.filter(function(o){
+          return (o.status === 'paid' || o.status === 'escrow_held') && !o.collected;
+        });
+        /* Flagged = older than 3 days in escrow (potential dispute) */
+        var flagged = escrow.filter(function(o){
+          return o.createdAt && new Date(o.createdAt).getTime() < cutoff;
+        });
+        /* Recent = less than 3 days, normal escrow */
+        var recent = escrow.filter(function(o){
+          return !o.createdAt || new Date(o.createdAt).getTime() >= cutoff;
+        });
+
+        function orderRow(o, isDispute) {
+          var cust = o.customer || {};
+          var u    = users.find(function(x){ return String(x.id) === String(o.userId); }) || {};
+          var age  = o.createdAt ? Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 86400000) : '?';
+          return '<div class="dispute-row ' + (isDispute ? 'unresolved' : 'resolved') + '">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+            + '<div>'
+            + '<div style="font-weight:700;font-size:.88rem">' + o.id + '</div>'
+            + '<div style="font-size:.76rem;color:var(--muted)">' + (cust.name||'—') + ' · ' + age + ' days in escrow</div>'
+            + '</div>'
+            + '<span style="font-weight:700;color:var(--gold)">₦' + parseFloat(o.total||0).toLocaleString() + '</span>'
+            + '</div>'
+            + '<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">'
+            + (o.items||[]).map(function(i){ return (i.emoji||'📦')+' '+i.name; }).join(', ')
+            + '</div>'
+            + (isDispute
+              ? '<div class="ar2">'
+                + '<button onclick="adminRefund(\'' + o.id + '\',\'' + o.ref + '\',' + o.total + ')" class="at ade">💸 Refund Buyer</button>'
+                + '<button onclick="adminRelease(\'' + o.id + '\',\'' + String(o.userId) + '\',' + (o.sellerPayout||o.seller_payout||Math.round(o.total*0.9)) + ')" class="at aok">✓ Release to Seller</button>'
+                + '</div>'
+              : '<span class="sb2 s-pend">In escrow · awaiting delivery</span>')
+            + '</div>';
+        }
+
+        var dc = document.getElementById('disputes-content');
+        if (!dc) return;
+        dc.innerHTML =
+          '<div class="sr" style="margin-bottom:16px">'
+          + '<div class="sc2"><div class="lb">Flagged</div><div class="vl" style="color:var(--red)">' + flagged.length + '</div><div class="ch">&gt;3 days escrow</div></div>'
+          + '<div class="sc2"><div class="lb">In Escrow</div><div class="vl" style="color:var(--orange)">' + recent.length + '</div><div class="ch">Normal</div></div>'
+          + '<div class="sc2"><div class="lb">Total Value</div><div class="vl">₦' + Math.round(escrow.reduce(function(s,o){ return s+parseFloat(o.total||0); },0)).toLocaleString() + '</div></div>'
+          + '</div>'
+          + '<div class="act"><h3>🚨 Flagged Orders — Action Required (' + flagged.length + ')</h3>'
+          + (flagged.length
+            ? flagged.sort(function(a,b){ return new Date(a.createdAt||0)-new Date(b.createdAt||0); }).map(function(o){ return orderRow(o, true); }).join('')
+            : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No flagged orders. ✅</div>')
+          + '</div>'
+          + '<div class="act"><h3>Recent Escrow Orders (' + recent.length + ')</h3>'
+          + (recent.length
+            ? recent.slice(0,10).map(function(o){ return orderRow(o, false); }).join('')
+            : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active escrow orders.</div>')
+          + '</div>';
+      }).catch(function(e){
+        var dc = document.getElementById('disputes-content');
+        if (dc) dc.innerHTML = '<div style="color:var(--red);padding:16px">Error loading disputes: ' + e.message + '</div>';
+      });
 
     /* ─── SETTINGS ─── */
     } else if (tab === 'set') {
@@ -4321,6 +4549,230 @@ function aTab(tab, btn) {
   });
 }
 window.aTab = aTab;
+
+/* ════════════════════════════════════════════════
+   DELIVERY VERIFICATION CODE (DVC) SYSTEM
+   Physical products only — buyer generates code,
+   seller enters it to release escrow
+════════════════════════════════════════════════ */
+function openDVC(orderId, role) {
+  /* role: 'buyer' or 'seller' */
+  var buyerSection  = document.getElementById('dvc-buyer-section');
+  var sellerSection = document.getElementById('dvc-seller-section');
+  var errEl         = document.getElementById('dvc-err');
+  var entryEl       = document.getElementById('dvc-entry');
+
+  if (buyerSection)  buyerSection.style.display  = 'none';
+  if (sellerSection) sellerSection.style.display = 'none';
+  if (errEl)         errEl.textContent = '';
+  if (entryEl)       entryEl.value     = '';
+
+  if (role === 'buyer') {
+    /* Generate deterministic 6-digit code from orderId */
+    var code = generateDVC(orderId);
+    var disp = document.getElementById('dvc-display');
+    if (disp) disp.textContent = code;
+    if (buyerSection) buyerSection.style.display = 'block';
+  } else {
+    /* Seller enters code from buyer */
+    if (sellerSection) {
+      sellerSection.style.display = 'block';
+      sellerSection.dataset.orderId = orderId;
+    }
+  }
+  oM('m-dvc');
+}
+window.openDVC = openDVC;
+
+function generateDVC(orderId) {
+  /* Simple deterministic code: last 6 digits of order hash */
+  var str  = String(orderId);
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  /* Turn into 6-digit positive number */
+  return String(Math.abs(hash) % 900000 + 100000);
+}
+window.generateDVC = generateDVC;
+
+function submitDVC() {
+  var section = document.getElementById('dvc-seller-section');
+  var entryEl = document.getElementById('dvc-entry');
+  var errEl   = document.getElementById('dvc-err');
+  var btn     = document.getElementById('dvc-btn');
+  var orderId = section && section.dataset.orderId;
+
+  if (!orderId) { if (errEl) errEl.textContent = 'No order selected.'; return; }
+  var entered = entryEl ? entryEl.value.trim() : '';
+  if (entered.length !== 6) { if (errEl) errEl.textContent = 'Enter the full 6-digit code.'; return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verifying…'; }
+  if (errEl) errEl.textContent = '';
+
+  /* Server validates DVC and atomically credits seller balance */
+  fetch('/api/payment?action=dvc-release', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      orderId:      orderId,
+      dvcCode:      entered,
+      sellerUserId: CU ? String(CU.id) : null
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Verify & Release Payment'; }
+    if (data.ok) {
+      cM('m-dvc');
+      /* Update local balance */
+      if (CU && data.released) {
+        CU.sellerBalance = (parseFloat(CU.sellerBalance||0) + parseFloat(data.released));
+        localStorage.setItem('nm_current_user', JSON.stringify(CU));
+        sessionStorage.setItem('nm_session', JSON.stringify(CU));
+      }
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon:             'success',
+          title:            '✅ Delivery Confirmed!',
+          html:             '<p>Payment of <strong style="color:var(--green)">₦' + parseFloat(data.released||0).toLocaleString() + '</strong> has been released to your wallet.</p>',
+          confirmButtonText:'View Wallet',
+          confirmButtonColor:'#c9922a'
+        }).then(function(){
+          go('profile');
+          switchDashTab('settings', document.getElementById('tab-settings'));
+          renderOrders();
+          loadWalletBalance();
+        });
+      } else {
+        toast('✅ Delivery verified! ₦' + parseFloat(data.released||0).toLocaleString() + ' released to your wallet.', 'ok');
+        renderOrders();
+        loadWalletBalance();
+      }
+    } else {
+      if (errEl) errEl.textContent = data.error || 'Verification failed.';
+    }
+  })
+  .catch(function(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Verify & Release Payment'; }
+    if (errEl) errEl.textContent = 'Network error: ' + e.message;
+  });
+}
+window.submitDVC = submitDVC;
+
+/* ════════════════════════════════════════════════
+   ADMIN: REFUND & RELEASE
+════════════════════════════════════════════════ */
+function adminRefund(orderId, paystackRef, amount) {
+  if (!confirm('Issue full refund of ₦' + parseFloat(amount).toLocaleString() + ' to the buyer? This will call the Paystack refund API.')) return;
+
+  fetch('/api/payment?action=refund', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ orderId: orderId, reference: paystackRef, amount: amount })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      toast('✅ Refund of ₦' + parseFloat(amount).toLocaleString() + ' initiated!', 'ok');
+      aTab('dis', document.querySelector('.asb.on'));
+    } else {
+      toast('❌ Refund failed: ' + (data.error||'Unknown'), 'fail');
+    }
+  })
+  .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
+}
+window.adminRefund = adminRefund;
+
+function adminRelease(orderId, userId, sellerAmount) {
+  if (!confirm('Release ₦' + parseFloat(sellerAmount).toLocaleString() + ' to the seller? This marks the order complete.')) return;
+
+  fetch('/api/orders', {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ id: orderId, status: 'completed', collected: true })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok !== false) {
+      toast('✅ Escrow released to seller!', 'ok');
+      aTab('dis', document.querySelector('.asb.on'));
+    } else {
+      toast('❌ Release failed: ' + (data.error||''), 'fail');
+    }
+  })
+  .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
+}
+window.adminRelease = adminRelease;
+
+/* ════════════════════════════════════════════════
+   NEYO AI: MARKET VELOCITY ANALYSIS
+   Analyzes a seller's listing vs active marketplace
+   and suggests price/strategy improvements
+════════════════════════════════════════════════ */
+function analyzeProductWithAI(productId) {
+  var p = prods.find(function(x){ return x.id === productId; });
+  if (!p) { toast('Product not found', 'fail'); return; }
+
+  /* Find similar products in same category */
+  var similar = prods.filter(function(x){
+    return x.status === 'active' && x.id !== productId &&
+           (x.cat === p.cat || x.type === p.type);
+  });
+  var avgPrice  = similar.length
+    ? Math.round(similar.reduce(function(s,x){ return s+x.price; },0) / similar.length)
+    : p.price;
+  var minPrice  = similar.length ? Math.min.apply(null, similar.map(function(x){ return x.price; })) : p.price;
+  var maxPrice  = similar.length ? Math.max.apply(null, similar.map(function(x){ return x.price; })) : p.price;
+
+  /* Show loading toast */
+  toast('🤖 Neyo AI analyzing your listing…', 'ok');
+
+  var prompt = 'You are a Nigerian e-commerce pricing analyst for NeyoMarket in Lafia, Nasarawa State.'
+    + ' Analyze this product listing and give sharp, actionable advice in under 150 words.'
+    + ' Product: "' + p.name + '" (Category: ' + p.cat + ', Type: ' + p.type + ')'
+    + ' Current price: ₦' + p.price.toLocaleString()
+    + ' Similar products on platform: ' + similar.length
+    + ' (min ₦' + minPrice.toLocaleString() + ', avg ₦' + avgPrice.toLocaleString() + ', max ₦' + maxPrice.toLocaleString() + ')'
+    + ' Focus on: 1) Is the price competitive? 2) What specific changes would increase sales velocity?'
+    + ' 3) Any Lafia/Nasarawa market insight. Be direct and specific — no generic advice.';
+
+  fetch('/api/chat', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      messages:    [{ role: 'user', content: prompt }],
+      contextData: { userName: CU ? CU.name : 'Seller', userRole: 'seller' }
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok && data.reply) {
+      /* Show AI insight in a nice panel */
+      var el = document.getElementById('ai-insight-' + productId);
+      if (el) {
+        el.style.display = 'block';
+        el.innerHTML = '<div style="font-weight:700;font-size:.84rem;color:var(--gold);margin-bottom:6px">🤖 Neyo AI — Market Analysis</div>'
+          + '<div style="font-size:.82rem;line-height:1.7;color:var(--text)">'
+          + data.reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')
+          + '</div>';
+      } else {
+        /* Fallback: show in a toast-style overlay */
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:90vw;max-width:400px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;z-index:800;box-shadow:0 8px 32px rgba(0,0,0,.15)';
+        overlay.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="color:var(--gold)">🤖 Market Analysis</strong><button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted)">✕</button></div>'
+          + '<div style="font-size:.83rem;line-height:1.7">' + data.reply.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br/>') + '</div>';
+        document.body.appendChild(overlay);
+        setTimeout(function(){ if (overlay.parentNode) overlay.remove(); }, 15000);
+      }
+    } else {
+      toast(data.error || 'AI analysis failed', 'fail');
+    }
+  })
+  .catch(function(){ toast('AI temporarily offline', 'warn'); });
+}
+window.analyzeProductWithAI = analyzeProductWithAI;
 
 /* ════════════════════════════════════════════════
    ADMIN KYC APPROVAL
@@ -5240,6 +5692,42 @@ validateSell();
       <div style="margin-top:16px">
         <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Recent Withdrawals</div>
         <div id="modal-withdraw-history"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELIVERY VERIFICATION CODE MODAL ═══ -->
+<div class="ov" id="m-dvc">
+  <div class="ms" style="max-width:420px">
+    <div class="mh">
+      <h3>📦 Delivery Verification</h3>
+      <button class="mx" onclick="cM('m-dvc')">✕</button>
+    </div>
+    <div class="mb">
+      <div id="dvc-buyer-section" style="display:none">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Share this <strong>6-digit code</strong> with the seller <strong>only when you have received your item</strong>. This releases the payment from escrow.
+        </p>
+        <div class="dvc-wrap">
+          <div style="font-size:.78rem;color:var(--green);font-weight:600;margin-bottom:4px">🔐 YOUR DELIVERY CODE</div>
+          <div class="dvc-code" id="dvc-display">------</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:6px">Show this to the seller after receiving your item</div>
+        </div>
+        <button onclick="cM('m-dvc')" class="sbtn" style="margin-top:16px">Done</button>
+      </div>
+      <div id="dvc-seller-section" style="display:none">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Ask the buyer for their <strong>6-digit Delivery Code</strong> after they receive the item. Entering it releases your payment.
+        </p>
+        <div class="fg">
+          <label>Enter 6-Digit Delivery Code</label>
+          <input class="dvc-input" id="dvc-entry" type="text" maxlength="6"
+            placeholder="● ● ● ● ● ●"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        </div>
+        <div id="dvc-err" style="color:var(--red);font-size:.8rem;min-height:16px;margin-bottom:8px"></div>
+        <button onclick="submitDVC()" id="dvc-btn" class="sbtn">✓ Verify & Release Payment</button>
       </div>
     </div>
   </div>
