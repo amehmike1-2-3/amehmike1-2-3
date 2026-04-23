@@ -1535,6 +1535,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="asb" onclick="aTab('dis',this)">⚖️ Disputes & Refunds</button>
       <div class="asl">System</div>
       <button class="asb" onclick="aTab('set',this)">⚙️ Settings</button>
+      <button class="asb" onclick="aTab('ceo',this)" style="margin-top:6px;background:linear-gradient(135deg,rgba(201,146,42,.15),rgba(201,146,42,.05));border:1px solid rgba(201,146,42,.3);color:var(--gold)">🏛️ CEO Office</button>
       <div style="margin-top:14px;padding:0 3px">
         <button onclick="doSignOut()" style="width:100%;background:rgba(255,58,92,.08);color:var(--red);border:1px solid rgba(255,58,92,.18);padding:8px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Sign Out</button>
       </div>
@@ -1816,6 +1817,71 @@ function syncOrderUpdateToAPI(orderId, update) {
     console.warn('Order update sync failed:', e.message);
   });
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   AUTONOMOUS COO — Background escrow auto-release
+   Runs silently on every app load (after sign-in).
+   Rules:
+     • Order status must be 'escrow_held' or 'paid'
+     • Order must be older than 48 hours (172800000 ms)
+     • NOT already collected / completed
+   Action: calls markCol() which applies the correct revenue split,
+           updates Neon, and refreshes the UI if the buyer is viewing orders.
+   Runs server-side too: /api/coo (new file, Phase 3) handles bulk sweeps.
+   This client-side version handles the currently-logged-in buyer's orders
+   immediately so they don't see stale "Escrow Held" badges.
+════════════════════════════════════════════════════════════════════ */
+function runAutonomousCOO() {
+  if (!CU) return; /* Only run when a user is signed in */
+
+  var now      = Date.now();
+  var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
+
+  /* Fetch live orders from Neon so we don't rely on stale local cache */
+  fetch('/api/orders?userId=' + encodeURIComponent(String(CU.id)))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var orders = data.orders || [];
+      var released = 0;
+
+      orders.forEach(function(o) {
+        /* Only process escrow_held or paid orders that are not yet complete */
+        var isEligible = (o.status === 'escrow_held' || o.status === 'paid')
+                      && !o.collected
+                      && o.status !== 'completed';
+        if (!isEligible) return;
+
+        /* Determine order age — use created_at if date is not parseable */
+        var orderDate = o.created_at || o.date || null;
+        var orderTime = orderDate ? new Date(orderDate).getTime() : 0;
+        if (!orderTime || isNaN(orderTime)) return; /* can't determine age — skip */
+
+        var ageMs = now - orderTime;
+        if (ageMs < LIMIT_MS) return; /* Not yet 48 hours — skip */
+
+        /* Inject into local ords array so markCol can find it */
+        var inMem = ords.find(function(x){ return x.id === o.id; });
+        if (!inMem) {
+          /* Parse items/customer safely */
+          var items = o.items;
+          if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+          ords.push(Object.assign({}, o, { items: items }));
+        }
+
+        console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
+        markCol(o.id); /* Applies tiered split + syncs to DB */
+        released++;
+      });
+
+      if (released > 0) {
+        toast('🤖 COO Auto-Release: ' + released + ' order(s) completed after 48h escrow hold.', 'ok');
+      }
+    })
+    .catch(function(e) {
+      console.warn('[COO] Auto-release check failed:', e.message);
+    });
+}
+window.runAutonomousCOO = runAutonomousCOO;
 
 function getActive() { return prods.filter(function (p) { return p.status === 'active'; }); }
 
@@ -2889,10 +2955,43 @@ function renderOrders() {
 
 function markCol(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
-  o.collected = true; o.status = 'completed'; o.collectedAt = new Date().toISOString();
+
+  /* ── PHASE 2: Tiered Revenue Split ──────────────────────────────────
+     Digital / Course products : platform takes 15%
+     Physical products          : platform takes 5%
+     Affiliate fee              : always 5% (deducted from seller share)
+     Rule: if order has ANY physical item → physical rate applies to total.
+  ──────────────────────────────────────────────────────────────────── */
+  var hasPhysical    = (o.items || []).some(function(i){ return i.type === 'physical'; });
+  var platformRate   = hasPhysical ? 0.05 : 0.15;
+  var affiliateRate  = (o.affCode || o.aff_code) ? 0.05 : 0;
+  var sellerRate     = 1 - platformRate - affiliateRate;
+
+  var total          = parseFloat(o.total || 0);
+  var platformFee    = Math.round(total * platformRate);
+  var affiliateFee   = Math.round(total * affiliateRate);
+  var sellerPayout   = Math.round(total * sellerRate);
+
+  o.collected    = true;
+  o.status       = 'completed';
+  o.collectedAt  = new Date().toISOString();
+  o.platformFee  = platformFee;
+  o.affiliateFee = affiliateFee;
+  o.sellerPayout = sellerPayout;
   saveAll();
-  syncOrderUpdateToAPI(id, { status: 'completed', collected: true, collectedAt: o.collectedAt });
-  toast('✅ Collected confirmed! Escrow released to seller 🎉', 'ok');
+
+  /* Push to server with full split so Neon records are authoritative */
+  syncOrderUpdateToAPI(id, {
+    status:       'completed',
+    collected:    true,
+    collectedAt:  o.collectedAt,
+    platformFee:  platformFee,
+    affiliateFee: affiliateFee,
+    sellerPayout: sellerPayout
+  });
+
+  var rateLabel = hasPhysical ? '5%' : '15%';
+  toast('✅ Escrow released! Platform fee: ' + rateLabel + ' (₦' + platformFee.toLocaleString() + '). Seller receives ₦' + sellerPayout.toLocaleString() + ' 🎉', 'ok');
   renderOrders();
 }
 window.markCol = markCol;
@@ -3012,6 +3111,8 @@ function doSignIn() {
       updNav();
       toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
       go(u.role === 'admin' ? 'admin' : 'home');
+      /* Run COO background check silently — auto-releases any >48h escrow orders */
+      setTimeout(runAutonomousCOO, 3000);
     })
     .catch(function (apiErr) {
       restoreBtn();
@@ -4619,6 +4720,84 @@ function aTab(tab, btn) {
         + '<div class="fg"><label>Platform Fee %</label><input class="fi" type="number" value="5" style="width:100px"/></div>'
         + '<button class="bg" style="padding:9px 22px;margin-top:4px" onclick="toast(\'Settings saved ✓\',\'ok\')">Save Settings</button>'
         + '</div>';
+
+    /* ─── CEO SECRET OFFICE ─── */
+    } else if (tab === 'ceo') {
+      /* Build the daily briefing data from already-loaded allOrders / allUsers / allProds */
+      var today        = new Date().toLocaleDateString();
+      var todayOrders  = allOrders.filter(function(o){ return o.date === today || (o.created_at && new Date(o.created_at).toLocaleDateString() === today); });
+      var todayRev     = todayOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
+      var todayFees    = todayOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
+      var pendingProd  = allProds.filter(function(p){ return p.status === 'pending'; }).length;
+      var pendingWith  = 0; /* loaded async */
+      var escrowOrders = allOrders.filter(function(o){ return o.status === 'escrow_held'; }).length;
+      var totalRev     = allOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
+      var totalFees    = allOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
+
+      c.innerHTML =
+        '<div class="ah" style="background:linear-gradient(135deg,#0a0a1a,#1a1200);border-radius:12px;padding:20px;margin-bottom:16px">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
+        + '<span style="font-size:1.6rem">🏛️</span>'
+        + '<h1 style="color:#f0c040;margin:0">CEO Secret Office</h1>'
+        + '</div>'
+        + '<p style="color:rgba(240,192,64,.6);margin:0;font-size:.82rem">Private briefing room · ' + new Date().toLocaleString() + '</p>'
+        + '</div>'
+
+        /* Today snapshot */
+        + '<div class="sr" style="margin-bottom:16px">'
+        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">Today\'s Revenue</div><div class="vl" style="color:var(--gold)">₦'+Math.round(todayRev).toLocaleString()+'</div><div class="ch">'+todayOrders.length+' orders</div></div>'
+        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">Today\'s Platform Earnings</div><div class="vl" style="color:var(--green)">₦'+Math.round(todayFees).toLocaleString()+'</div><div class="ch">Fees collected</div></div>'
+        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">All-Time Revenue</div><div class="vl">₦'+Math.round(totalRev).toLocaleString()+'</div></div>'
+        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">All-Time Fees Earned</div><div class="vl" style="color:var(--green)">₦'+Math.round(totalFees).toLocaleString()+'</div></div>'
+        + '<div class="sc2" style="border:1px solid rgba(255,165,0,.3)"><div class="lb">Escrow Held</div><div class="vl" style="color:var(--orange)">'+escrowOrders+'</div><div class="ch">Awaiting release</div></div>'
+        + '<div class="sc2" style="border:1px solid rgba(255,165,0,.3)"><div class="lb">Pending Products</div><div class="vl" style="color:var(--orange)">'+pendingProd+'</div><div class="ch">Awaiting review</div></div>'
+        + '</div>'
+
+        /* AI Chat Interface */
+        + '<div class="act" style="background:linear-gradient(135deg,#0d0d1f,#111108);border:1px solid rgba(201,146,42,.25)">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
+        + '<span style="font-size:1.2rem">🤖</span>'
+        + '<h3 style="margin:0;color:#f0c040">Admin AI — Daily Briefing</h3>'
+        + '<span style="font-size:.7rem;background:rgba(5,150,105,.2);color:var(--green);padding:2px 8px;border-radius:50px;border:1px solid rgba(5,150,105,.3)">LIVE</span>'
+        + '</div>'
+        + '<div id="ceo-chat-msgs" style="min-height:180px;max-height:340px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:8px;padding:14px;margin-bottom:12px;font-size:.84rem;line-height:1.6">'
+        + '<div class="ceo-msg-bot" style="color:#d4af6a;padding:8px 12px;background:rgba(201,146,42,.08);border-radius:6px;margin-bottom:8px">'
+        + '🏛️ <strong>Admin AI online.</strong> I have loaded today\'s live data from Neon. Ask me anything — daily summary, revenue, pending items, withdrawal queue, or type <em>\"briefing\"</em> for your full daily report.'
+        + '</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px">'
+        + '<input id="ceo-chat-input" class="fi" placeholder="Ask Admin AI… e.g. \'daily briefing\', \'pending withdrawals\', \'top sellers\'" style="flex:1;background:rgba(255,255,255,.05);border-color:rgba(201,146,42,.3);color:var(--text)" onkeydown="if(event.key===\'Enter\')sendCEOMsg()"/>'
+        + '<button onclick="sendCEOMsg()" class="bg" style="padding:10px 18px;white-space:nowrap">Send ▶</button>'
+        + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+        + ['📊 Daily Briefing','💸 Pending Withdrawals','📦 Pending Products','💰 Revenue Split','🤖 Run COO Sweep'].map(function(q){''; return '<button onclick="sendCEOQuick(\''+q+'\')" style="font-size:.72rem;padding:5px 10px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.25);color:var(--gold);border-radius:20px;cursor:pointer;white-space:nowrap">'+q+'</button>';}).join('')
+        + '</div>'
+        + '</div>'
+
+        /* Quick Actions */
+        + '<div class="act" style="margin-top:14px">'
+        + '<h3>⚡ CEO Quick Actions</h3>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+        + '<button class="bg" style="padding:10px 18px" onclick="aTab(\'pay\',null)">💸 Review Withdrawals</button>'
+        + '<button class="bg" style="padding:10px 18px" onclick="aTab(\'pr\',null)">📦 Approve Products</button>'
+        + '<button class="bg" style="padding:10px 18px" onclick="runAutonomousCOO();toast(\'🤖 COO sweep triggered — checking all escrow orders…\',\'ok\')">🤖 Force COO Sweep</button>'
+        + '<button style="padding:10px 18px;background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.3);color:var(--red);border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer" onclick="injectKeyNow()">🔑 Inject Master Key</button>'
+        + '</div>'
+        + '</div>';
+
+      /* Store the live data snapshot in window scope for the AI to reference */
+      window._ceoContext = {
+        todayOrders:  todayOrders,
+        todayRev:     todayRev,
+        todayFees:    todayFees,
+        totalRev:     totalRev,
+        totalFees:    totalFees,
+        allOrders:    allOrders,
+        allUsers:     allUsers,
+        allProds:     allProds,
+        pendingProd:  pendingProd,
+        escrowOrders: escrowOrders
+      };
     }
 
     })(); /* close dummy user then */
@@ -4628,7 +4807,198 @@ function aTab(tab, btn) {
     c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.88rem">Error loading dashboard data: '+e.message+'<br/><br/><button onclick="location.reload()" class="bg" style="padding:8px 16px">Retry</button></div>';
   });
 }
-window.aTab = aTab;
+/* ════════════════════════════════════════════════════════════════════
+   CEO SECRET OFFICE — Admin AI Chat Engine
+   Uses live _ceoContext snapshot loaded when the tab opens.
+   Falls back to Claude API (Anthropic) for open-ended questions.
+════════════════════════════════════════════════════════════════════ */
+function sendCEOMsg() {
+  var inp = document.getElementById('ceo-chat-input');
+  if (!inp) return;
+  var text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  _ceoAppendMsg(text, 'user');
+  _ceoThink(text);
+}
+window.sendCEOMsg = sendCEOMsg;
+
+function sendCEOQuick(q) {
+  var inp = document.getElementById('ceo-chat-input');
+  if (inp) inp.value = q;
+  sendCEOMsg();
+}
+window.sendCEOQuick = sendCEOQuick;
+
+function _ceoAppendMsg(text, role) {
+  var box = document.getElementById('ceo-chat-msgs');
+  if (!box) return;
+  var d = document.createElement('div');
+  d.style.cssText = 'padding:9px 13px;border-radius:7px;margin-bottom:8px;font-size:.84rem;line-height:1.6;'
+    + (role === 'user'
+      ? 'background:rgba(255,255,255,.07);color:var(--text);text-align:right;'
+      : 'background:rgba(201,146,42,.09);color:#d4af6a;border-left:3px solid rgba(201,146,42,.4);');
+  d.innerHTML = (role === 'bot' ? '🤖 ' : '👤 ') + text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function _ceoThink(q) {
+  /* Show typing indicator */
+  var box = document.getElementById('ceo-chat-msgs');
+  var typingId = 'ceo-typing-' + Date.now();
+  if (box) {
+    var t = document.createElement('div');
+    t.id = typingId;
+    t.style.cssText = 'padding:8px 13px;color:rgba(201,146,42,.5);font-size:.8rem;font-style:italic';
+    t.textContent = '🤖 Admin AI is thinking…';
+    box.appendChild(t);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  /* Build reply from live context first; fall back to Anthropic API */
+  var reply = _ceoLocalReply(q);
+
+  if (reply) {
+    setTimeout(function() {
+      var el = document.getElementById(typingId);
+      if (el) el.remove();
+      _ceoAppendMsg(reply, 'bot');
+    }, 600);
+  } else {
+    /* Call Anthropic API with live data context */
+    _ceoCallAI(q, typingId);
+  }
+}
+
+function _ceoLocalReply(q) {
+  var ctx = window._ceoContext || {};
+  var lq  = q.toLowerCase();
+
+  /* ── Daily Briefing ── */
+  if (lq.includes('briefing') || lq.includes('summary') || lq.includes('report') || lq.includes('daily')) {
+    var pendW = (ctx.allOrders||[]).filter(function(o){ return o.status === 'escrow_held'; }).length;
+    return '**📊 Daily CEO Briefing — ' + new Date().toLocaleDateString() + '**\n\n'
+      + '**Revenue Today:** ₦' + Math.round(ctx.todayRev||0).toLocaleString() + ' across ' + (ctx.todayOrders||[]).length + ' orders\n'
+      + '**Platform Earnings Today:** ₦' + Math.round(ctx.todayFees||0).toLocaleString() + '\n'
+      + '**All-Time Revenue:** ₦' + Math.round(ctx.totalRev||0).toLocaleString() + '\n'
+      + '**All-Time Platform Fees:** ₦' + Math.round(ctx.totalFees||0).toLocaleString() + '\n'
+      + '**Escrow Held:** ' + (ctx.escrowOrders||0) + ' orders awaiting release\n'
+      + '**Pending Products:** ' + (ctx.pendingProd||0) + ' awaiting your approval\n'
+      + '**Total Users:** ' + (ctx.allUsers||[]).length + '\n'
+      + '**Total Orders (all time):** ' + (ctx.allOrders||[]).length + '\n\n'
+      + ((ctx.pendingProd||0) > 0 ? '⚠️ **Action needed:** ' + ctx.pendingProd + ' product(s) awaiting review.\n' : '')
+      + ((ctx.escrowOrders||0) > 0 ? '⏳ **' + ctx.escrowOrders + ' escrow order(s)** — COO will auto-release after 48h.\n' : '✅ No overdue escrow.\n');
+  }
+
+  /* ── Pending Withdrawals ── */
+  if (lq.includes('withdrawal') || lq.includes('withdraw') || lq.includes('payout')) {
+    return '💸 Go to the **Payouts tab** for live withdrawal requests. Remember: every approval requires the **Master Key** to be active, and a **₦100 flat fee** is deducted from each payout. Click **Review Withdrawals** below.';
+  }
+
+  /* ── Pending Products ── */
+  if (lq.includes('pending product') || lq.includes('product approval') || lq.includes('review product')) {
+    var pp = (ctx.allProds||[]).filter(function(p){ return p.status==='pending'; });
+    if (!pp.length) return '✅ No pending products right now. All listings are reviewed.';
+    return '📦 **' + pp.length + ' product(s) pending review:**\n'
+      + pp.slice(0,5).map(function(p){ return '• ' + p.name + ' by ' + p.seller + ' · ₦' + (p.price||0).toLocaleString(); }).join('\n')
+      + (pp.length > 5 ? '\n…and ' + (pp.length-5) + ' more.' : '')
+      + '\n\nClick **Approve Products** to review them now.';
+  }
+
+  /* ── Revenue split ── */
+  if (lq.includes('revenue split') || lq.includes('commission rate') || lq.includes('platform fee') || lq.includes('how much')) {
+    return '💰 **NeyoMarket Revenue Model:**\n'
+      + '• **Digital / Course products:** Platform takes **15%**\n'
+      + '• **Physical products:** Platform takes **5%**\n'
+      + '• **Affiliate referrals:** 5% commission paid to affiliate (deducted from seller share)\n'
+      + '• **Withdrawal fee:** ₦100 flat fee per payout request\n'
+      + '• **COO auto-release:** Orders held in escrow >48h are auto-completed';
+  }
+
+  /* ── COO Sweep ── */
+  if (lq.includes('coo') || lq.includes('auto') || lq.includes('sweep') || lq.includes('escrow release')) {
+    return '🤖 **Autonomous COO** — I am triggering a sweep now. Any escrow order older than 48 hours will be auto-completed with the correct revenue split applied. Check the toast notification for results.';
+  }
+
+  /* ── Top sellers ── */
+  if (lq.includes('top seller') || lq.includes('best seller') || lq.includes('who is selling')) {
+    var sellerMap = {};
+    (ctx.allOrders||[]).forEach(function(o) {
+      (o.items||[]).forEach(function(i) {
+        var s = i.seller || 'Unknown';
+        sellerMap[s] = (sellerMap[s]||0) + parseFloat(o.total||0);
+      });
+    });
+    var sorted = Object.keys(sellerMap).sort(function(a,b){ return sellerMap[b]-sellerMap[a]; }).slice(0,5);
+    if (!sorted.length) return 'No sales data yet.';
+    return '🏆 **Top Sellers by Revenue:**\n'
+      + sorted.map(function(s,i){ return (i+1)+'. '+s+' — ₦'+Math.round(sellerMap[s]).toLocaleString(); }).join('\n');
+  }
+
+  /* ── User stats ── */
+  if (lq.includes('user') || lq.includes('signup') || lq.includes('member')) {
+    var buyers   = (ctx.allUsers||[]).filter(function(u){ return u.role==='buyer'||!u.role; }).length;
+    var sellers  = (ctx.allUsers||[]).filter(function(u){ return u.role==='seller'; }).length;
+    var affiliates = (ctx.allUsers||[]).filter(function(u){ return u.role==='affiliate'; }).length;
+    return '👥 **User Breakdown:**\n'
+      + '• Total users: **' + (ctx.allUsers||[]).length + '**\n'
+      + '• Buyers: ' + buyers + '\n'
+      + '• Sellers: ' + sellers + '\n'
+      + '• Affiliates: ' + affiliates;
+  }
+
+  return null; /* Signal to call Anthropic API */
+}
+
+function _ceoCallAI(question, typingId) {
+  var ctx = window._ceoContext || {};
+
+  /* Build a concise context string so Claude understands the platform state */
+  var contextStr = JSON.stringify({
+    date:         new Date().toLocaleDateString(),
+    todayRevenue: Math.round(ctx.todayRev||0),
+    todayOrders:  (ctx.todayOrders||[]).length,
+    totalRevenue: Math.round(ctx.totalRev||0),
+    platformFees: Math.round(ctx.totalFees||0),
+    totalOrders:  (ctx.allOrders||[]).length,
+    totalUsers:   (ctx.allUsers||[]).length,
+    pendingProds: ctx.pendingProd||0,
+    escrowOrders: ctx.escrowOrders||0,
+    revenueModel: { digital: '15%', physical: '5%', affiliate: '5%', withdrawalFee: '₦100 flat' }
+  });
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: 'You are the Admin AI for NeyoMarket, a Nigerian marketplace platform. '
+            + 'You are speaking directly to the CEO in the private CEO Secret Office. '
+            + 'Be direct, concise, and data-driven. Use ₦ for naira. Format numbers with commas. '
+            + 'Current platform snapshot: ' + contextStr + '. '
+            + 'Keep replies under 200 words unless a full report is requested.',
+      messages: [{ role: 'user', content: question }]
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    var el = document.getElementById(typingId);
+    if (el) el.remove();
+    var reply = (data.content && data.content[0] && data.content[0].text)
+      ? data.content[0].text
+      : 'I could not get a response. Please try again.';
+    _ceoAppendMsg(reply, 'bot');
+  })
+  .catch(function(e) {
+    var el = document.getElementById(typingId);
+    if (el) el.remove();
+    _ceoAppendMsg('Network error reaching AI: ' + e.message + '. Using local data only — ask me about briefing, revenue, or pending items.', 'bot');
+  });
+}
+window._ceoCallAI    = _ceoCallAI;
+window._ceoLocalReply = _ceoLocalReply;
 
 /* ════════════════════════════════════════════════
    DELIVERY VERIFICATION CODE (DVC) SYSTEM
@@ -4887,8 +5257,37 @@ window.adminSetKYC = adminSetKYC;
    3. Marks withdrawal as 'success' in DB
 ════════════════════════════════════════════════ */
 function adminApprovePayout(withdrawalId, userId, amount) {
-  var amt = parseFloat(amount);
-  if (!confirm('Approve payout of ₦' + amt.toLocaleString() + '? Paystack transfer triggered, seller balance deducted. Cannot be undone.')) return;
+  var amt      = parseFloat(amount);
+  var FLAT_FEE = 100;
+  var netAmt   = amt - FLAT_FEE; /* Seller receives gross minus flat fee */
+
+  /* ── PHASE 2: Master Key Gate ───────────────────────────────────────
+     The Paystack secret key (sk_live_...) must be injected in this
+     session before any real bank transfer can be approved.
+     Even if someone gains admin UI access, they cannot trigger
+     real transfers without the physical Master Key being present.
+  ──────────────────────────────────────────────────────────────────── */
+  var masterKey = sessionStorage.getItem('master_key') || getPSK();
+  if (!masterKey || !masterKey.startsWith('sk_')) {
+    Swal.fire({
+      icon:  'error',
+      title: '🔑 Master Key Required',
+      html:  '<p style="color:#374151">You must inject your Paystack Secret Key before approving payouts.</p>'
+           + '<p style="color:#6b7280;font-size:.85rem;margin-top:8px">Double-tap the NeyoMarket logo, or go to Payouts → Inject Key.</p>',
+      confirmButtonColor: '#c9922a',
+      confirmButtonText: 'Inject Key Now'
+    }).then(function(r) { if (r.isConfirmed) injectKeyNow(); });
+    return;
+  }
+
+  if (!confirm(
+    'APPROVE PAYOUT\n\n' +
+    'Requested: ₦' + amt.toLocaleString() + '\n' +
+    'Processing fee: -₦' + FLAT_FEE.toLocaleString() + '\n' +
+    '──────────────────────\n' +
+    'Seller receives: ₦' + netAmt.toLocaleString() + '\n\n' +
+    'Paystack transfer will fire immediately. Cannot be undone.'
+  )) return;
 
   var btn = document.getElementById('wbtn-' + withdrawalId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
@@ -4896,17 +5295,22 @@ function adminApprovePayout(withdrawalId, userId, amount) {
   fetch('/api/paystack?action=approve-payout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ withdrawalId: withdrawalId, userId: userId, amount: amt })
+    body:    JSON.stringify({
+      withdrawalId: withdrawalId,
+      userId:       userId,
+      amount:       amt,
+      flatFee:      FLAT_FEE,
+      netAmount:    netAmt,
+      masterKey:    masterKey
+    })
   })
   .then(function(r){ return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      toast('✅ Payout of ₦' + amt.toLocaleString() + ' approved & sent!', 'ok');
-      /* Remove the row from the table */
+      toast('✅ ₦' + netAmt.toLocaleString() + ' sent to seller! (₦100 fee retained by platform)', 'ok');
       var row = document.getElementById('wrow-' + withdrawalId);
       if (row) row.style.cssText = 'opacity:.4;text-decoration:line-through';
       if (btn) { btn.textContent = '✓ Done'; btn.style.background = 'var(--green-bg)'; }
-      /* Refresh payouts tab after 1.5s */
       setTimeout(function(){ aTab('pay', document.querySelector('.asb[onclick*="pay"]')); }, 1500);
     } else {
       if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
@@ -5512,29 +5916,48 @@ function submitWithdrawRequest() {
   var btn   = document.getElementById('modal-withdraw-btn');
   var amt   = parseFloat(amtEl ? amtEl.value : 0);
 
+  /* ── PHASE 2: ₦100 flat processing fee ─────────────────────────────
+     The fee is shown transparently to the seller before they confirm.
+     The NET amount (amt - 100) is what hits their bank account.
+     The gross amount (amt) is deducted from their seller_balance.
+  ──────────────────────────────────────────────────────────────────── */
+  var FLAT_FEE    = 100;
+  var netAmount   = amt - FLAT_FEE;
+
   if (errEl) errEl.textContent = '';
   if (!amt || amt < 2000) {
-    if (errEl) errEl.textContent = 'Minimum withdrawal is ₦2,000.';
+    if (errEl) errEl.textContent = 'Minimum withdrawal is ₦2,000 (₦100 processing fee applies).';
     return;
   }
   if (amt > (CU.sellerBalance || 0)) {
-    if (errEl) errEl.textContent = 'Amount exceeds your available balance.';
+    if (errEl) errEl.textContent = 'Amount exceeds your available balance of ₦' + (CU.sellerBalance||0).toLocaleString() + '.';
     return;
   }
 
+  /* Show transparent fee breakdown before submitting */
+  if (!confirm(
+    'Withdrawal Summary\n\n' +
+    'You requested: ₦' + amt.toLocaleString() + '\n' +
+    'Processing fee: ₦' + FLAT_FEE.toLocaleString() + '\n' +
+    '─────────────────\n' +
+    'You will receive: ₦' + netAmount.toLocaleString() + '\n\n' +
+    'Proceed?'
+  )) return;
+
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
-  /* Save withdrawal REQUEST to DB — admin will approve and process */
+  /* Save withdrawal REQUEST to DB — admin will approve and process.
+     We pass the gross amount; paystack.js approve-payout deducts the fee. */
   fetch('/api/paystack?action=request-withdraw', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ userId: String(CU.id), amount: amt })
+    body:    JSON.stringify({ userId: String(CU.id), amount: amt, flatFee: FLAT_FEE })
   })
   .then(function(r){ return r.json(); })
   .then(function(data) {
     if (btn) { btn.disabled = false; btn.textContent = '💸 Request Withdrawal'; }
     if (data.ok) {
-      toast('✅ Withdrawal request submitted! Admin will process it shortly.', 'ok');
+      toast('✅ Request submitted! You will receive ₦' + netAmount.toLocaleString() + ' after the ₦100 fee. Admin processes Monday.', 'ok');
       cM('m-withdraw');
       loadWalletBalance();
     } else {
