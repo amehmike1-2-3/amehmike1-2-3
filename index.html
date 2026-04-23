@@ -2802,7 +2802,10 @@ function renderOrders() {
       list.innerHTML = myOrders.map(function (o) {
         var allDig = o.items.every(function(i){ return i.type==='digital'||i.type==='course'; });
         var isPhys = o.items.some(function(i){ return i.type==='physical'; });
-        var isPaid = o.status==='paid' || o.status==='completed';
+        var isPaid = o.status === 'paid'
+                 || o.status === 'success'
+                 || o.status === 'escrow_held'
+                 || o.status === 'completed';
         var isDone = o.collected || o.status==='completed';
 
         /* Action button — tied to DB status, survives refresh */
@@ -2828,13 +2831,27 @@ function renderOrders() {
           } else {
             actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Delivery Verification</button>';
           }
+        } else if (isPaid) {
+          /* escrow_held/paid but item type logic above didn't match — safe confirm fallback */
+          actionBtn = '<button onclick="markCol(\'' + o.id + '\')" style="width:100%;background:var(--green);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">✅ Confirm Receipt & Release Payment</button>';
         } else {
+          /* Genuinely awaiting Paystack webhook — ref not yet confirmed */
           actionBtn = '<div style="color:var(--orange);font-size:.78rem;margin-top:8px;padding:8px 12px;background:var(--orange-bg);border-radius:6px;text-align:center">⏳ Awaiting payment confirmation…</div>';
         }
 
-        var statusLabel = isDone ? 'Completed' : isPaid ? 'Paid · Escrow' : 'Pending';
-        var statusBg    = isDone ? '#d1fae5' : isPaid ? '#dbeafe' : '#fef3c7';
-        var statusColor = isDone ? '#065f46' : isPaid ? '#1e40af' : '#92400e';
+        var isEscrow    = o.status === 'escrow_held';
+        var statusLabel = isDone    ? 'Completed'
+                        : isEscrow  ? '🛡️ Escrow Held'
+                        : isPaid    ? 'Paid · Escrow'
+                        : 'Pending';
+        var statusBg    = isDone    ? '#d1fae5'
+                        : isEscrow  ? '#eff6ff'
+                        : isPaid    ? '#dbeafe'
+                        : '#fef3c7';
+        var statusColor = isDone    ? '#065f46'
+                        : isEscrow  ? '#1e40af'
+                        : isPaid    ? '#1e40af'
+                        : '#92400e';
 
         var addrRow = '';
         if (isPhys && o.customer) {
