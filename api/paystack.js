@@ -181,9 +181,21 @@ module.exports = async function handler(req, res) {
     ══════════════════════════════════════════════════════ */
     if (action === 'approve-payout') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-      const { withdrawalId, userId, amount } = req.body || {};
+      const { withdrawalId, userId, amount, flatFee, netAmount, masterKey } = req.body || {};
       if (!withdrawalId || !userId || !amount)
         return res.status(400).json({ error: 'withdrawalId, userId and amount required.' });
+
+      /* ── PHASE 2: Master Key gate ─────────────────────────────────────
+         The frontend sends the sessionStorage master key so server-side
+         Paystack calls use the key the admin physically injected.
+         Fall back to env PSK if masterKey not supplied (legacy calls).
+      ────────────────────────────────────────────────────────────────── */
+      const activeKey = (masterKey && (masterKey.startsWith('sk_live_') || masterKey.startsWith('sk_test_')))
+        ? masterKey
+        : PSK;
+
+      if (!activeKey)
+        return res.status(403).json({ error: 'Master Key required. Inject your Paystack secret key first.' });
 
       /* Load user */
       const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
@@ -193,55 +205,65 @@ module.exports = async function handler(req, res) {
       if (!user.payout_acct || !user.payout_bank)
         return res.status(400).json({ error: 'Seller has no bank details saved.' });
 
-      const bal = parseFloat(user.seller_balance || 0);
-      const amt = parseFloat(amount);
-      if (amt > bal)
-        return res.status(400).json({ error: `Seller balance (₦${bal.toLocaleString()}) is less than requested (₦${amt.toLocaleString()}).` });
+      const bal       = parseFloat(user.seller_balance || 0);
+      const grossAmt  = parseFloat(amount);
+      const fee       = parseFloat(flatFee || 100);         /* ₦100 flat fee */
+      const paidOut   = parseFloat(netAmount || (grossAmt - fee)); /* what seller actually receives */
+
+      if (grossAmt > bal)
+        return res.status(400).json({ error: `Seller balance (₦${bal.toLocaleString()}) is less than requested (₦${grossAmt.toLocaleString()}).` });
 
       let transferRef = 'MAN-' + Date.now();
       let transferOk  = false;
 
-      /* Attempt Paystack Transfer if key is available */
-      if (PSK) {
-        /* Step 1: Create recipient */
-        const recipRes = await paystackAPI('/transferrecipient', 'POST', {
-          type:           'nuban',
-          name:           user.payout_aname || user.name,
-          account_number: user.payout_acct,
-          bank_code:      user.payout_bank,
-          currency:       'NGN'
-        });
+      /* Attempt Paystack Transfer using the active key */
+      const paystackWithKey = async (path, method, body) => {
+        const opts = {
+          method: method || 'GET',
+          headers: { 'Authorization': 'Bearer ' + activeKey, 'Content-Type': 'application/json' }
+        };
+        if (body) opts.body = JSON.stringify(body);
+        const r    = await fetch('https://api.paystack.co' + path, opts);
+        const text = await r.text();
+        if (!text || text.trim() === '') return { status: false, message: 'Empty response from Paystack' };
+        try { return JSON.parse(text); } catch(e) { return { status: false, message: 'Invalid JSON: ' + text.substring(0,100) }; }
+      };
 
-        if (!recipRes.status)
-          return res.status(400).json({ error: 'Could not create recipient: ' + (recipRes.message || 'Check bank details') });
+      /* Step 1: Create recipient */
+      const recipRes = await paystackWithKey('/transferrecipient', 'POST', {
+        type:           'nuban',
+        name:           user.payout_aname || user.name,
+        account_number: user.payout_acct,
+        bank_code:      user.payout_bank,
+        currency:       'NGN'
+      });
 
-        /* Step 2: Initiate transfer */
-        const transferRes = await paystackAPI('/transfer', 'POST', {
-          source:    'balance',
-          amount:    Math.floor(amt * 100), /* kobo */
-          recipient: recipRes.data.recipient_code,
-          reason:    'NeyoMarket seller payout — ' + user.name
-        });
+      if (!recipRes.status)
+        return res.status(400).json({ error: 'Could not create recipient: ' + (recipRes.message || 'Check bank details') });
 
-        if (!transferRes.status)
-          return res.status(400).json({ error: 'Transfer failed: ' + (transferRes.message || 'Try again') });
+      /* Step 2: Transfer NET amount (gross minus flat fee) */
+      const transferRes = await paystackWithKey('/transfer', 'POST', {
+        source:    'balance',
+        amount:    Math.floor(paidOut * 100), /* kobo */
+        recipient: recipRes.data.recipient_code,
+        reason:    'NeyoMarket seller payout — ' + user.name
+      });
 
-        transferRef = transferRes.data.reference || transferRef;
-        transferOk  = true;
-      } else {
-        /* No PSK — mark as manually approved (admin handles bank transfer themselves) */
-        transferOk = true;
-      }
+      if (!transferRes.status)
+        return res.status(400).json({ error: 'Transfer failed: ' + (transferRes.message || 'Try again') });
+
+      transferRef = transferRes.data.reference || transferRef;
+      transferOk  = true;
 
       if (transferOk) {
-        /* Step 3: Deduct from seller_balance in Neon */
+        /* Step 3: Deduct GROSS amount from seller_balance (fee stays on platform) */
         await sql`
           UPDATE users
-          SET seller_balance = COALESCE(seller_balance, 0) - ${amt}
+          SET seller_balance = COALESCE(seller_balance, 0) - ${grossAmt}
           WHERE id = ${String(userId)}
         `;
 
-        /* Step 4: Mark withdrawal as success */
+        /* Step 4: Mark withdrawal success */
         await sql`
           UPDATE withdrawals
           SET status    = 'success',
@@ -253,7 +275,10 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         ok:        true,
         reference: transferRef,
-        message:   '₦' + amt.toLocaleString() + ' sent to ' + (user.payout_aname || user.name)
+        grossAmt:  grossAmt,
+        fee:       fee,
+        netPaid:   paidOut,
+        message:   '₦' + paidOut.toLocaleString() + ' sent to ' + (user.payout_aname || user.name) + ' (₦' + fee + ' platform fee retained)'
       });
     }
 
