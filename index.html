@@ -2920,15 +2920,22 @@ function renderOrders() {
         } else if (isDone) {
           actionBtn = '<div style="color:var(--green);font-size:.84rem;font-weight:600;margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:6px;text-align:center">✅ Order Complete</div>';
         } else if (isPhys && isPaid) {
-          /* Physical: buyer gets DVC code; seller enters it to release */
-          var isBuyer  = CU && (o.userId === String(CU.id) || (o.customer && o.customer.email === maskEmail(CU.email)));
-          var isSeller = CU && o.items && o.items.some(function(i){ return i.sellerId === String(CU.id) || i.seller === CU.name; });
-          if (isBuyer) {
-            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">🔐 Get Delivery Code</button>';
-          } else if (isSeller) {
-            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">✓ Enter Delivery Code</button>';
+          /* Physical: buyer gets DVC code to show seller; seller enters it to release funds.
+             SELLER DETECTION FIX: check sellerId on items, seller name, OR if the user is
+             viewing in seller dashboard context. Default to buyer view if ambiguous. */
+          var isBuyer  = !CU || (o.userId === String(CU.id))
+                      || (o.customer && o.customer.email && CU.email &&
+                          o.customer.email.toLowerCase() === CU.email.toLowerCase());
+          var isSeller = CU && o.items && o.items.some(function(i){
+            return String(i.sellerId || i.seller_id || '') === String(CU.id)
+                || String(i.seller   || '').toLowerCase() === String(CU.name||'').toLowerCase();
+          });
+          /* If the logged-in user is neither detected buyer NOR seller (data mismatch),
+             prefer seller view so they can always confirm delivery */
+          if (isSeller || (!isBuyer && CU && CU.role === 'seller')) {
+            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Confirm Delivery — Enter Code</button>';
           } else {
-            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Delivery Verification</button>';
+            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">🔐 Get Delivery Code</button>';
           }
         } else if (isPaid) {
           /* escrow_held/paid but item type logic above didn't match — safe confirm fallback */
@@ -3170,20 +3177,23 @@ function payVerifFee() {
     toast('✅ You are already a Trusted Seller!', 'ok'); return;
   }
 
-  var PSK_PUBLIC = window.PAYSTACK_PK || '';
-  if (!PSK_PUBLIC) {
-    toast('Paystack public key not configured. Contact admin.', 'fail'); return;
+  /* FIX: use PK which is already loaded from /api/config on startup */
+  var pubKey = window.PK || PK || window.PAYSTACK_PUBLIC_KEY || window.PAYSTACK_PK || '';
+  if (!pubKey || pubKey.length < 10) {
+    toast('Payment gateway not ready. Please refresh the page and try again.', 'fail'); return;
+  }
+  if (typeof PaystackPop === 'undefined') {
+    toast('Paystack did not load. Please check your connection and refresh.', 'fail'); return;
   }
 
   var handler = PaystackPop.setup({
-    key:       PSK_PUBLIC,
-    email:     CU.email,
-    amount:    200000,          /* ₦2,000 in kobo */
-    currency:  'NGN',
-    ref:       'VERIF-' + CU.id + '-' + Date.now(),
-    metadata:  { userId: String(CU.id), type: 'verification_fee' },
-    callback:  function(response) {
-      /* Payment succeeded — mark seller as verified in Neon */
+    key:      pubKey,
+    email:    CU.email,
+    amount:   200000,          /* ₦2,000 in kobo */
+    currency: 'NGN',
+    ref:      'VERIF-' + CU.id + '-' + Date.now(),
+    metadata: { userId: String(CU.id), type: 'verification_fee' },
+    callback: function(response) {
       fetch('/api/auth?action=verify-seller', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3192,22 +3202,19 @@ function payVerifFee() {
       .then(function(r){ return r.json(); })
       .then(function(data) {
         if (data.ok) {
-          /* Update local session */
           CU.isVerified = true;
           var idx = usrs.findIndex(function(u){ return String(u.id) === String(CU.id); });
           if (idx !== -1) usrs[idx].isVerified = true;
           sv('nm_users', usrs);
-          toast('🎉 Congratulations! You are now a ✓ Trusted Seller. Your badge is live on all listings!', 'ok');
+          toast('🎉 You are now a ✓ Trusted Seller! Badge is live on all your listings.', 'ok');
           refreshProf();
         } else {
           toast('Payment received but badge update failed. Contact support with ref: ' + response.reference, 'fail');
         }
       })
-      .catch(function(e){ toast('Network error updating badge: ' + e.message, 'fail'); });
+      .catch(function(e){ toast('Network error: ' + e.message, 'fail'); });
     },
-    onClose: function() {
-      toast('Verification payment cancelled.', 'fail');
-    }
+    onClose: function() { toast('Verification payment cancelled.', 'warn'); }
   });
   handler.openIframe();
 }
@@ -4447,26 +4454,46 @@ window.updateBottomNav = updateBottomNav;
 function aTab(tab, btn) {
   document.querySelectorAll('.asb').forEach(function(b) { b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+  /* Mark active by tab name too so aTab(x, null) still highlights */
+  document.querySelectorAll('.asb').forEach(function(b) {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1) {
+      b.classList.add('on');
+    }
+  });
   var c = document.getElementById('adm-c');
   if (!c) return;
 
-  /* Show a loading skeleton instantly so admin sees feedback */
   c.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading…</div>';
 
-  /* Every tab fetches live from Neon — products, users, orders all fresh */
+  /* ── FETCH GUARD: individual fetches wrapped so one failure never blocks all tabs ── */
+  function safeFetch(url) {
+    return fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text().then(function(t) {
+          try { return JSON.parse(t); }
+          catch(e) { throw new Error('JSON parse error from ' + url + ': ' + t.slice(0,80)); }
+        });
+      })
+      .catch(function(e) {
+        console.warn('[aTab] safeFetch failed for', url, ':', e.message);
+        return {}; /* Return empty object so Promise.all always resolves */
+      });
+  }
+
   Promise.all([
-    fetch('/api/products').then(function(r){ return r.json(); }),
-    fetch('/api/users').then(function(r){ return r.json(); }),
-    fetch('/api/orders').then(function(r){ return r.json(); })
+    safeFetch('/api/products?admin=true'),
+    safeFetch('/api/users'),
+    safeFetch('/api/orders')
   ]).then(function(results) {
     var pData = results[0];
     var uData = results[1];
     var oData = results[2];
-    /* Update global prods with ALL statuses so admin sees pending */
     var allProds  = (pData && pData.products) || [];
+    var allUsers  = (uData && uData.users)    || [];
+    var allOrders = (oData && oData.orders)   || [];
     window.prods  = allProds;
     prods         = allProds;
-    var allUsers  = (uData && uData.users)  || [];
     var allOrders = (oData && oData.orders) || [];
     /* dummy nested-then closer to keep block structure */
     (function(){
@@ -4753,28 +4780,56 @@ function aTab(tab, btn) {
 
     /* ─── PRODUCTS ─── */
     } else if (tab === 'pr') {
-      var prods2 = window.prods || [];
-      c.innerHTML = '<div class="ah"><h1>Products ('+prods2.length+')</h1></div>'
-        + '<div class="act"><h3>All Products</h3>'
-        + (prods2.length
-          ? '<div class="tbl-wrap"><table class="tbl">'
-            + '<tr><th>#</th><th>Product</th><th>Seller</th><th>Price</th><th>Type</th><th>Status</th><th>Actions</th></tr>'
-            + prods2.map(function(p) {
-                return '<tr>'
-                  + '<td style="color:var(--muted);font-size:.72rem">'+String(p.id).slice(-6)+'</td>'
-                  + '<td>'+(p.emoji||'')+'&nbsp;'+p.name.substring(0,22)+'</td>'
-                  + '<td style="font-size:.8rem">'+p.seller+'</td>'
-                  + '<td>₦'+p.price.toLocaleString()+'</td>'
-                  + '<td style="font-size:.76rem;text-transform:uppercase">'+(p.type||'digital')+'</td>'
-                  + '<td><span class="sb2 '+(p.status==='pending'?'s-pend':p.status==='rejected'?'s-bad':'s-ok')+'">'+p.status+'</span></td>'
-                  + '<td class="ar2">'
-                  + (p.status==='pending'?'<button class="at aok" onclick="apvP('+p.id+')">Approve</button>':'')
-                  + '<button class="at ade" onclick="rejP('+p.id+')">Remove</button>'
-                  + '</td></tr>';
-              }).join('')
-            + '</table></div>'
-          : '<div style="color:var(--muted);font-size:.84rem">No products.</div>')
-        + '</div>';
+      var pending2  = allProds.filter(function(p){ return p.status === 'pending' || p.is_approved === false; });
+      var active2   = allProds.filter(function(p){ return p.status === 'active'; });
+      var rejected2 = allProds.filter(function(p){ return p.status === 'rejected'; });
+
+      function prodRow(p, showApprove) {
+        var ih = (p.imgs && p.imgs[0])
+          ? '<img src="' + p.imgs[0] + '" style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid var(--border)" onerror="this.style.display=\'none\'"/>'
+          : '<span style="font-size:2rem">' + (p.emoji || '📦') + '</span>';
+        return '<div id="prow-' + p.id + '" style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+          + ih
+          + '<div style="flex:1;min-width:140px">'
+          + '<div style="font-weight:700;font-size:.92rem">' + p.name + '</div>'
+          + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px">by <strong>' + (p.seller||'—') + '</strong> · ₦' + p.price.toLocaleString() + ' · ' + (p.type||'digital') + '</div>'
+          + '<div style="font-size:.73rem;color:var(--muted);margin-top:2px">' + (p.description||'').slice(0,60) + (p.description && p.description.length > 60 ? '…' : '') + '</div>'
+          + '</div>'
+          + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          + (showApprove ? '<button class="at aok" style="padding:10px 20px;font-size:.85rem;font-weight:800" onclick="apvP(' + p.id + ')">✅ APPROVE</button>' : '')
+          + '<button class="at ade" onclick="rejP(' + p.id + ')">✕ Reject</button>'
+          + '</div>'
+          + '</div>';
+      }
+
+      c.innerHTML =
+        '<div class="ah"><h1>📦 Product Management</h1><p>Approve listings before they go live to buyers</p></div>'
+        + '<div class="sr" style="margin-bottom:16px">'
+        + '<div class="sc2" style="border:1px solid rgba(251,146,60,.4)"><div class="lb">Awaiting Approval</div><div class="vl" style="color:var(--orange)">' + pending2.length + '</div></div>'
+        + '<div class="sc2"><div class="lb">Live Products</div><div class="vl" style="color:var(--green)">' + active2.length + '</div></div>'
+        + '<div class="sc2"><div class="lb">Rejected</div><div class="vl" style="color:var(--red)">' + rejected2.length + '</div></div>'
+        + '<div class="sc2"><div class="lb">Total</div><div class="vl">' + allProds.length + '</div></div>'
+        + '</div>'
+        + '<div class="act" style="border:' + (pending2.length ? '2px solid var(--orange)' : '1px solid var(--border)') + ';margin-bottom:12px">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+        + (pending2.length ? '<span style="background:var(--orange);color:#fff;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px">' + pending2.length + ' PENDING</span>' : '')
+        + '<h3 style="margin:0">⏳ Awaiting Your Approval</h3>'
+        + '</div>'
+        + (pending2.length
+          ? pending2.map(function(p){ return prodRow(p, true); }).join('')
+          : '<div style="color:var(--muted);font-size:.84rem;padding:8px 0;text-align:center">✅ No products waiting for approval.</div>')
+        + '</div>'
+        + '<div class="act">'
+        + '<h3>✅ Live Products (' + active2.length + ')</h3>'
+        + (active2.length
+          ? active2.map(function(p){ return prodRow(p, false); }).join('')
+          : '<div style="color:var(--muted);font-size:.84rem;padding:8px 0">No active listings yet.</div>')
+        + '</div>'
+        + (rejected2.length
+          ? '<div class="act" style="margin-top:12px"><h3>✕ Rejected (' + rejected2.length + ')</h3>'
+            + rejected2.map(function(p){ return prodRow(p, true); }).join('')
+            + '</div>'
+          : '');
 
     /* ─── ORDERS ─── */
     } else if (tab === 'od') {
@@ -4984,6 +5039,25 @@ function aTab(tab, btn) {
         pendingProd:  pendingProd,
         escrowOrders: escrowOrders
       };
+
+      /* AUTO-BRIEF: immediately tell CEO about pending items without waiting for a message */
+      var kycPendCEO = allUsers.filter(function(u){ return u.kycStatus === 'pending'; }).length;
+      if (pendingProd > 0 || kycPendCEO > 0) {
+        setTimeout(function() {
+          var autoBrief = '🏛️ Good day, CEO. Here is your status update:\n\n';
+          if (pendingProd > 0) {
+            autoBrief += '📦 **' + pendingProd + ' product' + (pendingProd > 1 ? 's' : '') + ' waiting for your approval.** Go to the Products tab to review and approve.\n';
+          }
+          if (kycPendCEO > 0) {
+            autoBrief += '🪪 **' + kycPendCEO + ' KYC review' + (kycPendCEO > 1 ? 's' : '') + ' pending.** Sellers are waiting to be verified.\n';
+          }
+          if (escrowOrders > 0) {
+            autoBrief += '🛡️ ' + escrowOrders + ' order(s) in escrow holding ₦' + Math.round(todayRev).toLocaleString() + ' today.\n';
+          }
+          autoBrief += '\nType **"briefing"** for the full daily report.';
+          _ceoAppendMsg(autoBrief, 'bot');
+        }, 400);
+      }
     }
 
     })(); /* close dummy user then */
@@ -5204,16 +5278,17 @@ function openDVC(orderId, role) {
   if (entryEl)       entryEl.value     = '';
 
   if (role === 'buyer') {
-    /* Generate deterministic 6-digit code from orderId */
     var code = generateDVC(orderId);
     var disp = document.getElementById('dvc-display');
     if (disp) disp.textContent = code;
     if (buyerSection) buyerSection.style.display = 'block';
   } else {
-    /* Seller enters code from buyer */
     if (sellerSection) {
       sellerSection.style.display = 'block';
       sellerSection.dataset.orderId = orderId;
+      /* Show which order this is for */
+      var refEl = document.getElementById('dvc-order-ref');
+      if (refEl) refEl.textContent = 'Order: ' + String(orderId);
     }
   }
   oM('m-dvc');
@@ -6405,36 +6480,46 @@ validateSell();
 
 <!-- ═══ DELIVERY VERIFICATION CODE MODAL ═══ -->
 <div class="ov" id="m-dvc">
-  <div class="ms" style="max-width:420px">
+  <div class="ms" style="max-width:440px">
     <div class="mh">
       <h3>📦 Delivery Verification</h3>
       <button class="mx" onclick="cM('m-dvc')">✕</button>
     </div>
     <div class="mb">
+
+      <!-- BUYER: shows their code to give to seller -->
       <div id="dvc-buyer-section" style="display:none">
-        <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          Share this <strong>6-digit code</strong> with the seller <strong>only when you have received your item</strong>. This releases the payment from escrow.
-        </p>
+        <div style="background:var(--green-bg);border:1px solid rgba(5,150,105,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.82rem;color:#065f46;line-height:1.5">
+          ✅ Your item is on its way. When you <strong>physically receive it</strong>, show this code to the seller to release their payment from escrow.
+        </div>
         <div class="dvc-wrap">
-          <div style="font-size:.78rem;color:var(--green);font-weight:600;margin-bottom:4px">🔐 YOUR DELIVERY CODE</div>
+          <div style="font-size:.78rem;color:var(--green);font-weight:700;margin-bottom:6px;letter-spacing:.5px">🔐 YOUR DELIVERY CODE</div>
           <div class="dvc-code" id="dvc-display">------</div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:6px">Show this to the seller after receiving your item</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center">Only share this <strong>after</strong> receiving your item in good condition</div>
         </div>
-        <button onclick="cM('m-dvc')" class="sbtn" style="margin-top:16px">Done</button>
+        <button onclick="cM('m-dvc')" class="sbtn" style="margin-top:16px;width:100%">Close</button>
       </div>
+
+      <!-- SELLER: enters code from buyer to release payment -->
       <div id="dvc-seller-section" style="display:none">
-        <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          Ask the buyer for their <strong>6-digit Delivery Code</strong> after they receive the item. Entering it releases your payment.
-        </p>
-        <div class="fg">
-          <label>Enter 6-Digit Delivery Code</label>
-          <input class="dvc-input" id="dvc-entry" type="text" maxlength="6"
-            placeholder="● ● ● ● ● ●"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+        <div style="background:rgba(201,146,42,.08);border:1px solid rgba(201,146,42,.25);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.82rem;color:var(--text);line-height:1.5">
+          📋 <strong>How it works:</strong> After delivering the item, ask the buyer to open their Orders page and tap <em>"Get Delivery Code"</em>. They will see a 6-digit number — enter it below to release your payment from escrow.
         </div>
-        <div id="dvc-err" style="color:var(--red);font-size:.8rem;min-height:16px;margin-bottom:8px"></div>
-        <button onclick="submitDVC()" id="dvc-btn" class="sbtn">✓ Verify & Release Payment</button>
+        <div id="dvc-order-ref" style="font-size:.75rem;color:var(--muted);margin-bottom:12px;text-align:center"></div>
+        <div class="fg">
+          <label style="font-weight:700;font-size:.9rem">Enter Buyer's 6-Digit Code</label>
+          <input class="dvc-input" id="dvc-entry" type="text" inputmode="numeric" maxlength="6"
+            placeholder="● ● ● ● ● ●"
+            style="font-size:1.8rem;letter-spacing:12px;text-align:center;padding:14px"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length===6)document.getElementById('dvc-btn').focus()"/>
+        </div>
+        <div id="dvc-err" style="color:var(--red);font-size:.82rem;min-height:18px;margin-bottom:10px;text-align:center;font-weight:600"></div>
+        <button onclick="submitDVC()" id="dvc-btn" class="sbtn" style="width:100%;padding:14px;font-size:1rem;font-weight:800">
+          ✅ Verify Code &amp; Release Payment
+        </button>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:10px;text-align:center">Funds go directly to your wallet after verification</div>
       </div>
+
     </div>
   </div>
 </div>
