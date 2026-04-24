@@ -1,7 +1,7 @@
-// api/chat.js — Neyo AI (Vercel Serverless)
+// /api/chat.js — Neyo AI (Vercel Serverless)
 // Model : Groq llama-3.1-8b-instant (free tier, very fast)
-// Env var: GROQ_API_KEY
-// Free key: https://console.groq.com → API Keys → Create key
+// Env   : GROQ_API_KEY
+// UPGRADE: Consumes productEstate for live product recommendations
 
 'use strict';
 
@@ -17,11 +17,28 @@ function setCors(res) {
 }
 
 function buildSystem(ctx) {
-  var u = (ctx && ctx.userName)       ? String(ctx.userName)      : 'there';
-  var r = (ctx && ctx.userRole)       ? String(ctx.userRole)      : 'guest';
-  var p = (ctx && ctx.activeProducts) ? ctx.activeProducts        : 0;
-  var c = (ctx && ctx.topCategories)  ? String(ctx.topCategories) : 'none yet';
-  var v = (ctx && ctx.totalRevenue)   ? String(ctx.totalRevenue)  : '₦0';
+  var u  = (ctx && ctx.userName)       ? String(ctx.userName)      : 'there';
+  var r  = (ctx && ctx.userRole)       ? String(ctx.userRole)      : 'guest';
+  var p  = (ctx && ctx.activeProducts) ? ctx.activeProducts        : 0;
+  var c  = (ctx && ctx.topCategories)  ? String(ctx.topCategories) : 'none yet';
+  var v  = (ctx && ctx.totalRevenue)   ? String(ctx.totalRevenue)  : '₦0';
+
+  /* ── Product Estate: array of live listing strings ── */
+  var estate = (ctx && Array.isArray(ctx.productEstate) && ctx.productEstate.length)
+    ? ctx.productEstate
+    : null;
+
+  var estateLine = estate
+    ? [
+        '',
+        'LIVE PRODUCT ESTATE — recommend these specific products to buyers when relevant:',
+        estate.map(function(l){ return '  ' + l; }).join('\n'),
+        'When a buyer asks what to buy, mentions a need, or asks for recommendations,',
+        'search this list and suggest matching products BY NAME with their price.',
+        'Always say they can find it on the NeyoMarket marketplace.',
+        ''
+      ].join('\n')
+    : '\nNo active listings yet — encourage the user to check back soon.\n';
 
   return [
     'You are Neyo AI — a street-smart, professional, and genuinely helpful AI assistant',
@@ -40,23 +57,26 @@ function buildSystem(ctx) {
     '',
     'LIVE CONTEXT:',
     '- User: ' + u + ' (' + r + ')',
-    '- Active products: ' + p,
+    '- Active products on platform: ' + p,
     '- Top categories: ' + c,
     '- Platform revenue: ' + v,
-    '',
+    estateLine,
     'NEYOMARKET FACTS (cite only when directly relevant):',
-    '- Split: 90% seller, 5% affiliate, 5% platform',
+    '- Revenue split: 85% seller · 5% affiliate · 10-15% platform',
     '- Paystack escrow, 256-bit SSL',
     '- KYC required: NIN or BVN',
-    '- Min withdrawal: ₦2,000 to seller\'s bank',
+    '- Trusted Seller badge: ₦2,000 one-time verification fee',
+    '- Min withdrawal: ₦2,000 (₦100 flat processing fee)',
     '- Affiliate: 5% commission via ?ref= link',
     '- Digital products: instant download after payment',
     '- Physical: buyer confirms receipt to release escrow',
+    '- Disputes resolved in 24 hours, full refund if seller at fault',
     '- Zero Scam Guarantee',
     '- Support: +2349072212496 (WhatsApp/call, 8am-8pm WAT)',
     '',
     'FORMAT: Bold **key terms**. Short answer for short question.',
-    'No bullet menus for specific questions. Under 200 words unless needed.'
+    'No bullet menus for specific questions. Under 200 words unless needed.',
+    'When recommending products, name them specifically and give the price.'
   ].join('\n');
 }
 
@@ -66,12 +86,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Use POST.' });
 
   if (!GROQ_KEY) {
-    console.error(
-      '[chat.js] GROQ_API_KEY is missing.\n' +
-      '  Fix: Vercel Dashboard → Project → Settings → Environment Variables\n' +
-      '  Add: GROQ_API_KEY = gsk_...\n' +
-      '  Free key: https://console.groq.com → API Keys → Create key'
-    );
+    console.error('[chat.js] GROQ_API_KEY missing');
     return res.status(500).json({
       error: 'AI not configured. Add GROQ_API_KEY to Vercel environment variables. Free at console.groq.com'
     });
@@ -84,8 +99,6 @@ module.exports = async function handler(req, res) {
   if (!Array.isArray(messages) || !messages.length)
     return res.status(400).json({ error: 'messages array required.' });
 
-  // Groq uses OpenAI format: [{role, content}]
-  // roles: "system", "user", "assistant"
   var groqMessages = [{ role: 'system', content: buildSystem(ctx) }];
 
   messages.slice(-20).forEach(function(m) {
@@ -97,14 +110,13 @@ module.exports = async function handler(req, res) {
     });
   });
 
-  // Must end with a user message
-  if (!groqMessages.length || groqMessages[groqMessages.length - 1].role !== 'user')
+  if (groqMessages[groqMessages.length - 1].role !== 'user')
     return res.status(400).json({ error: 'Last message must be from user.' });
 
   var payload = {
     model:       MODEL,
     messages:    groqMessages,
-    max_tokens:  512,
+    max_tokens:  600,
     temperature: 0.8,
     top_p:       0.9,
     stream:      false
@@ -149,7 +161,7 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ error: 'Unexpected response from AI. Please try again.' });
   }
 
-  console.log('[chat.js] OK — tokens used:', data.usage && data.usage.total_tokens);
+  console.log('[chat.js] OK — tokens:', data.usage && data.usage.total_tokens);
   return res.status(200).json({
     ok:    true,
     reply: reply.trim(),
