@@ -343,6 +343,146 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ withdrawals: rows });
     }
 
+    /* ═══════════════════════════════════════════════════════════════════
+       DVC-RELEASE — Seller enters the buyer's 6-digit delivery code.
+       Validates code against delivery_code in orders table.
+       On match: marks order completed, credits seller_balance in Neon.
+       Tiered commission: 5% physical, 15% digital.
+    ═══════════════════════════════════════════════════════════════════ */
+    if (action === 'dvc-release') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+      const { orderId, dvcCode, sellerUserId } = req.body || {};
+      if (!orderId || !dvcCode) return res.status(400).json({ error: 'orderId and dvcCode required.' });
+
+      /* Load order from Neon */
+      const orders = await sql`SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
+      if (!orders.length) return res.status(404).json({ error: 'Order not found.' });
+      const order = orders[0];
+
+      /* Already completed — idempotent */
+      if (order.status === 'completed' || order.collected) {
+        return res.status(200).json({ ok: true, released: 0, message: 'Already completed.' });
+      }
+
+      /* Validate the delivery code */
+      const expectedCode = String(order.delivery_code || '');
+      if (!expectedCode) {
+        /* Fallback: regenerate from orderId using same algo as frontend */
+        const str = String(orderId);
+        let hash  = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash) + str.charCodeAt(i);
+          hash |= 0;
+        }
+        const generated = String(Math.abs(hash) % 900000 + 100000);
+        if (String(dvcCode).trim() !== generated) {
+          return res.status(400).json({ error: 'Incorrect delivery code. Ask the buyer to re-share it.' });
+        }
+      } else {
+        if (String(dvcCode).trim() !== expectedCode) {
+          return res.status(400).json({ error: 'Incorrect delivery code. Ask the buyer to re-share it.' });
+        }
+      }
+
+      /* ── Compute tiered revenue split ── */
+      let items = order.items;
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+      if (!Array.isArray(items)) items = [];
+
+      const hasPhysical   = items.some(function(i){ return i.type === 'physical'; });
+      const platformRate  = hasPhysical ? 0.05 : 0.15;
+      const affiliateRate = order.aff_code ? 0.05 : 0;
+      const sellerRate    = 1 - platformRate - affiliateRate;
+      const total         = parseFloat(order.total || 0);
+      const platformFee   = Math.round(total * platformRate);
+      const affiliateFee  = Math.round(total * affiliateRate);
+      const sellerPayout  = Math.round(total * sellerRate);
+      const collectedAt   = new Date().toISOString();
+
+      /* ── Mark order completed ── */
+      await sql`
+        UPDATE orders SET
+          status        = 'completed',
+          collected     = true,
+          collected_at  = ${collectedAt},
+          platform_fee  = ${platformFee},
+          seller_payout = ${sellerPayout},
+          affiliate_fee = ${affiliateFee}
+        WHERE id = ${String(orderId)}
+      `;
+
+      /* ── Credit seller balance ── */
+      if (sellerUserId) {
+        await sql`
+          UPDATE users
+          SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
+          WHERE id = ${String(sellerUserId)}
+        `;
+        console.log('[paystack.js] DVC release — seller', sellerUserId, 'credited ₦', sellerPayout);
+      } else {
+        /* Find seller from order items if no sellerUserId passed */
+        const sellerIdFromItem = items[0] && (items[0].sellerId || items[0].seller_id);
+        if (sellerIdFromItem) {
+          await sql`
+            UPDATE users
+            SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
+            WHERE id = ${String(sellerIdFromItem)}
+          `;
+        }
+      }
+
+      /* ── Credit affiliate if applicable ── */
+      if (order.aff_code && affiliateFee > 0) {
+        try {
+          await sql`
+            UPDATE users
+            SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
+            WHERE aff_code = ${String(order.aff_code)}
+          `;
+        } catch(affErr) {
+          console.error('[paystack.js] Affiliate credit error (non-fatal):', affErr.message);
+        }
+      }
+
+      return res.status(200).json({
+        ok:          true,
+        released:    sellerPayout,
+        platformFee: platformFee,
+        message:     '✅ Delivery confirmed! ₦' + sellerPayout.toLocaleString() + ' released to your wallet.'
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       REFUND — Admin triggers Paystack refund for disputed order.
+    ═══════════════════════════════════════════════════════════════════ */
+    if (action === 'refund') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'POST only.' });
+      const { orderId, reference, amount } = req.body || {};
+      if (!orderId || !reference) return res.status(400).json({ error: 'orderId and reference required.' });
+
+      const refundAmount = Math.floor(parseFloat(amount || 0) * 100); /* naira to kobo */
+
+      const refundRes = await fetch('https://api.paystack.co/refund', {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + PSK, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          transaction:       reference,
+          amount:            refundAmount,
+          merchant_note:     'Buyer dispute resolved in buyer favour — NeyoMarket admin'
+        })
+      });
+      const refundData = await refundRes.json();
+
+      if (!refundData.status) {
+        return res.status(400).json({ error: 'Refund failed: ' + (refundData.message || 'Check Paystack dashboard') });
+      }
+
+      /* Mark order as refunded in Neon */
+      await sql`UPDATE orders SET status = 'refunded', collected = false WHERE id = ${String(orderId)}`;
+
+      return res.status(200).json({ ok: true, message: 'Refund of ₦' + parseFloat(amount||0).toLocaleString() + ' initiated successfully.' });
+    }
+
     return res.status(400).json({ error: 'Unknown action: ' + action });
 
   } catch (err) {
