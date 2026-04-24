@@ -31,7 +31,7 @@ function toProduct(r) {
     saleEndsAt:     r.sale_ends_at     || null,
     shippingFee:    r.shipping_fee     ? parseFloat(r.shipping_fee) : 0,
     sellerVerified: r.seller_verified  || false,
-    isVerified:     r.is_verified      || false,
+    isVerified:     r.is_verified      || false,   /* NEW: Trust & Verification badge */
     commission:     parseFloat(r.commission || 0),
     description:    r.description      || r.desc || '',
     seller:         r.seller           || '',
@@ -49,7 +49,7 @@ function toProduct(r) {
     fileExt:        r.file_ext         || null,
     fileName:       r.file_name        || null,
     fileUrl:        r.file_url         || null,
-    disputed:       r.disputed         || false,
+    disputed:       r.disputed         || false,   /* NEW: Dispute flag */
     createdAt:      r.created_at       || null,
   };
 }
@@ -58,63 +58,77 @@ module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  /* ── SAFETY: ensure every route returns JSON, never raw crashes ── */
   try {
 
-    /* ── GET ── */
+    /* ════════════════════════════════════════════════════
+       GET — fetch products
+    ════════════════════════════════════════════════════ */
     if (req.method === 'GET') {
       const { admin, sellerId, status, id } = req.query;
 
+      /* Single product by id */
       if (id) {
-        const rows = await sql`SELECT * FROM products WHERE id = ${Number(id)} LIMIT 1`;
+        const rows = await sql`
+          SELECT * FROM products WHERE id = ${Number(id)} LIMIT 1
+        `;
         if (!rows.length) return res.status(404).json({ error: 'Product not found.' });
         return res.status(200).json({ product: toProduct(rows[0]) });
       }
 
       let rows;
       if (sellerId) {
+        /* Seller's own listings */
         rows = await sql`
-          SELECT * FROM products WHERE seller_id = ${Number(sellerId)} ORDER BY created_at DESC
+          SELECT * FROM products
+          WHERE seller_id = ${Number(sellerId)}
+          ORDER BY created_at DESC
         `;
       } else if (admin === 'true') {
+        /* Admin: all products, optionally filtered by status */
         if (status && status !== 'all') {
-          rows = await sql`SELECT * FROM products WHERE status = ${String(status)} ORDER BY created_at DESC`;
+          rows = await sql`
+            SELECT * FROM products WHERE status = ${String(status)} ORDER BY created_at DESC
+          `;
         } else {
           rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
         }
       } else {
-        rows = await sql`SELECT * FROM products WHERE status = 'active' ORDER BY created_at DESC`;
+        /* Public marketplace — only approved listings */
+        rows = await sql`
+          SELECT * FROM products WHERE status = 'active' ORDER BY created_at DESC
+        `;
       }
+
       return res.status(200).json({ products: rows.map(toProduct) });
     }
 
-    /* ── POST ── */
+    /* ════════════════════════════════════════════════════
+       POST — create new product
+    ════════════════════════════════════════════════════ */
     if (req.method === 'POST') {
       const p = req.body || {};
       if (!p.name || !p.price)
         return res.status(400).json({ error: 'Product name and price are required.' });
 
-      /* CRITICAL FIX: pre-compute every conditional OUTSIDE the template literal */
-      const id             = Number(p.id || Date.now());
-      const discountPrice  = (p.discountPrice  != null) ? parseFloat(p.discountPrice)  : null;
-      const isOnSale       = p.isOnSale   ? true : false;
-      const saleEndsAt     = p.saleEndsAt || null;
-      const shippingFee    = (p.shippingFee != null) ? parseFloat(p.shippingFee) : 0;
+      const id = Number(p.id || Date.now());
+
+      /* ── EMERGENCY FIX: Pre-compute all conditional values OUTSIDE the
+         Neon template literal. Ternaries inside ${} in tagged templates
+         cause the "missing ) after argument list" SyntaxError in Vercel. ── */
+      const discountPrice  = p.discountPrice  ? parseFloat(p.discountPrice) : null;
+      const isOnSale       = p.isOnSale       || false;
+      const saleEndsAt     = p.saleEndsAt     || null;
+      const shippingFee    = p.shippingFee    ? parseFloat(p.shippingFee)   : 0;
       const commission     = parseFloat(p.commission || 0);
-      const sellerId       = p.sellerId   ? Number(p.sellerId) : null;
+      const sellerId       = p.sellerId       ? Number(p.sellerId)          : null;
       const sellerWhatsapp = p.sellerWhatsapp || '';
-      const escrow         = (p.escrow !== false);
-      const fileExt        = p.fileExt  || null;
-      const fileName       = p.fileName || null;
-      const fileUrl        = p.fileUrl  || null;
+      const escrow         = p.escrow !== false;
+      const fileExt        = p.fileExt        || null;
+      const fileName       = p.fileName       || null;
+      const fileUrl        = p.fileUrl        || null;
       const imgs           = JSON.stringify(p.imgs || []);
       const dateStr        = new Date().toLocaleDateString();
-      const productType    = p.type        || 'digital';
-      const productCat     = p.cat         || 'other';
-      const productDesc    = p.description || '';
-      const productSeller  = p.seller      || '';
-      const sellerEmail    = p.sellerEmail || '';
-      const productEmoji   = p.emoji       || '📦';
-      const productBadge   = p.badge       || '';
 
       const rows = await sql`
         INSERT INTO products (
@@ -124,48 +138,63 @@ module.exports = async function handler(req, res) {
           rating, reviews, emoji, imgs, status, badge, date, escrow,
           file_ext, file_name, file_url, is_verified, disputed, created_at
         ) VALUES (
-          ${id}, ${p.name}, ${productType}, ${productCat}, ${parseFloat(p.price)},
-          ${discountPrice}, ${isOnSale}, ${saleEndsAt}, ${shippingFee},
-          ${commission}, ${productDesc}, ${productSeller}, ${sellerId},
-          ${sellerEmail}, ${sellerWhatsapp},
-          ${0}, ${0},
-          ${productEmoji}, ${imgs}, ${'pending'}, ${productBadge}, ${dateStr}, ${escrow},
-          ${fileExt}, ${fileName}, ${fileUrl}, ${false}, ${false}, NOW()
+          ${id},
+          ${p.name},
+          ${p.type        || 'digital'},
+          ${p.cat         || 'other'},
+          ${parseFloat(p.price)},
+          ${discountPrice},
+          ${isOnSale},
+          ${saleEndsAt},
+          ${shippingFee},
+          ${commission},
+          ${p.description || ''},
+          ${p.seller      || ''},
+          ${sellerId},
+          ${p.sellerEmail || ''},
+          ${sellerWhatsapp},
+          ${0},
+          ${0},
+          ${p.emoji       || '📦'},
+          ${imgs},
+          ${'pending'},
+          ${p.badge       || ''},
+          ${dateStr},
+          ${escrow},
+          ${fileExt},
+          ${fileName},
+          ${fileUrl},
+          ${false},
+          ${false},
+          NOW()
         )
         RETURNING *
       `;
       return res.status(201).json({ ok: true, product: toProduct(rows[0]) });
     }
 
-    /* ── PATCH ─────────────────────────────────────────────────────────
-       CRITICAL FIX: ALL conditional/ternary expressions pre-computed
-       into named consts BEFORE entering the sql`` template literal.
-       Neon's tagged template parser cannot handle ternaries in ${}.
-    ───────────────────────────────────────────────────────────────── */
+    /* ════════════════════════════════════════════════════
+       PATCH — update product fields
+       EMERGENCY FIX: every conditional value extracted to a
+       const BEFORE the template literal is constructed.
+    ════════════════════════════════════════════════════ */
     if (req.method === 'PATCH') {
       const p = req.body || {};
       if (!p.id) return res.status(400).json({ error: 'Product id is required.' });
 
+      /* Pre-compute — fixes the Vercel SyntaxError on conditional template params */
+      const newStatus         = p.status          !== undefined ? String(p.status)                      : null;
+      const newBadge          = p.badge            !== undefined ? String(p.badge)                       : null;
+      const newDiscountPrice  = p.discountPrice    !== undefined ? (p.discountPrice !== null ? parseFloat(p.discountPrice) : null) : null;
+      const newIsOnSale       = p.isOnSale         !== undefined ? Boolean(p.isOnSale)                  : null;
+      const newSaleEndsAt     = p.saleEndsAt       !== undefined ? (p.saleEndsAt || null)                : null;
+      const newShippingFee    = p.shippingFee      !== undefined ? (p.shippingFee !== null ? parseFloat(p.shippingFee) : null) : null;
+      const newSellerVerified = p.sellerVerified   !== undefined ? Boolean(p.sellerVerified)            : null;
+      const newSellerWhatsapp = p.sellerWhatsapp   !== undefined ? String(p.sellerWhatsapp)             : null;
+      const newFileUrl        = p.fileUrl          !== undefined ? (p.fileUrl || null)                  : null;
+      const newIsVerified     = p.isVerified       !== undefined ? Boolean(p.isVerified)                : null;
+      const newDisputed       = p.disputed         !== undefined ? Boolean(p.disputed)                  : null;
       const productId         = Number(p.id);
-      const newStatus         = (p.status         !== undefined) ? String(p.status)         : null;
-      const newBadge          = (p.badge          !== undefined) ? String(p.badge)          : null;
-      const newSellerVerified = (p.sellerVerified !== undefined) ? Boolean(p.sellerVerified): null;
-      const newSellerWhatsapp = (p.sellerWhatsapp !== undefined) ? String(p.sellerWhatsapp) : null;
-      const newFileUrl        = (p.fileUrl        !== undefined) ? (p.fileUrl || null)      : null;
-      const newIsVerified     = (p.isVerified     !== undefined) ? Boolean(p.isVerified)   : null;
-      const newDisputed       = (p.disputed       !== undefined) ? Boolean(p.disputed)     : null;
-      const newIsOnSale       = (p.isOnSale       !== undefined) ? Boolean(p.isOnSale)     : null;
-      const newSaleEndsAt     = (p.saleEndsAt     !== undefined) ? (p.saleEndsAt || null)  : null;
-
-      /* Numeric fields need careful handling — null means "don't change" */
-      let newDiscountPrice = null;
-      if (p.discountPrice !== undefined && p.discountPrice !== null) {
-        newDiscountPrice = parseFloat(p.discountPrice);
-      }
-      let newShippingFee = null;
-      if (p.shippingFee !== undefined && p.shippingFee !== null) {
-        newShippingFee = parseFloat(p.shippingFee);
-      }
 
       await sql`
         UPDATE products SET
@@ -185,21 +214,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    /* ── DELETE ── */
+    /* ════════════════════════════════════════════════════
+       DELETE — remove product
+    ════════════════════════════════════════════════════ */
     if (req.method === 'DELETE') {
       const rawId = req.query.id || (req.body && req.body.id);
       if (!rawId) return res.status(400).json({ error: 'Product id is required.' });
-      await sql`DELETE FROM products WHERE id = ${Number(rawId)}`;
+      const productId = Number(rawId);
+      await sql`DELETE FROM products WHERE id = ${productId}`;
       return res.status(200).json({ ok: true });
     }
 
     return res.status(405).json({ error: 'Method not allowed.' });
 
   } catch (err) {
-    console.error('[products.js] ERROR:', err.message);
+    /* ── GLOBAL CATCH: always return JSON, never crash the dashboard ── */
+    console.error('[products.js] ERROR:', err.message, err.stack && err.stack.split('\n')[1]);
     return res.status(500).json({
-      error:  'Internal server error.',
-      detail: err.message
+      error:   'Internal server error.',
+      detail:  err.message,
+      _hint:   'Check Vercel function logs for stack trace.'
     });
   }
 };
