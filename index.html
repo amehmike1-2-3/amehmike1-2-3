@@ -695,6 +695,15 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
   margin-left:4px;vertical-align:middle
 }
 .verified-badge svg{width:9px;height:9px;fill:#fff}
+/* Trust-verified badge — gold, awarded after ₦2,000 verification fee */
+.trust-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:linear-gradient(135deg,#b45309,#c9922a);
+  color:#fff;padding:2px 7px;border-radius:4px;
+  font-size:.58rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+  margin-left:4px;vertical-align:middle
+}
+.trust-badge svg{width:9px;height:9px;fill:#fff}
 
 /* ── DELIVERY VERIFICATION CODE ── */
 .dvc-wrap{
@@ -1376,6 +1385,26 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           </div>
           <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
           <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
+        </div>
+      </div>
+
+      <!-- Trusted Seller Badge Section -->
+      <div class="dc" style="margin-top:14px;background:linear-gradient(135deg,rgba(180,83,9,.05),rgba(201,146,42,.08));border:1px solid rgba(201,146,42,.25)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:1.4rem">✓</span>
+          <div>
+            <h3 style="margin:0;color:var(--gold)">Trusted Seller Badge</h3>
+            <p style="margin:0;font-size:.78rem;color:var(--muted)">Show buyers you are verified and trustworthy</p>
+          </div>
+        </div>
+        <p style="font-size:.82rem;color:var(--text);line-height:1.6;margin-bottom:12px">
+          The gold <strong>✓ Trusted</strong> badge appears on <em>all your product listings</em>, increasing buyer confidence and conversion rates. One-time fee of <strong>₦2,000</strong>.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="payVerifFee()" id="verif-btn" class="bg" style="padding:10px 22px;background:linear-gradient(135deg,#b45309,#c9922a)">
+            ✓ Get Trusted Badge — ₦2,000
+          </button>
+          <span id="verif-status" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
       </div>
 
@@ -2284,13 +2313,16 @@ function rGrid(cid, items) {
     var verBadge = (p.sellerVerified || p.seller_verified)
       ? '<span class="verified-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>'
       : '';
+    var trustBadge = (p.isVerified || p.is_verified)
+      ? '<span class="trust-badge">✓ Trusted</span>'
+      : '';
 
     return '<div class="pcard" onclick="opn(' + p.id + ')">'
       + '<div class="pci">' + mi
       + (saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
       + '<span class="pb2 ' + tc + '">' + tl + '</span>'
       + '<span class="el">🛡 Escrow</span></div>'
-      + '<div class="pcb"><h4>' + p.name + verBadge + '</h4>'
+      + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + '</h4>'
       + '<div class="pcs">by ' + p.seller + (p.reviews > 0 ? ' · ⭐' + p.rating : '') + '</div>'
       + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ₦' + saving.toLocaleString() + '</div>' : '')
       + (timerStr ? '<div class="sale-timer">⏰ ' + timerStr + '</div>' : '')
@@ -2365,6 +2397,7 @@ function opn(id) {
         var displayP   = saleActive ? discPrice : p.price;
         var saving     = saleActive ? Math.round(p.price - discPrice) : 0;
         var verBadge   = (p.sellerVerified || p.seller_verified) ? ' <span class="verified-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>' : '';
+        var trustBadge = (p.isVerified || p.is_verified) ? ' <span class="trust-badge">✓ Trusted</span>' : '';
         var waPhone = String(p.sellerWhatsapp || p.seller_whatsapp || '');
         var waMsg   = encodeURIComponent('Hi! I am interested in your ' + p.name + ' listed at \u20a6' + displayP.toLocaleString() + ' on NeyoMarket.');
         var waLink  = waPhone ? 'https://wa.me/' + waPhone.replace(/[^0-9]/g,'') + '?text=' + waMsg : '';
@@ -2376,7 +2409,7 @@ function opn(id) {
           + '</div>'
           + '<p class="pddesc">' + (p.description || p.desc || '') + '</p>'
           + '<div class="prot">\uD83D\uDEE1\uFE0F <strong>Buyer Protected:</strong> Funds in escrow until you confirm receipt. Full refund if not as described.</div>'
-          + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong>' + verBadge + '</p>'
+          + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong>' + verBadge + trustBadge + '</p>'
           + '<div style="margin-bottom:10px">' + waBtn + '</div>'
           + '<div class="pdbtns">'
           + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">\uD83D\uDED2 Add to Cart</button>'
@@ -2906,18 +2939,30 @@ function renderOrders() {
         }
 
         var isEscrow    = o.status === 'escrow_held';
-        var statusLabel = isDone    ? 'Completed'
-                        : isEscrow  ? '🛡️ Escrow Held'
-                        : isPaid    ? 'Paid · Escrow'
+        var isDisputed  = o.status === 'disputed' || o.disputed;
+        var statusLabel = isDone      ? 'Completed'
+                        : isDisputed  ? '⚖️ Disputed'
+                        : isEscrow    ? '🛡️ Escrow Held'
+                        : isPaid      ? 'Paid · Escrow'
                         : 'Pending';
-        var statusBg    = isDone    ? '#d1fae5'
-                        : isEscrow  ? '#eff6ff'
-                        : isPaid    ? '#dbeafe'
+        var statusBg    = isDone      ? '#d1fae5'
+                        : isDisputed  ? '#fef2f2'
+                        : isEscrow    ? '#eff6ff'
+                        : isPaid      ? '#dbeafe'
                         : '#fef3c7';
-        var statusColor = isDone    ? '#065f46'
-                        : isEscrow  ? '#1e40af'
-                        : isPaid    ? '#1e40af'
+        var statusColor = isDone      ? '#065f46'
+                        : isDisputed  ? '#991b1b'
+                        : isEscrow    ? '#1e40af'
+                        : isPaid      ? '#1e40af'
                         : '#92400e';
+
+        /* Dispute button: shown for paid/escrow orders that are not yet complete or disputed */
+        var disputeBtn = '';
+        if (isPaid && !isDone && !isDisputed) {
+          disputeBtn = '<button onclick="disputeOrder(\'' + o.id + '\')" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--red);color:var(--red);padding:10px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer">⚖️ Dispute This Order</button>';
+        } else if (isDisputed) {
+          disputeBtn = '<div style="color:#991b1b;font-size:.78rem;margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:6px;text-align:center;border:1px solid #fecaca">⚖️ Dispute raised — Admin reviewing within 24h</div>';
+        }
 
         var addrRow = '';
         if (isPhys && o.customer) {
@@ -2944,6 +2989,7 @@ function renderOrders() {
           + '<span style="font-size:.7rem;color:var(--muted)">' + (o.date||'') + '</span>'
           + '</div>'
           + actionBtn
+          + disputeBtn
           + '</div>';
       }).join('');
     })
@@ -3060,6 +3106,112 @@ function markDL(id) {
   }
 }
 window.markDL = markDL;
+
+/* ════════════════════════════════════════════════════════════════
+   DISPUTE ORDER — Buyer raises a dispute on a paid/escrow order.
+   Flags order as 'disputed' in Neon. Admin then decides in panel.
+════════════════════════════════════════════════════════════════ */
+function disputeOrder(orderId) {
+  var o = ords.find(function(x){ return x.id === orderId; });
+  if (!o) return;
+
+  Swal.fire({
+    icon:              'warning',
+    title:             '⚖️ Raise a Dispute?',
+    html:              '<p style="color:#374151;font-size:.9rem">Only raise a dispute if there is a genuine problem with your order — e.g. item not received, not as described, or seller is unresponsive.</p>'
+                     + '<p style="color:#6b7280;font-size:.82rem;margin-top:8px">Admin will review within 24 hours. If the seller is at fault, you will receive a <strong>full refund</strong>.</p>',
+    input:             'textarea',
+    inputPlaceholder:  'Describe the problem (required)…',
+    inputAttributes:   { rows: 3, style: 'font-size:.85rem;padding:8px' },
+    showCancelButton:  true,
+    confirmButtonText: '⚖️ Submit Dispute',
+    cancelButtonText:  'Cancel',
+    confirmButtonColor:'#dc2626',
+    preConfirm: function(reason) {
+      if (!reason || reason.trim().length < 10) {
+        Swal.showValidationMessage('Please describe the problem (at least 10 characters).');
+        return false;
+      }
+      return reason.trim();
+    }
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    var reason = result.value;
+
+    /* Flag in Neon */
+    fetch('/api/orders/' + orderId, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ status: 'disputed', disputed: true, disputeReason: reason })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.ok || data.error === undefined) {
+        /* Update local state so UI refreshes without a full reload */
+        if (o) { o.status = 'disputed'; o.disputed = true; }
+        renderOrders();
+        toast('⚖️ Dispute submitted. Admin will review within 24 hours.', 'ok');
+      } else {
+        toast('Could not submit dispute: ' + (data.error || 'Try again'), 'fail');
+      }
+    })
+    .catch(function(e){ toast('Network error: ' + e.message, 'fail'); });
+  });
+}
+window.disputeOrder = disputeOrder;
+
+/* ════════════════════════════════════════════════════════════════
+   VERIFICATION FEE — Seller pays ₦2,000 to get the gold Trusted badge.
+   Uses Paystack inline popup. On success, calls /api/auth?action=verify-seller.
+════════════════════════════════════════════════════════════════ */
+function payVerifFee() {
+  if (!CU) { toast('Please sign in first.', 'fail'); return; }
+  if (CU.isVerified || CU.is_verified) {
+    toast('✅ You are already a Trusted Seller!', 'ok'); return;
+  }
+
+  var PSK_PUBLIC = window.PAYSTACK_PK || '';
+  if (!PSK_PUBLIC) {
+    toast('Paystack public key not configured. Contact admin.', 'fail'); return;
+  }
+
+  var handler = PaystackPop.setup({
+    key:       PSK_PUBLIC,
+    email:     CU.email,
+    amount:    200000,          /* ₦2,000 in kobo */
+    currency:  'NGN',
+    ref:       'VERIF-' + CU.id + '-' + Date.now(),
+    metadata:  { userId: String(CU.id), type: 'verification_fee' },
+    callback:  function(response) {
+      /* Payment succeeded — mark seller as verified in Neon */
+      fetch('/api/auth?action=verify-seller', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ userId: String(CU.id), ref: response.reference })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          /* Update local session */
+          CU.isVerified = true;
+          var idx = usrs.findIndex(function(u){ return String(u.id) === String(CU.id); });
+          if (idx !== -1) usrs[idx].isVerified = true;
+          sv('nm_users', usrs);
+          toast('🎉 Congratulations! You are now a ✓ Trusted Seller. Your badge is live on all listings!', 'ok');
+          refreshProf();
+        } else {
+          toast('Payment received but badge update failed. Contact support with ref: ' + response.reference, 'fail');
+        }
+      })
+      .catch(function(e){ toast('Network error updating badge: ' + e.message, 'fail'); });
+    },
+    onClose: function() {
+      toast('Verification payment cancelled.', 'fail');
+    }
+  });
+  handler.openIframe();
+}
+window.payVerifFee = payVerifFee;
 
 /* ═══════════════════════════════════════════════════════
    AUTH  —  all calls go to /api/auth (Neon Postgres)
@@ -3361,6 +3513,16 @@ function refreshProf() {
   renderKYCStatus();
   /* Load wallet balance immediately */
   loadWalletBalance();
+  /* Update Trusted Seller badge UI */
+  var verifBtn    = document.getElementById('verif-btn');
+  var verifStatus = document.getElementById('verif-status');
+  if (CU.isVerified || CU.is_verified) {
+    if (verifBtn)    { verifBtn.textContent = '✓ Already Trusted'; verifBtn.disabled = true; verifBtn.style.opacity = '.6'; }
+    if (verifStatus) verifStatus.textContent = '✓ Your Trusted badge is live on all listings';
+  } else {
+    if (verifBtn)    { verifBtn.textContent = '✓ Get Trusted Badge — ₦2,000'; verifBtn.disabled = false; verifBtn.style.opacity = '1'; }
+    if (verifStatus) verifStatus.textContent = '';
+  }
   /* default to Seller tab, render all panels */
   switchDashTab('seller', document.getElementById('tab-seller'));
   renderSellerDash();
@@ -4642,49 +4804,60 @@ function aTab(tab, btn) {
       c.innerHTML = '<div class="ah"><h1>⚖️ Disputes & Refunds</h1><p>One-click Paystack refunds for unresolved deliveries</p></div>'
         + '<div id="disputes-content"><div style="text-align:center;padding:30px;color:var(--muted)">⏳ Loading disputes…</div></div>';
 
-      /* Load orders that are in escrow and older than 3 days — candidates for disputes */
       Promise.all([
         fetch('/api/orders').then(function(r){ return r.json(); }),
         fetch('/api/users').then(function(r){ return r.json(); })
       ]).then(function(res) {
         var orders  = (res[0].orders  || []);
         var users   = (res[1].users   || []);
-        var cutoff  = Date.now() - (3 * 24 * 60 * 60 * 1000); /* 3 days */
+        var cutoff  = Date.now() - (3 * 24 * 60 * 60 * 1000);
 
-        /* Escrow orders: paid but not collected */
-        var escrow = orders.filter(function(o){
-          return (o.status === 'paid' || o.status === 'escrow_held') && !o.collected;
+        /* Buyer-raised disputes (status = 'disputed') — highest priority */
+        var buyerDisputed = orders.filter(function(o){ return o.status === 'disputed' || o.disputed; });
+
+        /* Auto-flagged: in escrow >3 days but not formally disputed */
+        var escrow  = orders.filter(function(o){
+          return (o.status === 'paid' || o.status === 'escrow_held') && !o.collected && o.status !== 'disputed';
         });
-        /* Flagged = older than 3 days in escrow (potential dispute) */
         var flagged = escrow.filter(function(o){
           return o.createdAt && new Date(o.createdAt).getTime() < cutoff;
         });
-        /* Recent = less than 3 days, normal escrow */
-        var recent = escrow.filter(function(o){
+        var recent  = escrow.filter(function(o){
           return !o.createdAt || new Date(o.createdAt).getTime() >= cutoff;
         });
 
-        function orderRow(o, isDispute) {
-          var cust = o.customer || {};
-          var u    = users.find(function(x){ return String(x.id) === String(o.userId); }) || {};
-          var age  = o.createdAt ? Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 86400000) : '?';
-          return '<div class="dispute-row ' + (isDispute ? 'unresolved' : 'resolved') + '">'
-            + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+        function disputeRow(o, mode) {
+          /* mode: 'buyer_dispute' | 'flagged' | 'recent' */
+          var cust      = o.customer || {};
+          var age       = o.createdAt ? Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 86400000) : '?';
+          var reason    = o.disputeReason || o.dispute_reason || '';
+          var selPayout = o.sellerPayout || o.seller_payout || Math.round(parseFloat(o.total||0) * 0.85);
+          var rowCls    = mode === 'buyer_dispute' ? 'dispute-row unresolved' : mode === 'flagged' ? 'dispute-row unresolved' : 'dispute-row resolved';
+
+          var actionBtns = '';
+          if (mode === 'buyer_dispute' || mode === 'flagged') {
+            actionBtns =
+              '<div class="ar2" style="margin-top:10px">'
+              + '<button onclick="adminRefund(\'' + o.id + '\',\'' + (o.ref||'') + '\',' + (o.total||0) + ')" class="at ade" id="rbtn-' + o.id + '">💸 Refund Buyer</button>'
+              + '<button onclick="adminRelease(\'' + o.id + '\',\'' + String(o.userId||'') + '\',' + selPayout + ')" class="at aok" id="relbtn-' + o.id + '">✅ Release to Seller</button>'
+              + '</div>';
+          } else {
+            actionBtns = '<div style="margin-top:8px"><span class="sb2 s-pend">In escrow · awaiting delivery</span></div>';
+          }
+
+          return '<div class="' + rowCls + '">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
             + '<div>'
             + '<div style="font-weight:700;font-size:.88rem">' + o.id + '</div>'
-            + '<div style="font-size:.76rem;color:var(--muted)">' + (cust.name||'—') + ' · ' + age + ' days in escrow</div>'
+            + '<div style="font-size:.76rem;color:var(--muted)">' + (cust.name||'—') + ' · ' + age + ' day(s) old</div>'
+            + (reason ? '<div style="font-size:.78rem;color:#991b1b;margin-top:4px;background:#fef2f2;padding:5px 8px;border-radius:4px"><strong>Dispute:</strong> ' + reason + '</div>' : '')
             + '</div>'
             + '<span style="font-weight:700;color:var(--gold)">₦' + parseFloat(o.total||0).toLocaleString() + '</span>'
             + '</div>'
-            + '<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">'
+            + '<div style="font-size:.8rem;color:var(--muted);margin-bottom:4px">'
             + (o.items||[]).map(function(i){ return (i.emoji||'📦')+' '+i.name; }).join(', ')
             + '</div>'
-            + (isDispute
-              ? '<div class="ar2">'
-                + '<button onclick="adminRefund(\'' + o.id + '\',\'' + o.ref + '\',' + o.total + ')" class="at ade">💸 Refund Buyer</button>'
-                + '<button onclick="adminRelease(\'' + o.id + '\',\'' + String(o.userId) + '\',' + (o.sellerPayout||o.seller_payout||Math.round(o.total*0.9)) + ')" class="at aok">✓ Release to Seller</button>'
-                + '</div>'
-              : '<span class="sb2 s-pend">In escrow · awaiting delivery</span>')
+            + actionBtns
             + '</div>';
         }
 
@@ -4692,20 +4865,33 @@ function aTab(tab, btn) {
         if (!dc) return;
         dc.innerHTML =
           '<div class="sr" style="margin-bottom:16px">'
-          + '<div class="sc2"><div class="lb">Flagged</div><div class="vl" style="color:var(--red)">' + flagged.length + '</div><div class="ch">&gt;3 days escrow</div></div>'
-          + '<div class="sc2"><div class="lb">In Escrow</div><div class="vl" style="color:var(--orange)">' + recent.length + '</div><div class="ch">Normal</div></div>'
-          + '<div class="sc2"><div class="lb">Total Value</div><div class="vl">₦' + Math.round(escrow.reduce(function(s,o){ return s+parseFloat(o.total||0); },0)).toLocaleString() + '</div></div>'
+          + '<div class="sc2" style="border:1px solid rgba(220,38,38,.3)"><div class="lb">Buyer Disputes</div><div class="vl" style="color:var(--red)">' + buyerDisputed.length + '</div><div class="ch">Action required</div></div>'
+          + '<div class="sc2"><div class="lb">Flagged (>3d)</div><div class="vl" style="color:var(--orange)">' + flagged.length + '</div><div class="ch">Auto-flagged</div></div>'
+          + '<div class="sc2"><div class="lb">Normal Escrow</div><div class="vl">' + recent.length + '</div><div class="ch">On time</div></div>'
+          + '<div class="sc2"><div class="lb">Total Value</div><div class="vl">₦' + Math.round([...buyerDisputed,...escrow].reduce(function(s,o){ return s+parseFloat(o.total||0); },0)).toLocaleString() + '</div></div>'
           + '</div>'
-          + '<div class="act"><h3>🚨 Flagged Orders — Action Required (' + flagged.length + ')</h3>'
+
+          + '<div class="act" style="border:1px solid rgba(220,38,38,.2)">'
+          + '<h3>🚨 Buyer-Raised Disputes (' + buyerDisputed.length + ')</h3>'
+          + (buyerDisputed.length
+              ? buyerDisputed.map(function(o){ return disputeRow(o,'buyer_dispute'); }).join('')
+              : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active disputes. ✅</div>')
+          + '</div>'
+
+          + '<div class="act" style="margin-top:12px">'
+          + '<h3>⚠️ Auto-Flagged Orders (' + flagged.length + ')</h3>'
           + (flagged.length
-            ? flagged.sort(function(a,b){ return new Date(a.createdAt||0)-new Date(b.createdAt||0); }).map(function(o){ return orderRow(o, true); }).join('')
-            : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No flagged orders. ✅</div>')
+              ? flagged.sort(function(a,b){ return new Date(a.createdAt||0)-new Date(b.createdAt||0); }).map(function(o){ return disputeRow(o,'flagged'); }).join('')
+              : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No flagged orders. ✅</div>')
           + '</div>'
-          + '<div class="act"><h3>Recent Escrow Orders (' + recent.length + ')</h3>'
+
+          + '<div class="act" style="margin-top:12px">'
+          + '<h3>Recent Escrow (' + recent.length + ')</h3>'
           + (recent.length
-            ? recent.slice(0,10).map(function(o){ return orderRow(o, false); }).join('')
-            : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active escrow orders.</div>')
+              ? recent.slice(0,10).map(function(o){ return disputeRow(o,'recent'); }).join('')
+              : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No active escrow orders.</div>')
           + '</div>';
+
       }).catch(function(e){
         var dc = document.getElementById('disputes-content');
         if (dc) dc.innerHTML = '<div style="color:var(--red);padding:16px">Error loading disputes: ' + e.message + '</div>';
@@ -5553,6 +5739,14 @@ function buildSystemPrompt() {
     "- Top categories: " + (topCats.join(', ') || 'none listed yet'),
     "- Total platform revenue: ₦" + Math.round(totalRev).toLocaleString(),
     "",
+    "## PRODUCT ESTATE — LIVE LISTINGS (recommend these to buyers by name when relevant)",
+    activeProds.slice(0,20).map(function(p){
+      return "  • " + p.emoji + " " + p.name + " — ₦" + p.price.toLocaleString()
+        + " [" + p.cat + "]"
+        + (p.isVerified || p.is_verified ? " ✓Trusted" : "")
+        + (p.type === "digital" ? " (instant download)" : " (physical, delivered)");
+    }).join("\n") || "  No active listings yet.",
+    "",
     "## NEYOMARKET FACTS (only use when relevant, never contradict)",
     "- Payment split: 90% seller · 5% affiliate · 5% platform",
     "- All payments via Paystack — 256-bit SSL, escrow-protected",
@@ -5590,11 +5784,19 @@ function sendMsg() {
   /* ── Call /api/chat (our Vercel serverless proxy) ──
      The proxy holds ANTHROPIC_API_KEY securely in env vars.
      We pass the dynamic system prompt + conversation history. */
-  /* Build context snapshot to send to the backend */
+  /* Build context snapshot — including Product Estate for live recommendations */
   var activeProds2 = (window.prods||[]).filter(function(p){ return p.status==='active'; });
   var cats2 = {}; activeProds2.forEach(function(p){ cats2[p.cat]=(cats2[p.cat]||0)+1; });
   var topCats2 = Object.keys(cats2).sort(function(a,b){ return cats2[b]-cats2[a]; }).slice(0,3);
   var rev2 = (window.ords||[]).reduce(function(s,o){ return s+parseFloat(o.total||0); },0);
+
+  /* Product Estate snapshot: top 20 active products for AI recommendations */
+  var productEstate = activeProds2.slice(0,20).map(function(p){
+    return p.emoji + ' ' + p.name + ' — ₦' + p.price.toLocaleString()
+      + ' [' + p.cat + ']'
+      + (p.isVerified || p.is_verified ? ' ✓Trusted' : '')
+      + (p.type === 'digital' ? ' (digital)' : ' (physical)');
+  });
 
   fetch('/api/chat', {
     method:  'POST',
@@ -5606,7 +5808,8 @@ function sendMsg() {
         userRole:       CU ? CU.role : 'guest',
         activeProducts: activeProds2.length,
         topCategories:  topCats2.join(', ') || 'none yet',
-        totalRevenue:   '₦' + Math.round(rev2).toLocaleString()
+        totalRevenue:   '₦' + Math.round(rev2).toLocaleString(),
+        productEstate:  productEstate  /* NEW: live listings for recommendations */
       }
     })
   })
