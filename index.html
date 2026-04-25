@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
@@ -126,27 +126,53 @@
   --shadow-md:0 4px 6px rgba(0,0,0,.07);
   color-scheme:light;
 }
+/* ── FIX 1: Default :root is now LIGHT — clean white professional theme ── */
 :root{
   --gold:#c9922a;--gold2:#a67318;--gold3:#f5e6c8;
-  --bg:#0f1117;--bg2:#161b22;--bg3:#1c2333;
-  --surface:#161b22;--card:#1c2333;
-  --border:#30363d;--border2:#444c56;
-  --text:#e6edf3;--muted:#8b949e;--muted2:#6e7681;
-  --green:#2ea043;--green-bg:rgba(46,160,67,.15);
-  --red:#f85149;--red-bg:rgba(248,81,73,.12);
-  --blue:#388bfd;--blue-bg:rgba(56,139,253,.15);
-  --orange:#e3b341;--orange-bg:rgba(227,179,65,.15);
+  --bg:#F9FAFB;--bg2:#ffffff;--bg3:#f3f4f6;
+  --surface:#ffffff;--card:#ffffff;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --text:#111827;--muted:#6b7280;--muted2:#9ca3af;
+  --green:#059669;--green-bg:#d1fae5;
+  --red:#dc2626;--red-bg:#fee2e2;
+  --blue:#2563eb;--blue-bg:#dbeafe;
+  --orange:#d97706;--orange-bg:#fef3c7;
   --r:8px;--tr:.18s cubic-bezier(.4,0,.2,1);
   --nh:60px;--bnav:64px;
-  --shadow:0 1px 3px rgba(0,0,0,.4);
-  --shadow-md:0 4px 12px rgba(0,0,0,.4);
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07);
 }
 /* Theme toggle */
 .theme-toggle{background:none;border:1px solid var(--border);color:var(--text);border-radius:50%;width:34px;height:34px;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--tr);flex-shrink:0;}
 .theme-toggle:hover{background:var(--bg3);}
-/* WhatsApp FAB */
-.wa-fab{position:fixed;bottom:calc(var(--bnav) + 16px);right:16px;width:52px;height:52px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);z-index:990;cursor:pointer;transition:transform .2s;text-decoration:none;font-size:1.5rem;}
-.wa-fab:hover,.wa-fab:active{transform:scale(1.1);}
+
+/* ── FIX 2: WhatsApp FAB — moved to BOTTOM LEFT, clear of chat bot ──
+   z-index: 991 (above nav 500, below modals 600 — but WA doesn't block chat)
+   Chat FAB stays bottom-right at z-index:995 (higher than WA)
+   Mobile: both stay on opposite sides — no overlap possible ── */
+.wa-fab{
+  position:fixed;
+  bottom:calc(var(--bnav) + 16px);
+  left:16px;                        /* LEFT side — away from chat bot */
+  width:48px;height:48px;
+  background:#25d366;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(37,211,102,.4);
+  z-index:991;                      /* above nav, below modals */
+  cursor:pointer;transition:transform .2s;
+  text-decoration:none;font-size:1.4rem;
+}
+.wa-fab:hover,.wa-fab:active{transform:scale(1.08);}
+/* Desktop: push WA fab above bottom nav */
+@media(min-width:769px){
+  .wa-fab{bottom:24px;}
+}
+/* Mobile safety: ensure both FABs never overlap */
+@media(max-width:480px){
+  .wa-fab{bottom:calc(var(--bnav) + 12px);left:12px;width:44px;height:44px;font-size:1.2rem;}
+}
+
 /* Hot deals */
 .hot-deals-section{background:linear-gradient(135deg,rgba(220,38,38,.08),rgba(201,146,42,.06));border:1px solid rgba(220,38,38,.2);border-radius:12px;padding:16px;margin-bottom:24px;}
 .hot-deals-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
@@ -312,11 +338,12 @@ nav{
        overflow:hidden;cursor:pointer;transition:var(--tr);box-shadow:var(--shadow)}
 .pcard:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .pcard:active{opacity:.9;transform:scale(.99)}
-.pci{height:160px;position:relative;overflow:hidden;background:var(--bg3);
+.pci{height:200px;position:relative;overflow:hidden;background:#ffffff;
+     border-bottom:1px solid var(--border);
      display:flex;align-items:center;justify-content:center}
-@media(max-width:480px){.pci{height:140px}}
-.pci img{width:100%;height:100%;object-fit:cover;transition:.4s ease}
-.pcard:hover .pci img{transform:scale(1.04)}
+@media(max-width:480px){.pci{height:170px}}
+.pci img{width:100%;height:100%;object-fit:contain;transition:.3s ease;padding:6px;}
+.pcard:hover .pci img{transform:scale(1.03)}
 .eph{font-size:2.5rem}
 .pb1{position:absolute;top:8px;left:8px;background:var(--gold);color:#fff;
      padding:3px 8px;border-radius:4px;font-size:.6rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
@@ -673,13 +700,13 @@ textarea.fi{resize:vertical;min-height:88px}
 /* ══════════════════════════════════════
    CHAT
 ══════════════════════════════════════ */
-.cfab{position:fixed;bottom:calc(var(--bnav) + 14px);right:14px;z-index:400;
+.cfab{position:fixed;bottom:calc(var(--bnav) + 14px);right:14px;z-index:995;
       width:50px;height:50px;border-radius:50%;background:var(--gold);border:none;
       display:flex;align-items:center;justify-content:center;font-size:1.25rem;
       box-shadow:0 4px 14px rgba(201,146,42,.4);cursor:pointer;transition:var(--tr)}
 @media(min-width:769px){.cfab{bottom:20px}}
 .cfab:active{transform:scale(.9)}
-.cp2{position:fixed;bottom:calc(var(--bnav) + 70px);right:8px;z-index:400;
+.cp2{position:fixed;bottom:calc(var(--bnav) + 70px);right:8px;z-index:994;
      width:calc(100vw - 16px);max-width:320px;background:#fff;
      border:1px solid var(--border);border-radius:12px;display:none;
      flex-direction:column;box-shadow:var(--shadow-md);overflow:hidden;max-height:420px}
@@ -1773,9 +1800,12 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 
 <!-- Product Detail -->
 <div class="ov" id="m-pd">
-  <div class="mo">
-    <div class="mh"><h3 id="pd-title">Product</h3><button class="mx" onclick="cM('m-pd')">✕</button></div>
-    <div class="mb" id="pd-body"></div>
+  <div class="mo" style="background:#ffffff;color:#111827;">
+    <div class="mh" style="background:#ffffff;border-bottom:1px solid #e5e7eb;">
+      <h3 id="pd-title" style="color:#111827;">Product</h3>
+      <button class="mx" onclick="cM('m-pd')" style="color:#6b7280;">✕</button>
+    </div>
+    <div class="mb" id="pd-body" style="background:#ffffff;"></div>
   </div>
 </div>
 
@@ -2336,77 +2366,103 @@ function submitProduct() {
   });
 
   var payload = {
-    id:          Date.now(),
-    name:        gv('s-name'),
-    type:        gv('s-type') || 'physical',
+    id:             Date.now(),
+    name:           gv('s-name'),
+    type:           gv('s-type') || 'physical',
     discountPrice:  parseFloat(gv('s-discount-price') || '0') || null,
     isOnSale:       document.getElementById('s-on-sale') ? document.getElementById('s-on-sale').checked : false,
     saleEndsAt:     gv('s-sale-ends') || null,
     shippingFee:    parseFloat(gv('s-shipping-fee') || '0') || 0,
     sellerWhatsapp: CU && CU.phone ? CU.phone : '',
-    cat:         gv('s-cat')  || 'other',
-    price:       parseFloat(gv('s-price')) || 0,
-    commission:  parseFloat(gv('s-comm'))  || 0,
-    desc:        gv('s-desc'),
-    seller:      CU ? CU.name : 'Seller',
-    sellerId:    CU ? String(CU.id) : '',
-    sellerEmail: maskEmail(gv('s-email')),
-    imgs:        cleanImgs,
-    date:        new Date().toLocaleDateString(),
-    fileExt:     null,
-    fileName:    null
+    cat:            gv('s-cat')  || 'other',
+    price:          parseFloat(gv('s-price')) || 0,
+    commission:     parseFloat(gv('s-comm'))  || 0,
+    description:    gv('s-desc'),
+    desc:           gv('s-desc'),
+    seller:         CU ? CU.name : 'Seller',
+    sellerId:       CU ? String(CU.id) : '',
+    sellerEmail:    maskEmail(gv('s-email')),
+    imgs:           cleanImgs,
+    date:           new Date().toLocaleDateString(),
+    fileExt:        digitalFileData ? digitalFileData.ext  : null,
+    fileName:       digitalFileData ? digitalFileData.name : null,
+    fileUrl:        null   /* filled below if digital upload succeeds */
   };
 
-  /* Test JSON serialization first */
-  var payloadStr;
-  try {
-    payloadStr = JSON.stringify(payload);
-  } catch(e) {
-    toast('Could not prepare product data: ' + e.message, 'fail');
-    return;
-  }
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+  var pType = payload.type;
+  var needsFileUpload = (pType === 'digital' || pType === 'course') && digitalFileData && digitalFileData.dataUrl;
 
-  fetch('/api/products', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payloadStr
-  })
-  .then(function(r) {
-    return r.text().then(function(txt) {
-      try { return JSON.parse(txt); } catch(e) { throw new Error('Server returned non-JSON. Check Vercel logs.'); }
-    });
-  })
-  .then(function(data) {
-    if (data && (data.ok || data.product)) {
-      digitalFileData = null;
-      uploadedImages = [];
-      resetSell();
-      if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
-      /* Beautiful success feedback — no raw JSON */
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          icon:             'success',
-          title:            'Product Listed! 🎉',
-          html:             '<p style="color:#374151;line-height:1.7">Your product has been submitted for admin review.<br/><strong>It will go live within 24 hours.</strong></p>',
-          confirmButtonText:'View My Listings',
-          confirmButtonColor:'#c9922a',
-          allowOutsideClick: false
-        }).then(function() {
+  function doSubmitPayload(finalPayload) {
+    var payloadStr;
+    try { payloadStr = JSON.stringify(finalPayload); }
+    catch(e) { toast('Could not prepare product data: ' + e.message, 'fail'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving product...'; }
+
+    fetch('/api/products', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    payloadStr
+    })
+    .then(function(r) {
+      return r.text().then(function(txt) {
+        try { return JSON.parse(txt); }
+        catch(e) { throw new Error('Server error (not JSON). Check Vercel logs: ' + txt.slice(0,120)); }
+      });
+    })
+    .then(function(data) {
+      if (data && (data.ok || data.product)) {
+        digitalFileData = null;
+        uploadedImages  = [];
+        resetSell();
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review'; }
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            icon: 'success', title: 'Product Listed!',
+            html: '<p style="color:#374151;line-height:1.7">Submitted for admin review.<br/><strong>Goes live within 24 hours.</strong></p>',
+            confirmButtonText: 'View My Listings', confirmButtonColor: '#c9922a', allowOutsideClick: false
+          }).then(function() { go(CU && CU.role === 'admin' ? 'admin' : 'seller'); });
+        } else {
+          toast('Product submitted! Goes live within 24 hours.', 'ok');
           go(CU && CU.role === 'admin' ? 'admin' : 'seller');
-        });
+        }
       } else {
-        toast('✅ Product submitted for review! Goes live within 24 hours.', 'ok');
-        go(CU && CU.role === 'admin' ? 'admin' : 'seller');
+        throw new Error(data.error || 'Submission failed');
       }
-    } else {
-      throw new Error(data.error || 'Submission failed — check Vercel logs');
-    }
-  })
-  .catch(function(err) {
-    if (btn) { btn.disabled = false; btn.textContent = '🔒 Submit for Review'; }
-    toast('Submission failed: ' + (err.message || 'Please try again'), 'fail');
-  });
+    })
+    .catch(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review'; }
+      toast('Submission failed: ' + (err.message || 'Please try again'), 'fail');
+    });
+  }
+
+  if (needsFileUpload) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading file...'; }
+    /* Upload digital file to ImgBB — same API used for product images */
+    var b64 = digitalFileData.dataUrl.split(',')[1] || digitalFileData.dataUrl;
+    var fd  = new FormData();
+    fd.append('image', b64);
+    fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_KEY, { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(result) {
+        if (result && result.data && (result.data.url || result.data.display_url)) {
+          payload.fileUrl  = result.data.url || result.data.display_url;
+          payload.fileName = digitalFileData.name;
+          payload.fileExt  = digitalFileData.ext;
+          if (btn) btn.textContent = 'Saving product...';
+          doSubmitPayload(payload);
+        } else {
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review'; }
+          var errMsg = (result.error && result.error.message) || 'ImgBB rejected the file.';
+          toast('File upload failed: ' + errMsg + ' Try a smaller file (under 32MB) or use a PDF.', 'fail');
+        }
+      })
+      .catch(function(e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review'; }
+        toast('File upload error: ' + e.message + '. Check your connection and try again.', 'fail');
+      });
+  } else {
+    doSubmitPayload(payload);
+  }
 }
 window.submitProduct = submitProduct;
 
@@ -2524,52 +2580,79 @@ function opn(id) {
       else starsHtml += '<span style="color:var(--border)">★</span>';
     }
   }
-  document.getElementById('pd-body').innerHTML = mh + th
-    + '<div class="pdmeta"><span class="pdt">' + (p.type === 'digital' ? '⚡ Digital' : p.type === 'course' ? '🎓 Course' : '📦 Physical') + '</span>'
-    + '<span class="pdt">🏷 ' + p.cat + '</span>'
-    + (p.reviews > 0 ? '<span class="pdt">⭐ ' + p.rating + ' (' + p.reviews + ' reviews)</span>' : '<span class="pdt" style="color:var(--muted)">No reviews yet</span>')
-    + '<span class="pdt">💸 ' + p.commission + '% affiliate</span>'
-    + '<span class="pdt">🛡 Escrow</span></div>'
-    + (p.reviews > 0 ? '<div style="margin-bottom:8px;font-size:1.1rem">' + starsHtml + '</div>' : '')
+  document.getElementById('pd-body').innerHTML =
+    /* IMAGE — white bg, contain, no crop */
+    '<div style="background:#fff;display:flex;align-items:center;justify-content:center;height:260px;border-bottom:1px solid #e5e7eb;overflow:hidden">'
+    + (gi[0] ? '<img src="' + gi[0] + '" alt="' + p.name + '" style="max-height:250px;max-width:100%;object-fit:contain;padding:10px"/>' : '<div style="font-size:4rem">' + p.emoji + '</div>')
+    + '</div>'
+    /* Thumbnails */
+    + (gi.length > 1 ? '<div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid #e5e7eb;background:#fff;overflow-x:auto">' + gi.map(function(s,i){ return '<img src="' + s + '" style="width:52px;height:52px;object-fit:contain;border:2px solid ' + (i===0?'#c9922a':'#e5e7eb') + ';border-radius:6px;cursor:pointer;background:#fff;flex-shrink:0" onclick="swImg(this,\''+s+'\')"/>'; }).join('') + '</div>' : '')
+    /* CONTENT — always white/light */
+    + '<div style="padding:16px 16px 0;background:#fff;">'
+    /* Type + cat tags */
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+    + '<span style="background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600">' + (p.type==='digital'?'⚡ Digital':p.type==='course'?'🎓 Course':'📦 Physical') + '</span>'
+    + '<span style="background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600">🏷 ' + p.cat + '</span>'
+    + (p.reviews > 0 ? '<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600">⭐ ' + p.rating + ' (' + p.reviews + ')</span>' : '')
+    + '<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600">🛡 Escrow</span>'
+    + '</div>'
+    /* Seller */
     + (function(){
-        var isOnSale   = !!(p.isOnSale || p.is_on_sale);
-        var discPrice  = parseFloat(p.discountPrice || p.discount_price || 0);
-        var saleEndsAt = p.saleEndsAt || p.sale_ends_at || null;
+        var verBadge   = (p.sellerVerified||p.seller_verified) ? ' <span style="background:#1d4ed8;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Verified</span>' : '';
+        var trustBadge = (p.isVerified||p.is_verified) ? ' <span style="background:#b45309;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Trusted</span>' : '';
+        return '<p style="font-size:.78rem;color:#6b7280;margin-bottom:12px">Sold by: <strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + '</p>';
+      })()
+    /* PRICE */
+    + (function(){
+        var isOnSale   = !!(p.isOnSale||p.is_on_sale);
+        var discPrice  = parseFloat(p.discountPrice||p.discount_price||0);
+        var saleEndsAt = p.saleEndsAt||p.sale_ends_at||null;
         var saleActive = isOnSale && discPrice > 0 && discPrice < p.price && (!saleEndsAt || new Date(saleEndsAt) > new Date());
         var displayP   = saleActive ? discPrice : p.price;
-        var saving     = saleActive ? Math.round(p.price - discPrice) : 0;
-        var verBadge   = (p.sellerVerified || p.seller_verified) ? ' <span class="verified-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>' : '';
-        var trustBadge = (p.isVerified || p.is_verified) ? ' <span class="trust-badge">✓ Trusted</span>' : '';
-        var waPhone = String(p.sellerWhatsapp || p.seller_whatsapp || '');
-        var waMsg   = encodeURIComponent('Hi! I am interested in your ' + p.name + ' listed at \u20a6' + displayP.toLocaleString() + ' on NeyoMarket.');
-        var waLink  = waPhone ? 'https://wa.me/' + waPhone.replace(/[^0-9]/g,'') + '?text=' + waMsg : '';
-        var waBtn   = (CU && waLink) ? '<a href="' + waLink + '" target="_blank" rel="noopener" class="wa-btn">\uD83D\uDCAC Contact Seller on WhatsApp</a>' : '<button onclick="toast(\' Sign in to contact seller\',\'warn\'" class="wa-btn" style="background:var(--bg3);color:var(--muted);box-shadow:none">\uD83D\uDCAC Sign In to Contact Seller</button>';
-        return '<div class="pdprice">'
-          + (saleActive ? '<span class="price-original">\u20a6' + p.price.toLocaleString() + '</span> ' : '')
-          + '<span style="' + (saleActive ? 'color:var(--red)' : '') + '">\u20a6' + displayP.toLocaleString() + '</span>'
-          + (saving > 0 ? ' <span class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + '</span>' : '')
-          + '</div>'
-          + '<p class="pddesc">' + (p.description || p.desc || '') + '</p>'
-          + '<div class="prot">\uD83D\uDEE1\uFE0F <strong>Buyer Protected:</strong> Funds in escrow until you confirm receipt. Full refund if not as described.</div>'
-          + '<p style="font-size:.76rem;color:var(--muted);margin-bottom:10px">Sold by: <strong style="color:var(--gold)">' + p.seller + '</strong>' + verBadge + trustBadge + '</p>'
-          + '<div style="margin-bottom:10px">' + waBtn + '</div>'
-          + '<div class="pdbtns">'
-          + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">\uD83D\uDED2 Add to Cart</button>'
-          + '<button onclick="shareProduct(' + p.id + ')" style="background:var(--surface);border:1.5px solid #25d366;color:#25d366;padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">\uD83D\uDCE4 Share on WhatsApp</button>'
-          + '<button onclick="cpyAffProd(' + p.id + ')" style="background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">\uD83D\uDD17 Affiliate Link</button>'
+        var saving     = saleActive ? Math.round(p.price-discPrice) : 0;
+        return '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">'
+          + (saleActive ? '<span style="text-decoration:line-through;color:#9ca3af;font-size:.95rem">&#x20a6;' + p.price.toLocaleString() + '</span>' : '')
+          + '<span style="font-size:1.7rem;font-weight:800;color:' + (saleActive?'#dc2626':'#111827') + ';font-family:serif">&#x20a6;' + displayP.toLocaleString() + '</span>'
+          + (saving > 0 ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700">Save &#x20a6;' + saving.toLocaleString() + '</span>' : '')
           + '</div>';
       })()
-    + '<div id="reviews-section-' + p.id + '" style="margin-top:22px">'
-    + '<h4 style="font-size:.92rem;margin-bottom:12px;border-top:1px solid var(--border);padding-top:14px">⭐ Reviews</h4>'
-    + '<div id="reviews-list-' + p.id + '"><p style="color:var(--muted);font-size:.82rem">Loading reviews…</p></div>'
-    + (CU ? '<div style="margin-top:14px;background:var(--surface);border-radius:10px;padding:13px">'
-      + '<p style="font-size:.82rem;font-weight:600;margin-bottom:8px">Leave a Review</p>'
+    /* Escrow note */
+    + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:.79rem;color:#065f46;line-height:1.5">'
+    + '🛡️ <strong>Buyer Protected:</strong> Your funds are held in escrow until you confirm receipt. Full refund if not as described.'
+    + '</div>'
+    /* WhatsApp + Action buttons */
+    + (function(){
+        var waPhone = String(p.sellerWhatsapp||p.seller_whatsapp||'');
+        var waMsg   = encodeURIComponent('Hi! I am interested in your ' + p.name + ' on NeyoMarket.');
+        var waLink  = waPhone ? 'https://wa.me/' + waPhone.replace(/[^0-9]/g,'') + '?text=' + waMsg : '';
+        var waBtn   = (CU && waLink)
+          ? '<a href="' + waLink + '" target="_blank" rel="noopener" style="display:block;width:100%;text-align:center;background:#25d366;color:#fff;padding:11px;border-radius:8px;font-weight:700;font-size:.85rem;margin-bottom:8px;text-decoration:none">💬 Contact Seller on WhatsApp</a>'
+          : '<button onclick="toast(\'Sign in to contact seller\',\'warn\')" style="width:100%;background:#f3f4f6;color:#6b7280;padding:11px;border-radius:8px;font-weight:700;font-size:.85rem;margin-bottom:8px;border:1px solid #e5e7eb;cursor:pointer">💬 Sign In to Contact Seller</button>';
+        return waBtn
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+          + '<button style="background:#c9922a;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;font-size:.85rem;cursor:pointer" onclick="addCart(' + p.id + ');cM(\'m-pd\')">🛒 Add to Cart</button>'
+          + '<button onclick="shareProduct(' + p.id + ')" style="background:#fff;border:1.5px solid #25d366;color:#25d366;padding:12px;border-radius:8px;font-weight:700;font-size:.85rem;cursor:pointer">📤 Share</button>'
+          + '</div>'
+          + '<button onclick="cpyAffProd(' + p.id + ')" style="width:100%;background:#fff;border:1.5px solid #c9922a;color:#c9922a;padding:10px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;margin-bottom:4px">🔗 Copy Affiliate Link</button>';
+      })()
+    /* DESCRIPTION — clearly below the buy buttons */
+    + '</div>'
+    + '<div style="padding:16px;background:#f9fafb;border-top:1px solid #e5e7eb;">'
+    + '<h4 style="font-size:.88rem;font-weight:700;color:#374151;margin-bottom:8px">📋 Product Description</h4>'
+    + '<p style="font-size:.85rem;color:#374151;line-height:1.7;white-space:pre-wrap">' + (p.description||p.desc||'No description provided.') + '</p>'
+    + '</div>'
+    /* Reviews */
+    + '<div id="reviews-section-' + p.id + '" style="padding:16px;background:#fff;border-top:1px solid #e5e7eb;">'
+    + '<h4 style="font-size:.92rem;margin-bottom:12px;color:#111827">⭐ Reviews</h4>'
+    + '<div id="reviews-list-' + p.id + '"><p style="color:#6b7280;font-size:.82rem">Loading reviews...</p></div>'
+    + (CU ? '<div style="margin-top:14px;background:#f9fafb;border-radius:10px;padding:13px;border:1px solid #e5e7eb">'
+      + '<p style="font-size:.82rem;font-weight:600;margin-bottom:8px;color:#111827">Leave a Review</p>'
       + '<div style="display:flex;gap:6px;margin-bottom:8px" id="star-pick-' + p.id + '">'
-      + [1,2,3,4,5].map(function(n){ return '<span onclick="pickStar(' + p.id + ',' + n + ')" style="font-size:1.4rem;cursor:pointer;color:var(--border)" id="star-' + p.id + '-' + n + '">★</span>'; }).join('')
+      + [1,2,3,4,5].map(function(n){ return '<span onclick="pickStar(' + p.id + ',' + n + ')" style="font-size:1.4rem;cursor:pointer;color:#d1d5db" id="star-' + p.id + '-' + n + '">&#9733;</span>'; }).join('')
       + '</div>'
-      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience…" style="width:100%;background:var(--card);border:1.5px solid var(--border);color:var(--text);padding:9px;border-radius:8px;font-size:.83rem;resize:none;height:72px;outline:none;font-family:inherit"></textarea>'
-      + '<button onclick="submitReview(' + p.id + ')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--dark);border:none;padding:9px;border-radius:8px;font-weight:700;font-size:.83rem;cursor:pointer">Submit Review ✓</button>'
-      + '</div>' : '<p style="font-size:.79rem;color:var(--muted);margin-top:10px"><a onclick="go(\'signin\')" style="color:var(--gold);cursor:pointer">Sign in</a> to leave a review</p>')
+      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience..." style="width:100%;background:#fff;border:1.5px solid #e5e7eb;color:#111827;padding:9px;border-radius:8px;font-size:.83rem;resize:none;height:72px;outline:none;font-family:inherit"></textarea>'
+      + '<button onclick="submitReview(' + p.id + ')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#c9922a,#a67318);color:#fff;border:none;padding:9px;border-radius:8px;font-weight:700;font-size:.83rem;cursor:pointer">Submit Review</button>'
+      + '</div>' : '<p style="font-size:.79rem;color:#6b7280;margin-top:10px"><a onclick="go(\'signin\')" style="color:#c9922a;cursor:pointer">Sign in</a> to leave a review</p>')
     + '</div>';
   oM('m-pd');
   /* Load reviews from Neon */
@@ -3941,11 +4024,11 @@ function renderSellerPage() {
           + '<span style="font-size:.72rem;font-weight:600;padding:2px 9px;border-radius:50px;' + statusStyle + '">' + statusMsg + '</span>'
           + '</div>'
           + '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
-          + '<button onclick="analyzeProductWithAI(' + p.id + ')" style="background:rgba(201,146,42,.08);border:1px solid var(--gold);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">🤖 AI Analyze</button>'
+          + '<button onclick="viewRawData(' + p.id + ')" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);color:#2563eb;padding:5px 12px;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">🗄 Raw Data</button>'
           + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
           + (CU && p.sellerId && String(p.sellerId) === String(CU.id) ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
           + '</div>'
-          + '<div id="ai-insight-' + p.id + '" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px;font-size:.8rem;width:100%"></div>'
+          + '<div id="raw-data-' + p.id + '" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-top:8px;font-size:.72rem;width:100%;font-family:monospace;white-space:pre-wrap;word-break:break-all;color:#374151;max-height:200px;overflow-y:auto"></div>'
           + '</div>';
       }).join('');
     }
@@ -5589,68 +5672,46 @@ window.adminRelease = adminRelease;
    Analyzes a seller's listing vs active marketplace
    and suggests price/strategy improvements
 ════════════════════════════════════════════════ */
-function analyzeProductWithAI(productId) {
-  var p = prods.find(function(x){ return x.id === productId; });
-  if (!p) { toast('Product not found', 'fail'); return; }
+/* ── RAW DATA VIEWER — replaces AI Analyze, no lookup failures ── */
+function viewRawData(productId) {
+  var p = (window.prods||[]).find(function(x){ return Number(x.id) === Number(productId); });
+  var el = document.getElementById('raw-data-' + productId);
+  if (!el) return;
 
-  /* Find similar products in same category */
-  var similar = prods.filter(function(x){
-    return x.status === 'active' && x.id !== productId &&
-           (x.cat === p.cat || x.type === p.type);
-  });
-  var avgPrice  = similar.length
-    ? Math.round(similar.reduce(function(s,x){ return s+x.price; },0) / similar.length)
-    : p.price;
-  var minPrice  = similar.length ? Math.min.apply(null, similar.map(function(x){ return x.price; })) : p.price;
-  var maxPrice  = similar.length ? Math.max.apply(null, similar.map(function(x){ return x.price; })) : p.price;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
 
-  /* Show loading toast */
-  toast('🤖 Neyo AI analyzing your listing…', 'ok');
+  /* Show cached local data immediately */
+  if (p) {
+    el.style.display = 'block';
+    el.textContent   = JSON.stringify(p, null, 2);
+  }
 
-  var prompt = 'You are a Nigerian e-commerce pricing analyst for NeyoMarket in Lafia, Nasarawa State.'
-    + ' Analyze this product listing and give sharp, actionable advice in under 150 words.'
-    + ' Product: "' + p.name + '" (Category: ' + p.cat + ', Type: ' + p.type + ')'
-    + ' Current price: ₦' + p.price.toLocaleString()
-    + ' Similar products on platform: ' + similar.length
-    + ' (min ₦' + minPrice.toLocaleString() + ', avg ₦' + avgPrice.toLocaleString() + ', max ₦' + maxPrice.toLocaleString() + ')'
-    + ' Focus on: 1) Is the price competitive? 2) What specific changes would increase sales velocity?'
-    + ' 3) Any Lafia/Nasarawa market insight. Be direct and specific — no generic advice.';
-
-  fetch('/api/chat', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      messages:    [{ role: 'user', content: prompt }],
-      contextData: { userName: CU ? CU.name : 'Seller', userRole: 'seller' }
+  /* Fetch live from Neon for authoritative data */
+  fetch('/api/products?id=' + Number(productId))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var prod = data.product || p;
+      el.style.display = 'block';
+      el.innerHTML =
+        '<div style="font-weight:700;color:#2563eb;margin-bottom:6px;font-family:sans-serif;font-size:.74rem">🗄 Live Neon DB Record — ID: ' + productId + '</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:.71rem">'
+        + Object.entries(prod).map(function(kv) {
+            var val = kv[1] === null ? '<em style="color:#9ca3af">null</em>'
+                    : typeof kv[1] === 'object' ? '<span style="color:#6b7280">' + JSON.stringify(kv[1]).slice(0,60) + '</span>'
+                    : '<span style="color:#111827">' + String(kv[1]).slice(0,80) + '</span>';
+            return '<tr style="border-bottom:1px solid #f1f5f9">'
+              + '<td style="padding:3px 6px;color:#6b7280;white-space:nowrap;vertical-align:top">' + kv[0] + '</td>'
+              + '<td style="padding:3px 6px">' + val + '</td>'
+              + '</tr>';
+          }).join('')
+        + '</table>';
     })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data.ok && data.reply) {
-      /* Show AI insight in a nice panel */
-      var el = document.getElementById('ai-insight-' + productId);
-      if (el) {
-        el.style.display = 'block';
-        el.innerHTML = '<div style="font-weight:700;font-size:.84rem;color:var(--gold);margin-bottom:6px">🤖 Neyo AI — Market Analysis</div>'
-          + '<div style="font-size:.82rem;line-height:1.7;color:var(--text)">'
-          + data.reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')
-          + '</div>';
-      } else {
-        /* Fallback: show in a toast-style overlay */
-        var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:90vw;max-width:400px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;z-index:800;box-shadow:0 8px 32px rgba(0,0,0,.15)';
-        overlay.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="color:var(--gold)">🤖 Market Analysis</strong><button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted)">✕</button></div>'
-          + '<div style="font-size:.83rem;line-height:1.7">' + data.reply.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br/>') + '</div>';
-        document.body.appendChild(overlay);
-        setTimeout(function(){ if (overlay.parentNode) overlay.remove(); }, 15000);
-      }
-    } else {
-      toast(data.error || 'AI analysis failed', 'fail');
-    }
-  })
-  .catch(function(){ toast('AI temporarily offline', 'warn'); });
+    .catch(function(e) {
+      el.style.display = 'block';
+      el.textContent   = 'Fetch error: ' + e.message + '\n\nCached:\n' + (p ? JSON.stringify(p, null, 2) : 'not found');
+    });
 }
-window.analyzeProductWithAI = analyzeProductWithAI;
+window.viewRawData = viewRawData;
 
 /* ════════════════════════════════════════════════
    ADMIN KYC APPROVAL
@@ -5768,7 +5829,7 @@ window.toggleTheme = toggleTheme;
 
 /* Apply saved theme immediately on every page load */
 (function applyTheme() {
-  var saved = localStorage.getItem('nm_theme') || 'dark';
+  var saved = localStorage.getItem('nm_theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
   var btn = document.getElementById('theme-btn');
   if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
@@ -5840,8 +5901,17 @@ window.startCountdownTicker = startCountdownTicker;
    Copies the clean ?prod=ID URL to clipboard.
 ════════════════════════════════════════════════════════ */
 function shareProduct(productId) {
-  var p = (window.prods || []).find(function(x) { return Number(x.id) === Number(productId); });
-  if (!p) { toast('Product not found', 'fail'); return; }
+  /* FIX: cast to Number — prods array uses numeric IDs, callers may pass strings */
+  var pid = Number(productId);
+  var p   = (window.prods || []).find(function(x) { return Number(x.id) === pid; });
+
+  /* Fallback: try string match in case IDs are stored as strings */
+  if (!p) p = (window.prods || []).find(function(x) { return String(x.id) === String(productId); });
+
+  if (!p) {
+    toast('Could not find product to share. Try refreshing the page.', 'fail');
+    return;
+  }
 
   var base  = window.location.origin + '/?prod=' + p.id;
   var price = Number(p.discountPrice || p.discount_price || p.price);
