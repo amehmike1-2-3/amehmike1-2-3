@@ -1,13 +1,22 @@
 // /api/paystack.js — NeyoMarket Paystack KYC + Withdrawal API
+// FIX 4: dvc-release affiliate credit gated on valid aff_code
+// FIX 5: all errors return res.json() — never HTML
+'use strict';
+
 const { neon } = require('@neondatabase/serverless');
 
 const sql = neon(process.env.DATABASE_URL);
 const PSK = process.env.PAYSTACK_SECRET_KEY;
 
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('X-Content-Type-Options',       'nosniff'); /* FIX 5: prevent MIME sniff to HTML */
+}
+
+function jsonErr(res, status, msg, detail) {
+  return res.status(status).json({ error: msg, ...(detail ? { detail } : {}) });
 }
 
 async function paystackAPI(path, method, body) {
@@ -431,14 +440,16 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      /* ── Credit affiliate if applicable ── */
-      if (order.aff_code && affiliateFee > 0) {
+      /* ── FIX 4: Credit affiliate ONLY if valid non-empty aff_code ── */
+      const affCode = order.aff_code ? String(order.aff_code).trim() : '';
+      if (affCode.length > 2 && affiliateFee > 0) {
         try {
           await sql`
             UPDATE users
             SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
-            WHERE aff_code = ${String(order.aff_code)}
+            WHERE aff_code = ${affCode}
           `;
+          console.log('[paystack.js] Affiliate', affCode, 'credited ₦', affiliateFee);
         } catch(affErr) {
           console.error('[paystack.js] Affiliate credit error (non-fatal):', affErr.message);
         }
@@ -483,10 +494,11 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, message: 'Refund of ₦' + parseFloat(amount||0).toLocaleString() + ' initiated successfully.' });
     }
 
-    return res.status(400).json({ error: 'Unknown action: ' + action });
+    return jsonErr(res, 400, 'Unknown action: ' + action);
 
   } catch (err) {
-    console.error('[paystack.js]', err);
-    return res.status(500).json({ error: err.message || 'Server error. Please try again.' });
+    /* FIX 5: always JSON — never HTML 500 page */
+    console.error('[paystack.js]', err.message || err);
+    return jsonErr(res, 500, 'Internal server error.', err.message);
   }
 };
