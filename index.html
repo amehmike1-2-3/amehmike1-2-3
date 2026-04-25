@@ -520,7 +520,58 @@ textarea.fi{resize:vertical;min-height:88px}
      letter-spacing:.5px;text-transform:uppercase;background:none;
      border-left:none;border-right:none;border-top:none;touch-action:manipulation}
 .asb.on{color:var(--gold);border-bottom-color:var(--gold)}
-.ah{margin-bottom:18px}
+/* ── ADMIN LAYOUT — adl/ads/am were missing, causing frozen sidebar ── */
+.adl{display:flex;min-height:calc(100vh - var(--nh));gap:0;position:relative}
+.ads{
+  width:200px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  padding:16px 8px;
+  position:sticky;
+  top:var(--nh);
+  height:calc(100vh - var(--nh));
+  overflow-y:auto;
+  z-index:10;        /* above content, below modals */
+}
+@media(max-width:640px){
+  .adl{flex-direction:column}
+  .ads{
+    width:100%;height:auto;position:static;
+    border-right:none;border-bottom:1px solid var(--border);
+    padding:8px 6px;
+    display:flex;flex-direction:row;flex-wrap:wrap;gap:4px;
+    overflow-x:auto;overflow-y:hidden;
+  }
+  .ads .asl{display:none}
+}
+.am{
+  flex:1;
+  padding:20px 16px;
+  overflow-y:auto;
+  min-width:0;       /* flex shrink fix */
+  position:relative;
+  z-index:1;
+}
+/* Sidebar group label */
+.asl{padding:4px 8px 4px 16px;font-size:.62rem;color:var(--muted2);
+     text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:8px 0 2px;
+     white-space:nowrap}
+/* Override asb to be full-width vertical in admin sidebar */
+.ads .asb{
+  display:block;width:100%;text-align:left;
+  border-bottom:none;border-left:3px solid transparent;
+  padding:9px 12px;border-radius:6px;font-size:.74rem;
+  margin-bottom:2px;
+}
+.ads .asb.on{
+  color:var(--gold);border-left-color:var(--gold);
+  background:rgba(201,146,42,.08);
+}
+.ads .asb:hover{background:var(--bg3);}
+@media(max-width:640px){
+  .ads .asb{border-left:none;border-bottom:2px solid transparent;border-radius:6px;padding:7px 10px;}
+  .ads .asb.on{border-bottom-color:var(--gold);border-left-color:transparent;}
+}
 .ah h1{font-family:'Cormorant Garamond',serif;font-size:clamp(1.4rem,5vw,1.9rem);
        font-weight:600;color:var(--text)}
 .ah p{color:var(--muted);font-size:.8rem;margin-top:4px;font-weight:300}
@@ -3101,21 +3152,40 @@ function renderOrders() {
 function markCol(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
 
-  /* ── PHASE 2: Tiered Revenue Split ──────────────────────────────────
-     Digital / Course products : platform takes 15%
-     Physical products          : platform takes 5%
-     Affiliate fee              : always 5% (deducted from seller share)
-     Rule: if order has ANY physical item → physical rate applies to total.
-  ──────────────────────────────────────────────────────────────────── */
-  var hasPhysical    = (o.items || []).some(function(i){ return i.type === 'physical'; });
-  var platformRate   = hasPhysical ? 0.05 : 0.15;
-  var affiliateRate  = (o.affCode || o.aff_code) ? 0.05 : 0;
-  var sellerRate     = 1 - platformRate - affiliateRate;
+  /* ── SELECTIVE AFFILIATE ATTRIBUTION ───────────────────────────────
+     Rule: Only credit affiliate commission if a REAL ref_id exists on
+     the order (set at checkout time from ?ref= cookie/session).
+     An empty, null, or missing aff_code means no referral occurred.
 
-  var total          = parseFloat(o.total || 0);
-  var platformFee    = Math.round(total * platformRate);
-  var affiliateFee   = Math.round(total * affiliateRate);
-  var sellerPayout   = Math.round(total * sellerRate);
+     Rates:
+       With valid referral  → Seller 80%, Platform 15%, Affiliate 5%
+       Physical (referred)  → Seller 88%, Platform  7%, Affiliate 5%
+       No referral digital  → Seller 90%, Platform 10%, Affiliate  0%
+       No referral physical → Seller 95%, Platform  5%, Affiliate  0%
+  ──────────────────────────────────────────────────────────────────── */
+  var hasPhysical = (o.items || []).some(function(i){ return i.type === 'physical'; });
+
+  /* Validate aff_code — must be a non-empty string that is NOT the
+     buyer's own code (prevent self-referral abuse) */
+  var rawAff      = o.affCode || o.aff_code || null;
+  var buyerAff    = window.CU ? (window.CU.affCode || window.CU.aff_code) : null;
+  var validAff    = rawAff && rawAff.length > 2 && rawAff !== buyerAff;
+
+  var platformRate;
+  var affiliateRate;
+  if (validAff) {
+    platformRate  = hasPhysical ? 0.07  : 0.15;
+    affiliateRate = 0.05;
+  } else {
+    platformRate  = hasPhysical ? 0.05  : 0.10;
+    affiliateRate = 0;
+  }
+  var sellerRate   = 1 - platformRate - affiliateRate;
+
+  var total        = parseFloat(o.total || 0);
+  var platformFee  = Math.round(total * platformRate);
+  var affiliateFee = Math.round(total * affiliateRate);
+  var sellerPayout = Math.round(total * sellerRate);
 
   o.collected    = true;
   o.status       = 'completed';
@@ -3123,20 +3193,24 @@ function markCol(id) {
   o.platformFee  = platformFee;
   o.affiliateFee = affiliateFee;
   o.sellerPayout = sellerPayout;
+  if (!validAff) o.affCode = null; /* clear invalid aff_code so server doesn't credit anyone */
   saveAll();
 
-  /* Push to server with full split so Neon records are authoritative */
+  /* Push to server — server re-validates aff_code before crediting balance */
   syncOrderUpdateToAPI(id, {
     status:       'completed',
     collected:    true,
     collectedAt:  o.collectedAt,
     platformFee:  platformFee,
     affiliateFee: affiliateFee,
-    sellerPayout: sellerPayout
+    sellerPayout: sellerPayout,
+    affCode:      validAff ? rawAff : null
   });
 
-  var rateLabel = hasPhysical ? '5%' : '15%';
-  toast('✅ Escrow released! Platform fee: ' + rateLabel + ' (₦' + platformFee.toLocaleString() + '). Seller receives ₦' + sellerPayout.toLocaleString() + ' 🎉', 'ok');
+  var pct = Math.round(platformRate * 100);
+  toast('✅ Escrow released! Platform fee: ' + pct + '% (₦' + platformFee.toLocaleString() + ')'
+    + (validAff ? ' · Affiliate ₦' + affiliateFee.toLocaleString() : '')
+    + '. Seller receives ₦' + sellerPayout.toLocaleString() + ' 🎉', 'ok');
   renderOrders();
 }
 window.markCol = markCol;
@@ -3750,7 +3824,7 @@ function renderSellerDash() {
       + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
       + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
-      + ((!p.sellerId || String(p.sellerId) === String(CU.id) || CU.role === 'admin') ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
+      + (CU && p.sellerId && (String(p.sellerId) === String(CU.id) || CU.role === 'admin') ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
       + '</div>'
       + '</div>';
   }).join('');
@@ -3869,7 +3943,7 @@ function renderSellerPage() {
           + '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
           + '<button onclick="analyzeProductWithAI(' + p.id + ')" style="background:rgba(201,146,42,.08);border:1px solid var(--gold);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">🤖 AI Analyze</button>'
           + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
-          + '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>'
+          + (CU && p.sellerId && String(p.sellerId) === String(CU.id) ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
           + '</div>'
           + '<div id="ai-insight-' + p.id + '" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px;font-size:.8rem;width:100%"></div>'
           + '</div>';
@@ -3895,7 +3969,8 @@ function renderSellerPage() {
     }
   }
 
-  /* ── Incoming Orders for this seller ── */
+  /* ── Incoming Orders — SELLER ONLY ── */
+  if (!CU || (CU.role !== 'seller' && CU.role !== 'admin')) return; /* buyers never see this */
   var selOrders = ords.filter(function (o) {
     return o.items && o.items.some(function (item) {
       return myProds.some(function (p) { return p.id === item.id; });
