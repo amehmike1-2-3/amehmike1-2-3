@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
@@ -93,26 +93,75 @@
 /* ══════════════════════════════════════
    DESIGN TOKENS — Professional Light
 ══════════════════════════════════════ */
-:root{
-  /* Gold accents — primary buttons only */
-  --gold:#c9922a; --gold2:#a67318; --gold3:#f5e6c8;
-  /* Light base */
-  --bg:#F9FAFB; --bg2:#ffffff; --bg3:#f3f4f6;
-  --surface:#ffffff; --card:#ffffff;
-  --border:#e5e7eb; --border2:#d1d5db;
-  /* Text */
-  --text:#111827; --muted:#6b7280; --muted2:#9ca3af;
-  /* Status */
-  --green:#059669; --green-bg:#d1fae5;
-  --red:#dc2626;   --red-bg:#fee2e2;
-  --blue:#2563eb;  --blue-bg:#dbeafe;
-  --orange:#d97706;--orange-bg:#fef3c7;
-  /* Layout */
-  --r:8px; --tr:.18s cubic-bezier(.4,0,.2,1);
-  --nh:60px; --bnav:64px;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.04);
+/* ===== THEME SYSTEM ===== */
+[data-theme="dark"]{
+  --gold:#c9922a;--gold2:#a67318;--gold3:#f5e6c8;
+  --bg:#0f1117;--bg2:#161b22;--bg3:#1c2333;
+  --surface:#161b22;--card:#1c2333;
+  --border:#30363d;--border2:#444c56;
+  --text:#e6edf3;--muted:#8b949e;--muted2:#6e7681;
+  --green:#2ea043;--green-bg:rgba(46,160,67,.15);
+  --red:#f85149;--red-bg:rgba(248,81,73,.12);
+  --blue:#388bfd;--blue-bg:rgba(56,139,253,.15);
+  --orange:#e3b341;--orange-bg:rgba(227,179,65,.15);
+  --r:8px;--tr:.18s cubic-bezier(.4,0,.2,1);
+  --nh:60px;--bnav:64px;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 4px 12px rgba(0,0,0,.4);
+  color-scheme:dark;
 }
+[data-theme="light"]{
+  --gold:#c9922a;--gold2:#a67318;--gold3:#f5e6c8;
+  --bg:#F9FAFB;--bg2:#ffffff;--bg3:#f3f4f6;
+  --surface:#ffffff;--card:#ffffff;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --text:#111827;--muted:#6b7280;--muted2:#9ca3af;
+  --green:#059669;--green-bg:#d1fae5;
+  --red:#dc2626;--red-bg:#fee2e2;
+  --blue:#2563eb;--blue-bg:#dbeafe;
+  --orange:#d97706;--orange-bg:#fef3c7;
+  --r:8px;--tr:.18s cubic-bezier(.4,0,.2,1);
+  --nh:60px;--bnav:64px;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07);
+  color-scheme:light;
+}
+:root{
+  --gold:#c9922a;--gold2:#a67318;--gold3:#f5e6c8;
+  --bg:#0f1117;--bg2:#161b22;--bg3:#1c2333;
+  --surface:#161b22;--card:#1c2333;
+  --border:#30363d;--border2:#444c56;
+  --text:#e6edf3;--muted:#8b949e;--muted2:#6e7681;
+  --green:#2ea043;--green-bg:rgba(46,160,67,.15);
+  --red:#f85149;--red-bg:rgba(248,81,73,.12);
+  --blue:#388bfd;--blue-bg:rgba(56,139,253,.15);
+  --orange:#e3b341;--orange-bg:rgba(227,179,65,.15);
+  --r:8px;--tr:.18s cubic-bezier(.4,0,.2,1);
+  --nh:60px;--bnav:64px;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 4px 12px rgba(0,0,0,.4);
+}
+/* Theme toggle */
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--text);border-radius:50%;width:34px;height:34px;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--tr);flex-shrink:0;}
+.theme-toggle:hover{background:var(--bg3);}
+/* WhatsApp FAB */
+.wa-fab{position:fixed;bottom:calc(var(--bnav) + 16px);right:16px;width:52px;height:52px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);z-index:990;cursor:pointer;transition:transform .2s;text-decoration:none;font-size:1.5rem;}
+.wa-fab:hover,.wa-fab:active{transform:scale(1.1);}
+/* Hot deals */
+.hot-deals-section{background:linear-gradient(135deg,rgba(220,38,38,.08),rgba(201,146,42,.06));border:1px solid rgba(220,38,38,.2);border-radius:12px;padding:16px;margin-bottom:24px;}
+.hot-deals-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.hot-deals-header h2{margin:0;font-size:1.1rem;}
+.hot-deals-badge{background:var(--red);color:#fff;font-size:.65rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.5px;animation:pulse-badge 1.5s infinite;}
+@keyframes pulse-badge{0%,100%{opacity:1;}50%{opacity:.6;}}
+/* Live countdown */
+.live-timer{display:inline-flex;align-items:center;gap:4px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25);color:var(--red);font-size:.64rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-bottom:4px;}
+.live-timer .dot{animation:blink .8s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+/* Leaderboard */
+.lb-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:var(--bg3);}
+.lb-rank{font-size:1.1rem;width:28px;text-align:center;flex-shrink:0;}
+.lb-name{flex:1;font-weight:600;font-size:.88rem;}
+.lb-earn{font-weight:700;color:var(--gold);font-size:.9rem;}
 
 /* ══════════════════════════════════════
    RESET
@@ -785,11 +834,18 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     <button class="nb"    id="nb-sell"   onclick="go('sell')">Sell</button>
     <button class="nb"    id="nb-aff"    onclick="go('aff')">Affiliate</button>
     <button class="nb"    id="nb-rules"  onclick="go('rules')">Rules</button>
-    <!-- shown only when a seller / admin is logged in -->
-    <button class="nb" id="nb-seller" style="display:none;color:var(--gold)" onclick="go('seller')">🏪 Dashboard</button>
+    <button class="nb" id="nb-seller" style="display:none;color:var(--gold)" onclick="go('seller')">Dashboard</button>
   </div>
-  <div class="nav-r" id="nav-r"></div>
+  <div class="nav-r" id="nav-r" style="display:flex;align-items:center;gap:8px">
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+  </div>
 </nav>
+
+<a class="wa-fab" id="wa-fab"
+   href="https://wa.me/2349072212496?text=Hi%20NeyoMarket%20Support"
+   target="_blank" rel="noopener noreferrer" title="WhatsApp Support">
+  <svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
 
 <!-- ═══════════════════════════════════════
      HOME PAGE
@@ -833,6 +889,25 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     </div>
 
     <div class="shd"><h2>Featured <span class="gld">Products</span></h2><p>Hand-verified, escrow-protected for you</p></div>
+
+    <!-- TODAY'S HOT DEALS — only visible when active flash sales exist -->
+    <div class="hot-deals-section" id="hot-deals-section" style="display:none">
+      <div class="hot-deals-header">
+        <span style="font-size:1.4rem">🔥</span>
+        <h2>Today's Hot Deals</h2>
+        <span class="hot-deals-badge">LIVE</span>
+        <span style="font-size:.75rem;color:var(--muted);margin-left:auto" id="deals-count"></span>
+      </div>
+      <div class="pg" id="hot-deals-grid"></div>
+    </div>
+
+    <!-- TRENDING NEAR YOU -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;margin-top:4px">
+      <span style="font-size:1.1rem">📍</span>
+      <h2 style="margin:0;font-size:1rem;font-weight:700">Trending Near You</h2>
+      <span style="font-size:.72rem;color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:12px">Nigeria</span>
+    </div>
+
     <div class="cats" id="home-cats">
       <div class="cp on" onclick="fHome(this,'all')">All</div>
       <div class="cp" onclick="fHome(this,'digital')">⚡ Digital</div>
@@ -1578,11 +1653,11 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 ═══════════════════════════════════════ -->
 <div class="page" id="page-aff">
   <div class="sec">
-    <div class="shd"><h2>💸 Affiliate <span class="gld">Program</span></h2><p>Earn 15–30% on every sale you refer</p></div>
+    <div class="shd"><h2>💸 Affiliate <span class="gld">Program</span></h2><p>Earn 5% on every sale you refer</p></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:24px">
-      <div class="sc2"><div class="lb">Commission</div><div class="vl">15–30%</div><div class="ch">Per referral</div></div>
+      <div class="sc2"><div class="lb">Commission</div><div class="vl">5%</div><div class="ch">Per referral</div></div>
       <div class="sc2"><div class="lb">Payout Day</div><div class="vl">Monday</div></div>
-      <div class="sc2"><div class="lb">Min Payout</div><div class="vl">₦500</div></div>
+      <div class="sc2"><div class="lb">Min Payout</div><div class="vl">₦2,000</div></div>
       <div class="sc2"><div class="lb">Cookie</div><div class="vl">30 Days</div></div>
     </div>
     <div class="act"><h3>How It Works</h3>
@@ -1595,6 +1670,18 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     </div>
     <div style="text-align:center;margin-top:20px">
       <button class="bg" style="padding:11px 26px" onclick="joinAff()">🚀 Activate Affiliate — Free</button>
+    </div>
+
+    <!-- AFFILIATE LEADERBOARD -->
+    <div class="act" style="margin-top:20px;border:1px solid rgba(201,146,42,.25)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <span style="font-size:1.3rem">🏆</span>
+        <h3 style="margin:0;color:var(--gold)">Affiliate Leaderboard</h3>
+        <span style="font-size:.7rem;color:var(--muted);margin-left:auto">Top earners this month</span>
+      </div>
+      <div id="aff-leaderboard">
+        <div style="color:var(--muted);font-size:.84rem;padding:8px 0">Loading...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1795,6 +1882,8 @@ function loadAll() {
       sv('nm_products', prods);
       rGrid('home-grid', getActive().slice(0, 8));
       rGrid('mkt-grid',  getActive());
+      renderHotDeals(prods);        /* FLASH SALES: populate Hot Deals section */
+      startCountdownTicker();       /* START: live countdown tickers on all sale cards */
       var hc = document.getElementById('hero-cnt');
       if (hc) hc.textContent = getActive().length;
     }
@@ -1803,6 +1892,7 @@ function loadAll() {
     prods = ld('nm_products', []);
     rGrid('home-grid', getActive().slice(0, 8));
     rGrid('mkt-grid',  getActive());
+    renderHotDeals(prods);
   });
 
   /* Fetch live orders from Neon — always from DB, never from localStorage */
@@ -1943,6 +2033,7 @@ function go(pageId) {
   if (pageId === 'market')   rGrid('mkt-grid', getActive());
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
+  if (pageId === 'aff')      { setTimeout(function() { if (typeof loadAffiliateLB === 'function') loadAffiliateLB(); }, 300); }
   if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
     if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
@@ -2413,6 +2504,7 @@ function opn(id) {
           + '<div style="margin-bottom:10px">' + waBtn + '</div>'
           + '<div class="pdbtns">'
           + '<button class="addbtn" onclick="addCart(' + p.id + ');cM(\'m-pd\')">\uD83D\uDED2 Add to Cart</button>'
+          + '<button onclick="shareProduct(' + p.id + ')" style="background:var(--surface);border:1.5px solid #25d366;color:#25d366;padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">\uD83D\uDCE4 Share on WhatsApp</button>'
           + '<button onclick="cpyAffProd(' + p.id + ')" style="background:var(--surface);border:1.5px solid var(--gold);color:var(--gold);padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">\uD83D\uDD17 Affiliate Link</button>'
           + '</div>';
       })()
@@ -5584,6 +5676,168 @@ function adminApprovePayout(withdrawalId, userId, amount) {
   });
 }
 window.adminApprovePayout = adminApprovePayout;
+
+/* ════════════════════════════════════════════════════════
+   THEME TOGGLE — dark / light mode persisted in localStorage
+════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  var html    = document.documentElement;
+  var current = html.getAttribute('data-theme') || 'dark';
+  var next    = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('nm_theme', next);
+  var btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+window.toggleTheme = toggleTheme;
+
+/* Apply saved theme immediately on every page load */
+(function applyTheme() {
+  var saved = localStorage.getItem('nm_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  var btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+})();
+
+/* ════════════════════════════════════════════════════════
+   HOT DEALS — render active flash-sale products
+   Call renderHotDeals() after prods are loaded.
+════════════════════════════════════════════════════════ */
+function renderHotDeals(products) {
+  var section = document.getElementById('hot-deals-section');
+  var grid    = document.getElementById('hot-deals-grid');
+  var cnt     = document.getElementById('deals-count');
+  if (!section || !grid) return;
+
+  var now   = Date.now();
+  var deals = (products || window.prods || []).filter(function(p) {
+    if (p.status !== 'active') return false;
+    var hasDiscount = !!(p.discountPrice || p.discount_price);
+    var isOnSale    = !!(p.isOnSale     || p.is_on_sale);
+    var saleEnds    = p.saleEndsAt      || p.sale_ends_at;
+    var notExpired  = !saleEnds || new Date(saleEnds).getTime() > now;
+    return hasDiscount && isOnSale && notExpired;
+  });
+
+  if (!deals.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  if (cnt) cnt.textContent = deals.length + ' deal' + (deals.length > 1 ? 's' : '') + ' ending soon';
+  grid.innerHTML = deals.map(function(p) { return mkCard(p); }).join('');
+  startCountdownTicker();
+}
+window.renderHotDeals = renderHotDeals;
+
+/* ════════════════════════════════════════════════════════
+   LIVE COUNTDOWN TICKER — ticks every second
+   Scans all [data-sale-ends] cards and updates timers in place.
+   Single global interval so there is never more than one running.
+════════════════════════════════════════════════════════ */
+var _cdInterval = null;
+function startCountdownTicker() {
+  if (_cdInterval) clearInterval(_cdInterval);
+  _cdInterval = setInterval(function() {
+    document.querySelectorAll('[data-sale-ends]').forEach(function(card) {
+      var endsAt = card.getAttribute('data-sale-ends');
+      var tid    = card.getAttribute('data-timer-id');
+      if (!endsAt || !tid) return;
+      var el = document.getElementById(tid);
+      if (!el) return;
+      var diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        el.innerHTML = '<span style="color:var(--muted);font-size:.72rem">Sale ended</span>';
+        card.removeAttribute('data-sale-ends');
+        return;
+      }
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      var label = (h > 0 ? h + 'h ' : '') + m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+      var sp = el.querySelector('span:last-child');
+      if (sp) sp.textContent = label;
+    });
+  }, 1000);
+}
+window.startCountdownTicker = startCountdownTicker;
+
+/* ════════════════════════════════════════════════════════
+   PRODUCT SHARE — WhatsApp-friendly clean link
+   Updates OG meta tags so the link preview shows the product.
+   Copies the clean ?prod=ID URL to clipboard.
+════════════════════════════════════════════════════════ */
+function shareProduct(productId) {
+  var p = (window.prods || []).find(function(x) { return Number(x.id) === Number(productId); });
+  if (!p) { toast('Product not found', 'fail'); return; }
+
+  var base  = window.location.origin + '/?prod=' + p.id;
+  var price = Number(p.discountPrice || p.discount_price || p.price);
+  var orig  = Number(p.price);
+  var onSale = !!(p.isOnSale || p.is_on_sale) && price < orig;
+  var priceLine = onSale
+    ? '\nWas: N' + orig.toLocaleString() + ' NOW: N' + price.toLocaleString() + ' FLASH SALE!'
+    : '\nPrice: N' + price.toLocaleString();
+  var delivery = p.type === 'digital' ? 'Instant Download' : 'Physical Delivery';
+  var msg = p.name + priceLine
+    + '\nSecure Escrow | ' + delivery
+    + '\n\n' + base
+    + '\n\nNeyoMarket Nigeria - Buy & Sell Safely';
+
+  /* Update OG meta dynamically so WhatsApp preview shows this product */
+  var og = function(prop, val) {
+    var el = document.querySelector('meta[property="' + prop + '"]');
+    if (el && val) el.setAttribute('content', val);
+  };
+  og('og:title',       p.name + ' - NeyoMarket');
+  og('og:description', (p.description || 'Buy safely on NeyoMarket Nigeria').slice(0, 120));
+  og('og:url',         base);
+  if (p.imgs && p.imgs[0]) og('og:image', p.imgs[0]);
+
+  if (navigator.clipboard) { navigator.clipboard.writeText(base).catch(function() {}); }
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
+  toast('Sharing on WhatsApp! Product link copied.', 'ok');
+}
+window.shareProduct = shareProduct;
+
+/* ── Wire WA FAB support phone from env if available ── */
+(function() {
+  var fab = document.getElementById('wa-fab');
+  if (fab && window.SUPPORT_PHONE) {
+    fab.href = 'https://wa.me/' + String(window.SUPPORT_PHONE).replace(/[^0-9]/g,'')
+             + '?text=Hi%20NeyoMarket%20Support%2C%20I%20need%20help';
+  }
+})();
+
+/* ════════════════════════════════════════════════════════
+   AFFILIATE LEADERBOARD — load and render top affiliates
+   Fetches /api/leaderboard and renders in the aff page.
+════════════════════════════════════════════════════════ */
+function loadAffiliateLB() {
+  var el = document.getElementById('aff-leaderboard');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:10px 0">Loading leaderboard...</div>';
+  fetch('/api/leaderboard')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var rows = data.leaderboard || [];
+      if (!rows.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No affiliate earnings yet. Be the first!</div>';
+        return;
+      }
+      var medals = ['🥇','🥈','🥉'];
+      el.innerHTML = rows.slice(0, 10).map(function(u, i) {
+        var isMe = window.CU && String(u.id) === String(window.CU.id);
+        return '<div class="lb-row" style="' + (isMe ? 'border:1px solid var(--gold);background:rgba(201,146,42,.08)' : '') + '">'
+          + '<div class="lb-rank">' + (medals[i] || '#' + (i + 1)) + '</div>'
+          + '<div class="lb-name">' + (u.name || 'User') + (isMe ? ' <span style="font-size:.72rem;color:var(--gold)">(You)</span>' : '') + '</div>'
+          + '<div class="lb-earn">N' + Number(u.affiliate_earnings || 0).toLocaleString() + '</div>'
+          + '</div>';
+      }).join('');
+    })
+    .catch(function(e) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:.82rem">Could not load leaderboard.</div>';
+    });
+}
+window.loadAffiliateLB = loadAffiliateLB;
+
 
 function adminActivateSplit(userId) {
   var u = usrs.find(function(x){ return String(x.id) === String(userId); });
