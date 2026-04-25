@@ -638,16 +638,23 @@ textarea.fi{resize:vertical;min-height:88px}
     display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
 .ov.open{display:flex;animation:fdin .2s ease}
 @keyframes fdin{from{opacity:0}to{opacity:1}}
+/* Product detail modal — image sticky at top, content scrolls below */
 .ms{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;
-    max-height:92vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.12)}
+    max-height:92vh;display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 -4px 24px rgba(0,0,0,.12)}
 .mh{padding:14px 16px;border-bottom:1px solid var(--border);
-    display:flex;justify-content:space-between;align-items:center;background:#fff}
+    display:flex;justify-content:space-between;align-items:center;background:#fff;
+    flex-shrink:0;position:sticky;top:0;z-index:10}
 .mh h3{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:var(--text)}
 .mx{color:var(--muted);font-size:1.2rem;cursor:pointer;background:none;border:none;padding:6px 10px}
-.mb{padding:16px}
-.pdmi{width:100%;border-radius:6px;max-height:260px;object-fit:cover;margin-bottom:10px}
-.pdg{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
-.pdg img{width:54px;height:54px;border-radius:4px;object-fit:cover;cursor:pointer;
+/* mb is the scrollable body — overflow-y:auto so content scrolls under sticky image */
+.mb{padding:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.pdmi{width:100%;max-height:240px;object-fit:contain;background:#fff;
+      display:block;border-bottom:1px solid #f1f5f9;}
+.pdg{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding:8px 14px;
+     background:#fff;border-bottom:1px solid #f1f5f9;flex-shrink:0}
+.pdg img{width:54px;height:54px;border-radius:4px;object-fit:contain;cursor:pointer;
+         background:#fff;border:2px solid #e5e7eb;flex-shrink:0}
          opacity:.5;transition:var(--tr);flex-shrink:0;border:2px solid transparent}
 .pdg img.on{opacity:1;border-color:var(--gold)}
 .pdmeta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
@@ -1717,7 +1724,6 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="asb" onclick="aTab('dis',this)">⚖️ Disputes & Refunds</button>
       <div class="asl">System</div>
       <button class="asb" onclick="aTab('set',this)">⚙️ Settings</button>
-      <button class="asb" onclick="aTab('ceo',this)" style="margin-top:6px;background:linear-gradient(135deg,rgba(201,146,42,.15),rgba(201,146,42,.05));border:1px solid rgba(201,146,42,.3);color:var(--gold)">🏛️ CEO Office</button>
       <div style="margin-top:14px;padding:0 3px">
         <button onclick="doSignOut()" style="width:100%;background:rgba(255,58,92,.08);color:var(--red);border:1px solid rgba(255,58,92,.18);padding:8px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Sign Out</button>
       </div>
@@ -2491,12 +2497,16 @@ function rGrid(cid, items) {
 
     /* Sale / discount logic */
     var isOnSale    = p.isOnSale || p.is_on_sale || false;
-    var discPrice   = p.discountPrice || p.discount_price || null;
+    var discPrice   = parseFloat(p.discountPrice || p.discount_price || 0) || null;
     var saleEnds    = p.saleEndsAt  || p.sale_ends_at  || null;
-    var saleActive  = isOnSale && discPrice && discPrice < p.price &&
-                      (!saleEnds || new Date(saleEnds) > new Date());
+    /* FIX: show discount whenever discountPrice exists AND is less than price,
+       regardless of whether isOnSale flag is set — sellers may forget to check it */
+    var hasDiscount = discPrice && discPrice > 0 && discPrice < p.price;
+    var notExpired  = !saleEnds || new Date(saleEnds) > new Date();
+    var saleActive  = hasDiscount && notExpired;
     var displayPrice = saleActive ? discPrice : p.price;
     var saving       = saleActive ? Math.round(p.price - discPrice) : 0;
+    var savePct      = saleActive ? Math.round((saving / p.price) * 100) : 0;
 
     /* Sale timer string */
     var timerStr = '';
@@ -2522,7 +2532,7 @@ function rGrid(cid, items) {
       + '<span class="el">🛡 Escrow</span></div>'
       + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + '</h4>'
       + '<div class="pcs">by ' + p.seller + (p.reviews > 0 ? ' · ⭐' + p.rating : '') + '</div>'
-      + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ₦' + saving.toLocaleString() + '</div>' : '')
+      + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ₦' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
       + (timerStr ? '<div class="sale-timer">⏰ ' + timerStr + '</div>' : '')
       + '<div class="pcf">'
       + '<div>'
@@ -3301,65 +3311,73 @@ window.markCol = markCol;
 function markDL(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
 
-  /* Log the download timestamp */
-  if (!o.downloadLog) o.downloadLog = [];
-  o.downloadLog.push({ time: new Date().toISOString(), device: navigator.userAgent.substring(0, 60) });
+  /* ── Step 1: trigger server-side escrow release BEFORE opening file ──
+     This is the critical fix — download must release funds to seller.
+     We call /api/orders/:id PATCH with the revenue split, then open file. */
+  var hasPhysical  = (o.items||[]).some(function(i){ return i.type==='physical'; });
+  var platformRate = hasPhysical ? 0.05 : 0.15;
+  var rawAff       = o.affCode || o.aff_code || null;
+  var buyerAff     = CU ? (CU.affCode || CU.aff_code) : null;
+  var validAff     = rawAff && rawAff.length > 2 && rawAff !== buyerAff;
+  var affiliateRate = validAff ? 0.05 : 0;
+  var sellerRate    = 1 - platformRate - affiliateRate;
+  var total         = parseFloat(o.total || 0);
+  var platformFee   = Math.round(total * platformRate);
+  var affiliateFee  = Math.round(total * affiliateRate);
+  var sellerPayout  = Math.round(total * sellerRate);
+  var now           = new Date().toISOString();
 
-  /* Mark as completed — release escrow */
-  o.collected = true;
-  o.status    = 'completed';
-  o.completedAt = new Date().toISOString();
+  /* Update local state immediately so UI refreshes */
+  o.collected  = true;
+  o.status     = 'completed';
+  o.completedAt = now;
+  o.platformFee = platformFee;
+  o.sellerPayout = sellerPayout;
+  o.affiliateFee = affiliateFee;
+  if (!o.downloadLog) o.downloadLog = [];
+  o.downloadLog.push({ time: now });
   saveAll();
 
-  /* ── Try to open / download the actual product file ──
-     Products store their uploaded images in p.imgs.
-     For digital products, the seller's file URL is stored in p.fileUrl.
-     We find the matching product and open its download link.       */
+  /* Sync to Neon — release escrow server-side */
+  fetch('/api/orders/' + id, {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      status:       'completed',
+      collected:    true,
+      collectedAt:  now,
+      platformFee:  platformFee,
+      sellerPayout: sellerPayout,
+      affiliateFee: affiliateFee,
+      affCode:      validAff ? rawAff : null
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (!data.ok) console.warn('[markDL] Server PATCH failed:', data.error);
+  })
+  .catch(function(e){ console.warn('[markDL] Network error releasing escrow:', e.message); });
+
+  /* ── Step 2: open the file ── */
   var downloaded = false;
   o.items.forEach(function (item) {
-    var prod = prods.find(function (p) { return p.id === item.id; });
+    var prod = (window.prods||[]).find(function (p) { return Number(p.id) === Number(item.id); });
     if (prod) {
-      /* If seller uploaded a file (PDF/ZIP/MP4) */
-      if (prod.fileUrl && prod.fileUrl.length > 10) {
+      var url = prod.fileUrl || prod.file_url || item.fileUrl || item.file_url || '';
+      if (url && url.length > 10) {
         var a = document.createElement('a');
-        a.href     = prod.fileUrl;
-        a.download = prod.name + (prod.fileExt || '');
-        a.target   = '_blank';
-        a.rel      = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        downloaded = true;
-      } else if (prod.fileDataUrl && prod.fileDataUrl.length > 10) {
-        /* Base64 encoded file stored locally */
-        var a2 = document.createElement('a');
-        a2.href     = prod.fileDataUrl;
-        a2.download = prod.name;
-        a2.target   = '_blank';
-        document.body.appendChild(a2);
-        a2.click();
-        document.body.removeChild(a2);
+        a.href = url; a.download = prod.name + (prod.fileExt || '');
+        a.target = '_blank'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
         downloaded = true;
       }
     }
   });
 
   renderOrders();
-
-  if (downloaded) {
-    toast('✅ Download started! Escrow released to seller 🎉', 'ok');
-  } else {
-    /* File not stored locally — show instructions modal */
-    toast('✅ Confirmed! Escrow released. Check your email for the download link.', 'ok');
-    /* Show a helpful message in a brief overlay */
-    setTimeout(function () {
-      var msg = '✅ Payment Confirmed!\n\n'
-        + 'Your escrow has been released to the seller.\n\n'
-        + '📧 The seller will be notified to send your download link.\n\n'
-        + '💡 Note: For instant downloads, sellers must upload their file directly when listing the product on the Sell page.';
-      toast(msg, 'fail');
-    }, 400);
-  }
+  toast(downloaded
+    ? '✅ Download started! Escrow released to seller 🎉'
+    : '✅ Escrow released! Contact seller for your download link.', 'ok');
 }
 window.markDL = markDL;
 
@@ -3394,16 +3412,24 @@ function disputeOrder(orderId) {
     if (!result.isConfirmed) return;
     var reason = result.value;
 
-    /* Flag in Neon */
+    /* FIX: check response.ok before parsing — stops 'Unexpected token T' crash
+       when server returns HTML error page instead of JSON */
     fetch('/api/orders/' + orderId, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ status: 'disputed', disputed: true, disputeReason: reason })
     })
-    .then(function(r){ return r.json(); })
+    .then(function(r) {
+      if (!r.ok) {
+        /* Server returned 4xx/5xx — read text to see the real error */
+        return r.text().then(function(txt) {
+          throw new Error('Server error ' + r.status + ': ' + txt.replace(/<[^>]+>/g,'').slice(0,120));
+        });
+      }
+      return r.json();
+    })
     .then(function(data) {
-      if (data.ok || data.error === undefined) {
-        /* Update local state so UI refreshes without a full reload */
+      if (data.ok || !data.error) {
         if (o) { o.status = 'disputed'; o.disputed = true; }
         renderOrders();
         toast('⚖️ Dispute submitted. Admin will review within 24 hours.', 'ok');
@@ -3411,7 +3437,7 @@ function disputeOrder(orderId) {
         toast('Could not submit dispute: ' + (data.error || 'Try again'), 'fail');
       }
     })
-    .catch(function(e){ toast('Network error: ' + e.message, 'fail'); });
+    .catch(function(e){ toast('Dispute error: ' + e.message, 'fail'); });
   });
 }
 window.disputeOrder = disputeOrder;
@@ -4128,11 +4154,75 @@ function renderSellerPage() {
               + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'
               + '<div style="font-size:.8rem;color:var(--muted)">Your payout: <strong style="color:var(--green);font-size:.9rem">₦' + myPayout.toLocaleString() + '</strong> <span style="font-size:.72rem">(90%)</span></div>'
               + (custPhone ? '<a href="https://wa.me/' + custPhone.replace(/\D/g,'') + '" target="_blank" style="background:rgba(30,216,128,.1);border:1px solid rgba(30,216,128,.22);color:var(--green);padding:5px 12px;border-radius:7px;font-size:.76rem;font-weight:700;text-decoration:none">💬 WhatsApp Buyer</a>' : '')
+              + '</div>'
+              /* ── DVC CLAIM INPUT: physical orders waiting for confirmation ── */
+              + (isPhys && !o.collected ? '<div style="margin-top:10px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">'
+                + '<div style="font-size:.78rem;font-weight:700;color:#92400e;margin-bottom:8px">📦 Enter Buyer\'s 6-Digit Delivery Code to Claim Funds</div>'
+                + '<div style="display:flex;gap:8px;align-items:center">'
+                + '<input id="dvc-claim-' + o.id + '" type="text" inputmode="numeric" maxlength="6" placeholder="● ● ● ● ● ●" style="flex:1;padding:10px;border:2px solid #fde68a;border-radius:6px;font-size:1.1rem;letter-spacing:8px;text-align:center;background:#fff;outline:none;font-weight:700" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"/>'
+                + '<button onclick="sellerClaimFunds(\'' + o.id + '\')" style="background:#c9922a;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap">✅ Claim</button>'
+                + '</div>'
+                + '<div id="dvc-claim-err-' + o.id + '" style="font-size:.75rem;color:#dc2626;margin-top:5px;min-height:14px"></div>'
+                + '</div>' : '')
               + '</div></div>';
           }).join(''));
   }
 }
 window.renderSellerPage = renderSellerPage;
+
+/* ════════════════════════════════════════════════════════
+   SELLER CLAIM FUNDS — validates DVC then releases escrow
+   Calls /api/paystack?action=dvc-release server-side so
+   the delivery_code is validated against Neon DB.
+════════════════════════════════════════════════════════ */
+function sellerClaimFunds(orderId) {
+  var inp = document.getElementById('dvc-claim-' + orderId);
+  var err = document.getElementById('dvc-claim-err-' + orderId);
+  if (!inp) return;
+  var code = inp.value.trim();
+  if (!err) err = { textContent: '' };
+
+  if (!code || code.length !== 6) {
+    err.textContent = 'Please enter the full 6-digit code from the buyer.';
+    return;
+  }
+
+  inp.disabled = true;
+  err.textContent = '';
+
+  fetch('/api/paystack?action=dvc-release', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      orderId:       String(orderId),
+      dvcCode:       code,
+      sellerUserId:  CU ? String(CU.id) : null
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) return r.json().then(function(d){ throw new Error(d.error || 'Server error ' + r.status); });
+    return r.json();
+  })
+  .then(function(data) {
+    if (data.ok) {
+      toast('✅ ' + (data.message || 'Funds released to your wallet!'), 'ok');
+      /* Update local order state */
+      var o = ords.find(function(x){ return x.id === orderId; });
+      if (o) { o.collected = true; o.status = 'completed'; }
+      saveAll();
+      renderSellerPage();
+      loadWalletBalance();
+    } else {
+      inp.disabled = false;
+      err.textContent = data.error || 'Incorrect code. Ask the buyer to re-share it.';
+    }
+  })
+  .catch(function(e) {
+    inp.disabled = false;
+    err.textContent = e.message || 'Network error. Please try again.';
+  });
+}
+window.sellerClaimFunds = sellerClaimFunds;
 
 /* Save payout from seller dashboard — saves bank details, subaccount created by admin */
 /* ════════════════════════════════════════════════════════
@@ -5087,15 +5177,17 @@ function aTab(tab, btn) {
         + '<div class="act"><h3>All Orders</h3>'
         + (allOrders.length
           ? '<div class="tbl-wrap"><table class="tbl">'
-            + '<tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Seller Payout</th><th>Status</th><th>Date</th></tr>'
+            + '<tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Seller Payout</th><th>🔑 Code</th><th>Status</th><th>Date</th></tr>'
             + allOrders.slice().reverse().map(function(o) {
                 var cust = o.customer||{};
+                var dcode = o.deliveryCode || o.delivery_code || '—';
                 return '<tr>'
                   + '<td style="font-size:.74rem;color:var(--gold)">'+o.id+'</td>'
                   + '<td>'+(cust.name||'—')+'<br/><span style="font-size:.72rem;color:var(--muted)">'+(cust.email||'')+'</span></td>'
                   + '<td>'+(o.items||[]).length+'</td>'
                   + '<td style="font-weight:600">₦'+parseFloat(o.total||0).toLocaleString()+'</td>'
                   + '<td style="color:var(--green)">₦'+parseFloat(o.sellerPayout||o.seller_payout||0).toLocaleString()+'</td>'
+                  + '<td style="font-family:monospace;font-weight:700;color:var(--orange);letter-spacing:2px">'+dcode+'</td>'
                   + '<td><span class="sb2 '+(o.collected||o.status==='paid'?'s-ok':'s-pend')+'">'+(o.collected?'Done':o.status||'Pending')+'</span></td>'
                   + '<td style="font-size:.74rem;color:var(--muted)">'+(o.date||'')+'</td>'
                   + '</tr>';
@@ -5212,104 +5304,6 @@ function aTab(tab, btn) {
         + '<button class="bg" style="padding:9px 22px;margin-top:4px" onclick="toast(\'Settings saved ✓\',\'ok\')">Save Settings</button>'
         + '</div>';
 
-    /* ─── CEO SECRET OFFICE ─── */
-    } else if (tab === 'ceo') {
-      /* Build the daily briefing data from already-loaded allOrders / allUsers / allProds */
-      var today        = new Date().toLocaleDateString();
-      var todayOrders  = allOrders.filter(function(o){ return o.date === today || (o.created_at && new Date(o.created_at).toLocaleDateString() === today); });
-      var todayRev     = todayOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
-      var todayFees    = todayOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
-      var pendingProd  = allProds.filter(function(p){ return p.status === 'pending'; }).length;
-      var pendingWith  = 0; /* loaded async */
-      var escrowOrders = allOrders.filter(function(o){ return o.status === 'escrow_held'; }).length;
-      var totalRev     = allOrders.reduce(function(s,o){ return s + parseFloat(o.total||0); }, 0);
-      var totalFees    = allOrders.reduce(function(s,o){ return s + parseFloat(o.platformFee||o.platform_fee||0); }, 0);
-
-      c.innerHTML =
-        '<div class="ah" style="background:linear-gradient(135deg,#0a0a1a,#1a1200);border-radius:12px;padding:20px;margin-bottom:16px">'
-        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'
-        + '<span style="font-size:1.6rem">🏛️</span>'
-        + '<h1 style="color:#f0c040;margin:0">CEO Secret Office</h1>'
-        + '</div>'
-        + '<p style="color:rgba(240,192,64,.6);margin:0;font-size:.82rem">Private briefing room · ' + new Date().toLocaleString() + '</p>'
-        + '</div>'
-
-        /* Today snapshot */
-        + '<div class="sr" style="margin-bottom:16px">'
-        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">Today\'s Revenue</div><div class="vl" style="color:var(--gold)">₦'+Math.round(todayRev).toLocaleString()+'</div><div class="ch">'+todayOrders.length+' orders</div></div>'
-        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">Today\'s Platform Earnings</div><div class="vl" style="color:var(--green)">₦'+Math.round(todayFees).toLocaleString()+'</div><div class="ch">Fees collected</div></div>'
-        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">All-Time Revenue</div><div class="vl">₦'+Math.round(totalRev).toLocaleString()+'</div></div>'
-        + '<div class="sc2" style="border:1px solid rgba(201,146,42,.3)"><div class="lb">All-Time Fees Earned</div><div class="vl" style="color:var(--green)">₦'+Math.round(totalFees).toLocaleString()+'</div></div>'
-        + '<div class="sc2" style="border:1px solid rgba(255,165,0,.3)"><div class="lb">Escrow Held</div><div class="vl" style="color:var(--orange)">'+escrowOrders+'</div><div class="ch">Awaiting release</div></div>'
-        + '<div class="sc2" style="border:1px solid rgba(255,165,0,.3)"><div class="lb">Pending Products</div><div class="vl" style="color:var(--orange)">'+pendingProd+'</div><div class="ch">Awaiting review</div></div>'
-        + '</div>'
-
-        /* AI Chat Interface */
-        + '<div class="act" style="background:linear-gradient(135deg,#0d0d1f,#111108);border:1px solid rgba(201,146,42,.25)">'
-        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
-        + '<span style="font-size:1.2rem">🤖</span>'
-        + '<h3 style="margin:0;color:#f0c040">Admin AI — Daily Briefing</h3>'
-        + '<span style="font-size:.7rem;background:rgba(5,150,105,.2);color:var(--green);padding:2px 8px;border-radius:50px;border:1px solid rgba(5,150,105,.3)">LIVE</span>'
-        + '</div>'
-        + '<div id="ceo-chat-msgs" style="min-height:180px;max-height:340px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:8px;padding:14px;margin-bottom:12px;font-size:.84rem;line-height:1.6">'
-        + '<div class="ceo-msg-bot" style="color:#d4af6a;padding:8px 12px;background:rgba(201,146,42,.08);border-radius:6px;margin-bottom:8px">'
-        + '🏛️ <strong>Admin AI online.</strong> I have loaded today\'s live data from Neon. Ask me anything — daily summary, revenue, pending items, withdrawal queue, or type <em>\"briefing\"</em> for your full daily report.'
-        + '</div>'
-        + '</div>'
-        + '<div style="display:flex;gap:8px">'
-        + '<input id="ceo-chat-input" class="fi" placeholder="Ask Admin AI… e.g. \'daily briefing\', \'pending withdrawals\', \'top sellers\'" style="flex:1;background:rgba(255,255,255,.05);border-color:rgba(201,146,42,.3);color:var(--text)" onkeydown="if(event.key===\'Enter\')sendCEOMsg()"/>'
-        + '<button onclick="sendCEOMsg()" class="bg" style="padding:10px 18px;white-space:nowrap">Send ▶</button>'
-        + '</div>'
-        + '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
-        + ['📊 Daily Briefing','💸 Pending Withdrawals','📦 Pending Products','💰 Revenue Split','🤖 Run COO Sweep'].map(function(q){''; return '<button onclick="sendCEOQuick(\''+q+'\')" style="font-size:.72rem;padding:5px 10px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.25);color:var(--gold);border-radius:20px;cursor:pointer;white-space:nowrap">'+q+'</button>';}).join('')
-        + '</div>'
-        + '</div>'
-
-        /* Quick Actions */
-        + '<div class="act" style="margin-top:14px">'
-        + '<h3>⚡ CEO Quick Actions</h3>'
-        + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-        + '<button class="bg" style="padding:10px 18px" onclick="aTab(\'pay\',null)">💸 Review Withdrawals</button>'
-        + '<button class="bg" style="padding:10px 18px" onclick="aTab(\'pr\',null)">📦 Approve Products</button>'
-        + '<button class="bg" style="padding:10px 18px" onclick="runAutonomousCOO();toast(\'🤖 COO sweep triggered — checking all escrow orders…\',\'ok\')">🤖 Force COO Sweep</button>'
-        + '<button style="padding:10px 18px;background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.3);color:var(--red);border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer" onclick="injectKeyNow()">🔑 Inject Master Key</button>'
-        + '</div>'
-        + '</div>';
-
-      /* Store the live data snapshot in window scope for the AI to reference */
-      window._ceoContext = {
-        todayOrders:  todayOrders,
-        todayRev:     todayRev,
-        todayFees:    todayFees,
-        totalRev:     totalRev,
-        totalFees:    totalFees,
-        allOrders:    allOrders,
-        allUsers:     allUsers,
-        allProds:     allProds,
-        pendingProd:  pendingProd,
-        escrowOrders: escrowOrders
-      };
-
-      /* AUTO-BRIEF: immediately tell CEO about pending items without waiting for a message */
-      var kycPendCEO = allUsers.filter(function(u){ return u.kycStatus === 'pending'; }).length;
-      if (pendingProd > 0 || kycPendCEO > 0) {
-        setTimeout(function() {
-          var autoBrief = '🏛️ Good day, CEO. Here is your status update:\n\n';
-          if (pendingProd > 0) {
-            autoBrief += '📦 **' + pendingProd + ' product' + (pendingProd > 1 ? 's' : '') + ' waiting for your approval.** Go to the Products tab to review and approve.\n';
-          }
-          if (kycPendCEO > 0) {
-            autoBrief += '🪪 **' + kycPendCEO + ' KYC review' + (kycPendCEO > 1 ? 's' : '') + ' pending.** Sellers are waiting to be verified.\n';
-          }
-          if (escrowOrders > 0) {
-            autoBrief += '🛡️ ' + escrowOrders + ' order(s) in escrow holding ₦' + Math.round(todayRev).toLocaleString() + ' today.\n';
-          }
-          autoBrief += '\nType **"briefing"** for the full daily report.';
-          _ceoAppendMsg(autoBrief, 'bot');
-        }, 400);
-      }
-    }
-
     })(); /* close dummy user then */
     })(); /* close dummy order then */
   }).catch(function(e){
@@ -5317,199 +5311,6 @@ function aTab(tab, btn) {
     c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.88rem">Error loading dashboard data: '+e.message+'<br/><br/><button onclick="location.reload()" class="bg" style="padding:8px 16px">Retry</button></div>';
   });
 }
-/* ════════════════════════════════════════════════════════════════════
-   CEO SECRET OFFICE — Admin AI Chat Engine
-   Uses live _ceoContext snapshot loaded when the tab opens.
-   Falls back to Claude API (Anthropic) for open-ended questions.
-════════════════════════════════════════════════════════════════════ */
-function sendCEOMsg() {
-  var inp = document.getElementById('ceo-chat-input');
-  if (!inp) return;
-  var text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  _ceoAppendMsg(text, 'user');
-  _ceoThink(text);
-}
-window.sendCEOMsg = sendCEOMsg;
-
-function sendCEOQuick(q) {
-  var inp = document.getElementById('ceo-chat-input');
-  if (inp) inp.value = q;
-  sendCEOMsg();
-}
-window.sendCEOQuick = sendCEOQuick;
-
-function _ceoAppendMsg(text, role) {
-  var box = document.getElementById('ceo-chat-msgs');
-  if (!box) return;
-  var d = document.createElement('div');
-  d.style.cssText = 'padding:9px 13px;border-radius:7px;margin-bottom:8px;font-size:.84rem;line-height:1.6;'
-    + (role === 'user'
-      ? 'background:rgba(255,255,255,.07);color:var(--text);text-align:right;'
-      : 'background:rgba(201,146,42,.09);color:#d4af6a;border-left:3px solid rgba(201,146,42,.4);');
-  d.innerHTML = (role === 'bot' ? '🤖 ' : '👤 ') + text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-}
-
-function _ceoThink(q) {
-  /* Show typing indicator */
-  var box = document.getElementById('ceo-chat-msgs');
-  var typingId = 'ceo-typing-' + Date.now();
-  if (box) {
-    var t = document.createElement('div');
-    t.id = typingId;
-    t.style.cssText = 'padding:8px 13px;color:rgba(201,146,42,.5);font-size:.8rem;font-style:italic';
-    t.textContent = '🤖 Admin AI is thinking…';
-    box.appendChild(t);
-    box.scrollTop = box.scrollHeight;
-  }
-
-  /* Build reply from live context first; fall back to Anthropic API */
-  var reply = _ceoLocalReply(q);
-
-  if (reply) {
-    setTimeout(function() {
-      var el = document.getElementById(typingId);
-      if (el) el.remove();
-      _ceoAppendMsg(reply, 'bot');
-    }, 600);
-  } else {
-    /* Call Anthropic API with live data context */
-    _ceoCallAI(q, typingId);
-  }
-}
-
-function _ceoLocalReply(q) {
-  var ctx = window._ceoContext || {};
-  var lq  = q.toLowerCase();
-
-  /* ── Daily Briefing ── */
-  if (lq.includes('briefing') || lq.includes('summary') || lq.includes('report') || lq.includes('daily')) {
-    var pendW = (ctx.allOrders||[]).filter(function(o){ return o.status === 'escrow_held'; }).length;
-    return '**📊 Daily CEO Briefing — ' + new Date().toLocaleDateString() + '**\n\n'
-      + '**Revenue Today:** ₦' + Math.round(ctx.todayRev||0).toLocaleString() + ' across ' + (ctx.todayOrders||[]).length + ' orders\n'
-      + '**Platform Earnings Today:** ₦' + Math.round(ctx.todayFees||0).toLocaleString() + '\n'
-      + '**All-Time Revenue:** ₦' + Math.round(ctx.totalRev||0).toLocaleString() + '\n'
-      + '**All-Time Platform Fees:** ₦' + Math.round(ctx.totalFees||0).toLocaleString() + '\n'
-      + '**Escrow Held:** ' + (ctx.escrowOrders||0) + ' orders awaiting release\n'
-      + '**Pending Products:** ' + (ctx.pendingProd||0) + ' awaiting your approval\n'
-      + '**Total Users:** ' + (ctx.allUsers||[]).length + '\n'
-      + '**Total Orders (all time):** ' + (ctx.allOrders||[]).length + '\n\n'
-      + ((ctx.pendingProd||0) > 0 ? '⚠️ **Action needed:** ' + ctx.pendingProd + ' product(s) awaiting review.\n' : '')
-      + ((ctx.escrowOrders||0) > 0 ? '⏳ **' + ctx.escrowOrders + ' escrow order(s)** — COO will auto-release after 48h.\n' : '✅ No overdue escrow.\n');
-  }
-
-  /* ── Pending Withdrawals ── */
-  if (lq.includes('withdrawal') || lq.includes('withdraw') || lq.includes('payout')) {
-    return '💸 Go to the **Payouts tab** for live withdrawal requests. Remember: every approval requires the **Master Key** to be active, and a **₦100 flat fee** is deducted from each payout. Click **Review Withdrawals** below.';
-  }
-
-  /* ── Pending Products ── */
-  if (lq.includes('pending product') || lq.includes('product approval') || lq.includes('review product')) {
-    var pp = (ctx.allProds||[]).filter(function(p){ return p.status==='pending'; });
-    if (!pp.length) return '✅ No pending products right now. All listings are reviewed.';
-    return '📦 **' + pp.length + ' product(s) pending review:**\n'
-      + pp.slice(0,5).map(function(p){ return '• ' + p.name + ' by ' + p.seller + ' · ₦' + (p.price||0).toLocaleString(); }).join('\n')
-      + (pp.length > 5 ? '\n…and ' + (pp.length-5) + ' more.' : '')
-      + '\n\nClick **Approve Products** to review them now.';
-  }
-
-  /* ── Revenue split ── */
-  if (lq.includes('revenue split') || lq.includes('commission rate') || lq.includes('platform fee') || lq.includes('how much')) {
-    return '💰 **NeyoMarket Revenue Model:**\n'
-      + '• **Digital / Course products:** Platform takes **15%**\n'
-      + '• **Physical products:** Platform takes **5%**\n'
-      + '• **Affiliate referrals:** 5% commission paid to affiliate (deducted from seller share)\n'
-      + '• **Withdrawal fee:** ₦100 flat fee per payout request\n'
-      + '• **COO auto-release:** Orders held in escrow >48h are auto-completed';
-  }
-
-  /* ── COO Sweep ── */
-  if (lq.includes('coo') || lq.includes('auto') || lq.includes('sweep') || lq.includes('escrow release')) {
-    return '🤖 **Autonomous COO** — I am triggering a sweep now. Any escrow order older than 48 hours will be auto-completed with the correct revenue split applied. Check the toast notification for results.';
-  }
-
-  /* ── Top sellers ── */
-  if (lq.includes('top seller') || lq.includes('best seller') || lq.includes('who is selling')) {
-    var sellerMap = {};
-    (ctx.allOrders||[]).forEach(function(o) {
-      (o.items||[]).forEach(function(i) {
-        var s = i.seller || 'Unknown';
-        sellerMap[s] = (sellerMap[s]||0) + parseFloat(o.total||0);
-      });
-    });
-    var sorted = Object.keys(sellerMap).sort(function(a,b){ return sellerMap[b]-sellerMap[a]; }).slice(0,5);
-    if (!sorted.length) return 'No sales data yet.';
-    return '🏆 **Top Sellers by Revenue:**\n'
-      + sorted.map(function(s,i){ return (i+1)+'. '+s+' — ₦'+Math.round(sellerMap[s]).toLocaleString(); }).join('\n');
-  }
-
-  /* ── User stats ── */
-  if (lq.includes('user') || lq.includes('signup') || lq.includes('member')) {
-    var buyers   = (ctx.allUsers||[]).filter(function(u){ return u.role==='buyer'||!u.role; }).length;
-    var sellers  = (ctx.allUsers||[]).filter(function(u){ return u.role==='seller'; }).length;
-    var affiliates = (ctx.allUsers||[]).filter(function(u){ return u.role==='affiliate'; }).length;
-    return '👥 **User Breakdown:**\n'
-      + '• Total users: **' + (ctx.allUsers||[]).length + '**\n'
-      + '• Buyers: ' + buyers + '\n'
-      + '• Sellers: ' + sellers + '\n'
-      + '• Affiliates: ' + affiliates;
-  }
-
-  return null; /* Signal to call Anthropic API */
-}
-
-function _ceoCallAI(question, typingId) {
-  var ctx = window._ceoContext || {};
-
-  /* Build a concise context string so Claude understands the platform state */
-  var contextStr = JSON.stringify({
-    date:         new Date().toLocaleDateString(),
-    todayRevenue: Math.round(ctx.todayRev||0),
-    todayOrders:  (ctx.todayOrders||[]).length,
-    totalRevenue: Math.round(ctx.totalRev||0),
-    platformFees: Math.round(ctx.totalFees||0),
-    totalOrders:  (ctx.allOrders||[]).length,
-    totalUsers:   (ctx.allUsers||[]).length,
-    pendingProds: ctx.pendingProd||0,
-    escrowOrders: ctx.escrowOrders||0,
-    revenueModel: { digital: '15%', physical: '5%', affiliate: '5%', withdrawalFee: '₦100 flat' }
-  });
-
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: 'You are the Admin AI for NeyoMarket, a Nigerian marketplace platform. '
-            + 'You are speaking directly to the CEO in the private CEO Secret Office. '
-            + 'Be direct, concise, and data-driven. Use ₦ for naira. Format numbers with commas. '
-            + 'Current platform snapshot: ' + contextStr + '. '
-            + 'Keep replies under 200 words unless a full report is requested.',
-      messages: [{ role: 'user', content: question }]
-    })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    var el = document.getElementById(typingId);
-    if (el) el.remove();
-    var reply = (data.content && data.content[0] && data.content[0].text)
-      ? data.content[0].text
-      : 'I could not get a response. Please try again.';
-    _ceoAppendMsg(reply, 'bot');
-  })
-  .catch(function(e) {
-    var el = document.getElementById(typingId);
-    if (el) el.remove();
-    _ceoAppendMsg('Network error reaching AI: ' + e.message + '. Using local data only — ask me about briefing, revenue, or pending items.', 'bot');
-  });
-}
-window._ceoCallAI    = _ceoCallAI;
-window._ceoLocalReply = _ceoLocalReply;
-
 /* ════════════════════════════════════════════════
    DELIVERY VERIFICATION CODE (DVC) SYSTEM
    Physical products only — buyer generates code,
@@ -6593,25 +6394,23 @@ function submitWithdrawRequest() {
   var btn   = document.getElementById('modal-withdraw-btn');
   var amt   = parseFloat(amtEl ? amtEl.value : 0);
 
-  /* ── PHASE 2: ₦100 flat processing fee ─────────────────────────────
-     The fee is shown transparently to the seller before they confirm.
-     The NET amount (amt - 100) is what hits their bank account.
-     The gross amount (amt) is deducted from their seller_balance.
-  ──────────────────────────────────────────────────────────────────── */
-  var FLAT_FEE    = 100;
-  var netAmount   = amt - FLAT_FEE;
+  var FLAT_FEE  = 100;
+  var netAmount = amt - FLAT_FEE;
 
   if (errEl) errEl.textContent = '';
+
   if (!amt || amt < 2000) {
     if (errEl) errEl.textContent = 'Minimum withdrawal is ₦2,000 (₦100 processing fee applies).';
     return;
   }
-  if (amt > (CU.sellerBalance || 0)) {
-    if (errEl) errEl.textContent = 'Amount exceeds your available balance of ₦' + (CU.sellerBalance||0).toLocaleString() + '.';
+
+  /* ── OVERDRAFT PROTECTION: hard reject if amount > balance ── */
+  var available = parseFloat(CU.sellerBalance || CU.seller_balance || 0);
+  if (amt > available) {
+    if (errEl) errEl.textContent = 'Insufficient balance. Available: ₦' + available.toLocaleString() + '. You requested: ₦' + amt.toLocaleString() + '.';
     return;
   }
 
-  /* Show transparent fee breakdown before submitting */
   if (!confirm(
     'Withdrawal Summary\n\n' +
     'You requested: ₦' + amt.toLocaleString() + '\n' +
@@ -6623,27 +6422,50 @@ function submitWithdrawRequest() {
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
-  /* Save withdrawal REQUEST to DB — admin will approve and process.
-     We pass the gross amount; paystack.js approve-payout deducts the fee. */
+  /* ── IMMEDIATE balance deduction so UI shows ₦0 instantly ──
+     We optimistically deduct before server confirms.
+     If server rejects, we restore the balance. */
+  var prevBalance = available;
+  CU.sellerBalance = Math.max(0, available - amt);
+  var idx = usrs.findIndex(function(u){ return String(u.id) === String(CU.id); });
+  if (idx !== -1) usrs[idx].sellerBalance = CU.sellerBalance;
+  sv('nm_users', usrs);
+  loadWalletBalance(); /* refresh display immediately */
+
   fetch('/api/paystack?action=request-withdraw', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ userId: String(CU.id), amount: amt, flatFee: FLAT_FEE })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(txt){
+      throw new Error('Server error ' + r.status + ': ' + txt.replace(/<[^>]+>/g,'').slice(0,100));
+    });
+    return r.json();
+  })
   .then(function(data) {
     if (btn) { btn.disabled = false; btn.textContent = '💸 Request Withdrawal'; }
     if (data.ok) {
-      toast('✅ Request submitted! You will receive ₦' + netAmount.toLocaleString() + ' after the ₦100 fee. Admin processes Monday.', 'ok');
+      toast('✅ Withdrawal requested! You will receive ₦' + netAmount.toLocaleString() + '. Processes Monday.', 'ok');
       cM('m-withdraw');
       loadWalletBalance();
     } else {
+      /* Server rejected — restore balance */
+      CU.sellerBalance = prevBalance;
+      if (idx !== -1) usrs[idx].sellerBalance = prevBalance;
+      sv('nm_users', usrs);
+      loadWalletBalance();
       if (errEl) errEl.textContent = data.error || 'Request failed. Try again.';
     }
   })
   .catch(function(e) {
+    /* Network error — restore balance */
+    CU.sellerBalance = prevBalance;
+    if (idx !== -1) usrs[idx].sellerBalance = prevBalance;
+    sv('nm_users', usrs);
+    loadWalletBalance();
     if (btn) { btn.disabled = false; btn.textContent = '💸 Request Withdrawal'; }
-    if (errEl) errEl.textContent = 'Network error. Please try again.';
+    if (errEl) errEl.textContent = 'Error: ' + e.message;
   });
 }
 window.submitWithdrawRequest = submitWithdrawRequest;
