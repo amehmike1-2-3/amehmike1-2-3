@@ -1,25 +1,35 @@
-// /api/payment.js — NeyoMarket Payment Engine
-// Compatible with: products.js, orders.js, transactions.js, paystack.js, webhook.js
+// /api/payment.js — NeyoMarket Unified Payment + Orders + Disputes Engine
+// Replaces: payment.js + orders.js + disputes.js (merged to stay under Vercel 12-function limit)
 //
-// Routes:
-//   POST ?action=confirm     — verify with Paystack, save order, compute split, write admin_transactions
-//   POST ?action=dvc-release — seller enters 6-digit DVC to release physical escrow
-//   POST ?action=refund      — admin triggers full Paystack refund for disputed order
-//   GET  ?action=order       — fetch single order status (drives download/confirm button)
-//   POST ?action=webhook     — Paystack charge.success webhook (fallback handler)
+// Route map — all via ?action= query parameter:
 //
-// Commission model (matches index.html markCol/markDL and transactions.js exactly):
-//   With valid affiliate referral, digital  → Seller 80%, Platform 15%, Affiliate 5%
-//   With valid affiliate referral, physical → Seller 88%, Platform  7%, Affiliate 5%
-//   No referral, digital                    → Seller 90%, Platform 10%, Affiliate  0%
-//   No referral, physical                   → Seller 95%, Platform  5%, Affiliate  0%
+//   PAYMENT & ESCROW
+//   POST ?action=confirm          — verify with Paystack, save order, split commission
+//   POST ?action=dvc-release      — seller enters 6-digit code to release physical escrow
+//   POST ?action=refund           — admin triggers Paystack refund for disputed order
+//   POST ?action=webhook          — Paystack charge.success fallback webhook
+//   GET  ?action=order            — fetch single order status
 //
-// Platform fee goes to admin_balance in users table + row written to admin_transactions.
-// Affiliate commission goes to seller_balance of the aff_code owner.
-// Seller payout goes to seller_balance only when order is COMPLETED (digital = on confirm,
-// physical = on DVC release). Never credited on 'escrow_held'.
+//   ORDERS (replaces /api/orders)
+//   GET  ?action=orders           — list orders (?userId= for buyer, ?admin=true for all)
+//   POST ?action=orders           — create a new order record
+//   PATCH ?action=orders          — update order fields (status, collected, disputed, etc.)
+//   DELETE ?action=orders         — delete an order by id
 //
-// No AI features. No CEO office. Pure payment + escrow logic.
+//   DISPUTES (replaces /api/disputes)
+//   GET  ?action=disputes         — list disputed orders (?userId= or ?admin=true)
+//   POST ?action=disputes         — buyer raises a dispute with a reason
+//   PATCH ?action=disputes        — admin resolves dispute (resolve_seller|resolve_buyer|close)
+//
+// Commission model:
+//   With valid affiliate, digital  → Seller 80%, Platform 15%, Affiliate 5%
+//   With valid affiliate, physical → Seller 88%, Platform  7%, Affiliate 5%
+//   No referral, digital           → Seller 90%, Platform 10%, Affiliate  0%
+//   No referral, physical          → Seller 95%, Platform  5%, Affiliate  0%
+//
+// Frontend call changes needed:
+//   /api/orders  → /api/payment?action=orders
+//   /api/disputes → /api/payment?action=disputes
 
 'use strict';
 
@@ -30,20 +40,121 @@ const sql         = neon(process.env.DATABASE_URL);
 const PSK         = process.env.PAYSTACK_SECRET_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@neyomarket.com';
 
-/* ── CORS ── */
+/* ─────────────────────────────────────────────
+   SHARED HELPERS
+───────────────────────────────────────────── */
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-paystack-signature');
   res.setHeader('X-Content-Type-Options',       'nosniff');
 }
 
-/* ── JSON-only errors — never return HTML ── */
 function jsonErr(res, status, msg, detail) {
   return res.status(status).json({ ok: false, error: msg, detail: detail || null });
 }
 
-/* ── Verify payment with Paystack API ── */
+function safeJson(val, fallback) {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch (e) { return fallback; }
+}
+
+function toOrder(r) {
+  return {
+    id:            r.id,
+    userId:        r.user_id,
+    customer:      safeJson(r.customer, {}),
+    items:         safeJson(r.items, []),
+    total:         parseFloat(r.total         || 0),
+    platformFee:   parseFloat(r.platform_fee  || 0),
+    sellerPayout:  parseFloat(r.seller_payout || 0),
+    affiliateFee:  parseFloat(r.affiliate_fee || 0),
+    affCode:       r.aff_code       || null,
+    status:        r.status         || 'pending',
+    collected:     r.collected      || false,
+    collectedAt:   r.collected_at   || null,
+    disputed:      r.disputed       || false,
+    disputeReason: r.dispute_reason || null,
+    deliveryCode:  r.delivery_code  || null,
+    fileUrl:       r.file_url       || null,
+    mode:          r.mode           || 'standard',
+    date:          r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : ''),
+    ref:           r.ref            || '',
+    shipping:      safeJson(r.shipping, null),
+    createdAt:     r.created_at     || null
+  };
+}
+
+/* Deterministic 6-digit DVC — MUST match index.html generateDVC() exactly */
+function generateDVC(orderId) {
+  let hash = 0;
+  const str = String(orderId);
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return String(Math.abs(hash) % 900000 + 100000);
+}
+
+/* Tiered commission split — matches index.html markCol/markDL exactly */
+function computeSplit(total, hasPhysical, hasValidAff) {
+  let platformRate, affiliateRate;
+  if (hasValidAff) {
+    platformRate  = hasPhysical ? 0.07 : 0.15;
+    affiliateRate = 0.05;
+  } else {
+    platformRate  = hasPhysical ? 0.05 : 0.10;
+    affiliateRate = 0;
+  }
+  const sellerRate   = 1 - platformRate - affiliateRate;
+  const platformFee  = Math.round(total * platformRate);
+  const affiliateFee = Math.round(total * affiliateRate);
+  const sellerPayout = Math.round(total * sellerRate);
+  return { platformFee, affiliateFee, sellerPayout };
+}
+
+/* Write to admin_transactions — non-fatal if table missing */
+async function recordAdminTx(params) {
+  try {
+    /* Pre-compute conditionals — Neon ternary rule: no ternaries inside sql`` */
+    const _orderId      = String(params.orderId);
+    const _total        = parseFloat(params.total        || 0);
+    const _platformFee  = parseFloat(params.platformFee  || 0);
+    const _sellerPayout = parseFloat(params.sellerPayout || 0);
+    const _affiliateFee = parseFloat(params.affiliateFee || 0);
+    const _affCode      = params.affCode  ? String(params.affCode)  : null;
+    const _sellerId     = params.sellerId ? String(params.sellerId) : null;
+    const _type         = params.type || 'payment';
+
+    await sql`
+      INSERT INTO admin_transactions (
+        order_id, total, platform_fee, seller_payout,
+        affiliate_fee, aff_code, seller_id, released_by, type, created_at
+      ) VALUES (
+        ${_orderId},
+        ${_total},
+        ${_platformFee},
+        ${_sellerPayout},
+        ${_affiliateFee},
+        ${_affCode},
+        ${_sellerId},
+        ${'payment'},
+        ${_type},
+        NOW()
+      )
+      ON CONFLICT (order_id) DO NOTHING
+    `;
+  } catch (e) {
+    if (e.message && e.message.includes('does not exist')) {
+      console.warn('[payment] admin_transactions table missing — run migration.');
+    } else {
+      console.error('[payment] recordAdminTx (non-fatal):', e.message);
+    }
+  }
+}
+
+/* Verify a payment reference with Paystack */
 async function verifyPaystackPayment(reference) {
   try {
     const r    = await fetch('https://api.paystack.co/transaction/verify/' + encodeURIComponent(reference), {
@@ -59,192 +170,435 @@ async function verifyPaystackPayment(reference) {
   }
 }
 
-/* ── Commission split — matches index.html markCol/markDL and transactions.js exactly ──
-   hasPhysical: true if ANY item in the order is type 'physical'
-   hasValidAff: true if aff_code is non-empty, length > 2, and validated upstream
-*/
-function computeSplit(total, hasPhysical, hasValidAff) {
-  let platformRate, affiliateRate;
-  if (hasValidAff) {
-    platformRate  = hasPhysical ? 0.07 : 0.15;
-    affiliateRate = 0.05;
-  } else {
-    platformRate  = hasPhysical ? 0.05 : 0.10;
-    affiliateRate = 0;
-  }
-  const sellerRate   = 1 - platformRate - affiliateRate;
-  const platformFee  = Math.round(total * platformRate);
-  const affiliateFee = Math.round(total * affiliateRate);
-  const sellerPayout = Math.round(total * sellerRate);
-  return { platformFee, affiliateFee, sellerPayout, platformRate, affiliateRate, sellerRate };
-}
-
-/* ── Deterministic 6-digit DVC — MUST match index.html generateDVC() exactly ── */
-function generateDVC(orderId) {
-  let hash = 0;
-  const str = String(orderId);
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return String(Math.abs(hash) % 900000 + 100000);
-}
-
-/* ── Write a row to admin_transactions for full admin visibility ──
-   Non-fatal: if table doesn't exist yet, logs warning and continues. */
-async function recordAdminTransaction(params) {
-  const { orderId, total, platformFee, sellerPayout, affiliateFee,
-          affCode, sellerId, type } = params;
-  try {
-    await sql`
-      INSERT INTO admin_transactions (
-        order_id, total, platform_fee, seller_payout,
-        affiliate_fee, aff_code, seller_id,
-        released_by, type, created_at
-      ) VALUES (
-        ${String(orderId)},
-        ${parseFloat(total  || 0)},
-        ${parseFloat(platformFee  || 0)},
-        ${parseFloat(sellerPayout || 0)},
-        ${parseFloat(affiliateFee || 0)},
-        ${affCode  ? String(affCode)  : null},
-        ${sellerId ? String(sellerId) : null},
-        ${'payment'},
-        ${type || 'payment'},
-        NOW()
-      )
-      ON CONFLICT (order_id) DO NOTHING
-    `;
-  } catch (e) {
-    if (e.message && e.message.includes('does not exist')) {
-      console.warn('[payment] admin_transactions table not yet created — run migration.');
-    } else {
-      console.error('[payment] recordAdminTransaction error (non-fatal):', e.message);
-    }
-  }
-}
-
+/* ─────────────────────────────────────────────
+   MAIN HANDLER
+───────────────────────────────────────────── */
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query.action || '';
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
+     ORDERS — GET ?action=orders
+     ?userId=<id>   → buyer's own orders only
+     ?admin=true    → all orders (admin only)
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'orders' && req.method === 'GET') {
+    try {
+      const userId  = req.query.userId;
+      const isAdmin = req.query.admin === 'true';
+      let rows;
+
+      if (isAdmin) {
+        rows = await sql`SELECT * FROM orders ORDER BY created_at DESC LIMIT 500`;
+      } else if (userId) {
+        rows = await sql`
+          SELECT * FROM orders
+          WHERE user_id = ${String(userId)}
+          ORDER BY created_at DESC
+        `;
+      } else {
+        return jsonErr(res, 400, 'userId is required. Use ?userId=<id> or ?admin=true');
+      }
+
+      return res.status(200).json({ ok: true, orders: rows.map(toOrder) });
+    } catch (err) {
+      console.error('[payment/orders GET]', err.message);
+      return jsonErr(res, 500, 'Could not fetch orders.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     ORDERS — POST ?action=orders
+     Create a new order record. Generates delivery_code automatically.
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'orders' && req.method === 'POST') {
+    try {
+      const o = req.body || {};
+      if (!o.id || !o.total) return jsonErr(res, 400, 'id and total are required.');
+
+      const deliveryCode = generateDVC(String(o.id));
+      const affCode = (o.affCode && String(o.affCode).trim().length > 2)
+        ? String(o.affCode).trim() : null;
+
+      await sql`
+        INSERT INTO orders (
+          id, user_id, customer, items, total, platform_fee, seller_payout,
+          affiliate_fee, aff_code, status, collected, mode, ref,
+          shipping, delivery_code, file_url, date, created_at
+        ) VALUES (
+          ${String(o.id)},
+          ${String(o.userId || '')},
+          ${JSON.stringify(o.customer || {})},
+          ${JSON.stringify(o.items    || [])},
+          ${parseFloat(o.total)},
+          ${parseFloat(o.platformFee  || 0)},
+          ${parseFloat(o.sellerPayout || 0)},
+          ${parseFloat(o.affiliateFee || 0)},
+          ${affCode},
+          ${o.status || 'paid'},
+          ${false},
+          ${o.mode   || 'standard'},
+          ${o.ref    || ''},
+          ${JSON.stringify(o.shipping || null)},
+          ${deliveryCode},
+          ${o.fileUrl || null},
+          ${new Date().toLocaleDateString()},
+          NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          status        = EXCLUDED.status,
+          ref           = EXCLUDED.ref,
+          delivery_code = EXCLUDED.delivery_code
+      `;
+      return res.status(201).json({ ok: true, deliveryCode });
+    } catch (err) {
+      console.error('[payment/orders POST]', err.message);
+      return jsonErr(res, 500, 'Could not create order.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     ORDERS — PATCH ?action=orders
+     Update any order fields. orderId extracted from URL path or body.
+     All conditionals pre-computed before sql template (Neon ternary rule).
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'orders' && req.method === 'PATCH') {
+    try {
+      const parts   = (req.url || '').split('/').filter(Boolean);
+      const orderId = parts[parts.length - 1].split('?')[0];
+      if (!orderId) return jsonErr(res, 400, 'orderId required in URL path.');
+
+      const body = req.body || {};
+
+      const newStatus        = body.status        !== undefined ? String(body.status)                         : null;
+      const newCollected     = body.collected      !== undefined ? Boolean(body.collected)                    : null;
+      const newCollectedAt   = body.collectedAt    !== undefined ? (body.collectedAt    || null)              : null;
+      const newDisputed      = body.disputed       !== undefined ? Boolean(body.disputed)                     : null;
+      const newDisputeReason = body.disputeReason  !== undefined ? String(body.disputeReason).slice(0, 1000) : null;
+      const newPlatformFee   = body.platformFee    !== undefined ? parseFloat(body.platformFee)               : null;
+      const newSellerPayout  = body.sellerPayout   !== undefined ? parseFloat(body.sellerPayout)              : null;
+      const newFileUrl       = body.fileUrl        !== undefined ? (body.fileUrl || null)                     : null;
+      const newItems         = body.items          !== undefined ? JSON.stringify(body.items)                 : null;
+      const orderIdStr       = String(orderId);
+
+      const rawAff          = body.affCode || null;
+      const newAffCode      = (rawAff && String(rawAff).trim().length > 2) ? String(rawAff).trim() : null;
+      const newAffiliateFee = (body.affiliateFee !== undefined && newAffCode)
+        ? parseFloat(body.affiliateFee)
+        : (body.affiliateFee !== undefined && body.affiliateFee === 0 ? 0 : null);
+
+      await sql`
+        UPDATE orders SET
+          status         = COALESCE(${newStatus},        status),
+          collected      = COALESCE(${newCollected},     collected),
+          collected_at   = COALESCE(${newCollectedAt},   collected_at),
+          disputed       = COALESCE(${newDisputed},      disputed),
+          dispute_reason = COALESCE(${newDisputeReason}, dispute_reason),
+          platform_fee   = COALESCE(${newPlatformFee},   platform_fee),
+          seller_payout  = COALESCE(${newSellerPayout},  seller_payout),
+          affiliate_fee  = COALESCE(${newAffiliateFee},  affiliate_fee),
+          file_url       = COALESCE(${newFileUrl},       file_url),
+          items          = COALESCE(${newItems},         items::text)
+        WHERE id = ${orderIdStr}
+      `;
+
+      /* Credit affiliate ONLY on completion with a valid aff_code */
+      if (newAffCode && newAffiliateFee && newAffiliateFee > 0
+          && (newStatus === 'completed' || body.collected === true)) {
+        try {
+          await sql`
+            UPDATE users
+            SET seller_balance = COALESCE(seller_balance, 0) + ${newAffiliateFee}
+            WHERE aff_code = ${newAffCode}
+          `;
+        } catch (affErr) {
+          console.error('[payment/orders PATCH] affiliate credit (non-fatal):', affErr.message);
+        }
+      }
+
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error('[payment/orders PATCH]', err.message);
+      return jsonErr(res, 500, 'Could not update order.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     ORDERS — DELETE ?action=orders&id=xxx
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'orders' && req.method === 'DELETE') {
+    try {
+      const rawId = req.query.id || (req.body && req.body.id);
+      if (!rawId) return jsonErr(res, 400, 'Order id required.');
+      await sql`DELETE FROM orders WHERE id = ${String(rawId)}`;
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error('[payment/orders DELETE]', err.message);
+      return jsonErr(res, 500, 'Could not delete order.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     DISPUTES — GET ?action=disputes
+     ?admin=true → all disputed orders
+     ?userId=<id> → buyer's own disputes
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'disputes' && req.method === 'GET') {
+    try {
+      const isAdmin = req.query.admin === 'true';
+      const userId  = req.query.userId;
+      let rows;
+
+      if (isAdmin) {
+        rows = await sql`
+          SELECT * FROM orders
+          WHERE disputed = true OR status = 'disputed'
+          ORDER BY created_at DESC LIMIT 200
+        `;
+      } else if (userId) {
+        rows = await sql`
+          SELECT * FROM orders
+          WHERE user_id = ${String(userId)}
+            AND (disputed = true OR status = 'disputed')
+          ORDER BY created_at DESC
+        `;
+      } else {
+        return jsonErr(res, 400, 'Provide ?userId=<id> or ?admin=true');
+      }
+
+      const disputes = rows.map(function(r) {
+        return {
+          id:            r.id,
+          userId:        r.user_id,
+          customer:      safeJson(r.customer, {}),
+          items:         safeJson(r.items, []),
+          total:         parseFloat(r.total || 0),
+          status:        r.status         || 'disputed',
+          disputed:      r.disputed       || true,
+          disputeReason: r.dispute_reason || null,
+          ref:           r.ref            || null,
+          createdAt:     r.created_at     || null
+        };
+      });
+
+      return res.status(200).json({ ok: true, disputes });
+    } catch (err) {
+      console.error('[payment/disputes GET]', err.message);
+      return jsonErr(res, 500, 'Could not fetch disputes.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     DISPUTES — POST ?action=disputes
+     Buyer raises a dispute. Saves reason to Neon orders table.
+     Body: { orderId, userId, reason }
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'disputes' && req.method === 'POST') {
+    try {
+      const { orderId, reason } = req.body || {};
+      if (!orderId) return jsonErr(res, 400, 'orderId is required.');
+      if (!reason || String(reason).trim().length < 5)
+        return jsonErr(res, 400, 'A dispute reason of at least 5 characters is required.');
+
+      const orderIdStr = String(orderId);
+      const safeReason = String(reason).trim().slice(0, 1000);
+
+      const orderRows = await sql`
+        SELECT id, status FROM orders WHERE id = ${orderIdStr} LIMIT 1
+      `;
+      if (!orderRows.length) return jsonErr(res, 404, 'Order not found: ' + orderIdStr);
+
+      const allowedStatuses = ['paid', 'escrow_held', 'success'];
+      if (!allowedStatuses.includes(orderRows[0].status)) {
+        return jsonErr(res, 400, 'Order cannot be disputed. Status is: ' + orderRows[0].status);
+      }
+
+      await sql`
+        UPDATE orders SET
+          disputed       = true,
+          status         = 'disputed',
+          dispute_reason = ${safeReason}
+        WHERE id = ${orderIdStr}
+      `;
+
+      console.log('[payment/disputes POST] raised on', orderIdStr);
+      return res.status(200).json({
+        ok:      true,
+        message: 'Dispute submitted. Admin will review within 24 hours.',
+        orderId: orderIdStr
+      });
+    } catch (err) {
+      console.error('[payment/disputes POST]', err.message);
+      return jsonErr(res, 500, 'Could not submit dispute.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     DISPUTES — PATCH ?action=disputes
+     Admin resolves a dispute.
+     Body: { orderId, action: 'resolve_seller'|'resolve_buyer'|'close' }
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'disputes' && req.method === 'PATCH') {
+    try {
+      const { orderId, action: disputeAction } = req.body || {};
+      if (!orderId)       return jsonErr(res, 400, 'orderId is required.');
+      if (!disputeAction) return jsonErr(res, 400, 'action is required: resolve_seller | resolve_buyer | close');
+
+      const orderIdStr = String(orderId);
+      const rows = await sql`SELECT * FROM orders WHERE id = ${orderIdStr} LIMIT 1`;
+      if (!rows.length) return jsonErr(res, 404, 'Order not found.');
+
+      const order = rows[0];
+
+      if (disputeAction === 'resolve_seller') {
+        const sellerPayout = parseFloat(order.seller_payout || order.total * 0.85 || 0);
+
+        await sql`
+          UPDATE orders SET
+            status       = 'completed',
+            collected    = true,
+            collected_at = NOW(),
+            disputed     = false
+          WHERE id = ${orderIdStr}
+        `;
+
+        const items = safeJson(order.items, []);
+        const sellerId = Array.isArray(items) && items[0]
+          ? String(items[0].sellerId || items[0].seller_id || '') : '';
+
+        if (sellerId) {
+          await sql`
+            UPDATE users
+            SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
+            WHERE id = ${sellerId}
+          `;
+        }
+
+        console.log('[payment/disputes PATCH] resolved for seller —', orderIdStr, '₦' + sellerPayout);
+        return res.status(200).json({
+          ok:      true,
+          message: 'Resolved for seller. ₦' + sellerPayout.toLocaleString() + ' released.',
+          payout:  sellerPayout
+        });
+
+      } else if (disputeAction === 'resolve_buyer') {
+        if (!PSK) return jsonErr(res, 500, 'PAYSTACK_SECRET_KEY not configured.');
+        if (!order.ref) return jsonErr(res, 400, 'No Paystack reference on this order. Refund manually.');
+
+        const refundAmount = Math.floor(parseFloat(order.total || 0) * 100);
+        let refundData;
+        try {
+          const refundRes = await fetch('https://api.paystack.co/refund', {
+            method:  'POST',
+            headers: { 'Authorization': 'Bearer ' + PSK, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              transaction:   order.ref,
+              amount:        refundAmount,
+              merchant_note: 'Dispute resolved in buyer favour — NeyoMarket'
+            })
+          });
+          refundData = await refundRes.json();
+        } catch (fetchErr) {
+          return jsonErr(res, 502, 'Could not reach Paystack.', fetchErr.message);
+        }
+
+        if (!refundData.status)
+          return jsonErr(res, 400, 'Paystack refund failed: ' + (refundData.message || 'Check dashboard'));
+
+        await sql`
+          UPDATE orders SET status = 'refunded', disputed = false WHERE id = ${orderIdStr}
+        `;
+
+        console.log('[payment/disputes PATCH] refunded buyer —', orderIdStr);
+        return res.status(200).json({
+          ok:      true,
+          message: 'Refund of ₦' + parseFloat(order.total || 0).toLocaleString() + ' initiated.'
+        });
+
+      } else if (disputeAction === 'close') {
+        await sql`
+          UPDATE orders SET disputed = false, status = 'escrow_held' WHERE id = ${orderIdStr}
+        `;
+        return res.status(200).json({ ok: true, message: 'Dispute closed without action.' });
+
+      } else {
+        return jsonErr(res, 400, 'Unknown action: ' + disputeAction);
+      }
+    } catch (err) {
+      console.error('[payment/disputes PATCH]', err.message);
+      return jsonErr(res, 500, 'Could not resolve dispute.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
      POST ?action=confirm
-     Called by frontend immediately after Paystack callback fires.
-     1. Checks idempotency (already confirmed? return cached)
-     2. Verifies payment with Paystack API
-     3. Computes tiered commission split
-     4. Inserts order into Neon with all split fields
-     5. Credits admin_balance (platform fee) immediately
-     6. Credits affiliate's seller_balance if valid aff_code
-     7. Credits seller_balance ONLY for digital/course products
-        (physical stays in escrow until DVC release)
-     8. Writes row to admin_transactions
-     9. Generates delivery_code for physical orders
-  ══════════════════════════════════════════════════════════════ */
-  if (req.method === 'POST' && action === 'confirm') {
-    const {
-      reference, orderId, userId, items, total,
-      customer, mode, sellerUserId, affCode, shipping
-    } = req.body || {};
+     Verify payment, save order, split commission, write admin_transactions.
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'confirm' && req.method === 'POST') {
+    const { reference, orderId, userId, items, total,
+            customer, mode, sellerUserId, affCode, shipping } = req.body || {};
 
     if (!reference || !orderId || !total)
       return jsonErr(res, 400, 'reference, orderId and total are required.');
 
     try {
-      /* ── Idempotency: already confirmed → return cached ── */
       const existing = await sql`
         SELECT id, status FROM orders WHERE id = ${String(orderId)} LIMIT 1
       `;
-      if (existing.length && (existing[0].status === 'paid' || existing[0].status === 'escrow_held' || existing[0].status === 'completed')) {
-        return res.status(200).json({
-          ok:      true,
-          cached:  true,
-          orderId,
-          status:  existing[0].status
-        });
+      if (existing.length && ['paid','escrow_held','completed'].includes(existing[0].status)) {
+        return res.status(200).json({ ok: true, cached: true, orderId, status: existing[0].status });
       }
 
-      /* ── Verify with Paystack (skip in test mode if no PSK) ── */
       let amount = parseFloat(total);
       if (PSK) {
         const txn = await verifyPaystackPayment(reference);
-        if (!txn || txn.status !== 'success') {
-          return jsonErr(res, 402,
-            'Payment not confirmed by Paystack. Contact support with ref: ' + reference
-          );
-        }
-        amount = txn.amount / 100; /* kobo → naira */
+        if (!txn || txn.status !== 'success')
+          return jsonErr(res, 402, 'Payment not confirmed by Paystack. Ref: ' + reference);
+        amount = txn.amount / 100;
       }
 
-      /* ── Parse items ── */
-      const itemList = Array.isArray(items) ? items : [];
-
-      /* ── Determine physical/digital ── */
-      const hasPhysical = itemList.some(function(i) {
-        return i.type === 'physical';
-      });
+      const itemList    = Array.isArray(items) ? items : [];
+      const hasPhysical = itemList.some(function(i) { return i.type === 'physical'; });
       const isAllDigital = itemList.length > 0 && itemList.every(function(i) {
         return i.type === 'digital' || i.type === 'course';
       });
 
-      /* ── Validate affiliate code ── */
-      const rawAff    = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
+      const rawAff      = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
       const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
+      const split       = computeSplit(amount, hasPhysical, hasValidAff);
 
-      /* ── Compute tiered split ── */
-      const split = computeSplit(amount, hasPhysical, hasValidAff);
-
-      /* ── Find affiliate user ID ── */
       let affUserId = null;
       if (hasValidAff && split.affiliateFee > 0) {
-        const affRows = await sql`
-          SELECT id FROM users WHERE aff_code = ${rawAff} LIMIT 1
-        `;
+        const affRows = await sql`SELECT id FROM users WHERE aff_code = ${rawAff} LIMIT 1`;
         if (affRows.length) affUserId = String(affRows[0].id);
       }
 
-      /* ── Find seller ID from items if not passed ── */
       const resolvedSellerId = sellerUserId
         ? String(sellerUserId)
         : (itemList[0] && (itemList[0].sellerId || itemList[0].seller_id))
-          ? String(itemList[0].sellerId || itemList[0].seller_id)
-          : null;
+          ? String(itemList[0].sellerId || itemList[0].seller_id) : null;
 
-      /* ── Order status:
-           digital/course → 'paid' (instant download, escrow released on markDL)
-           physical       → 'escrow_held' (funds held until DVC confirmation)     ── */
-      const orderStatus = isAllDigital ? 'paid' : 'escrow_held';
-
-      /* ── Generate deterministic 6-digit delivery code ── */
+      const orderStatus  = isAllDigital ? 'paid' : 'escrow_held';
       const deliveryCode = generateDVC(String(orderId));
+      const cleanAff     = hasValidAff ? rawAff : null;
 
-      /* ── Fetch file_url from products for digital orders ── */
       let topFileUrl = null;
       if (isAllDigital && itemList.length > 0) {
-        const productIds = itemList
-          .map(function(i) { return Number(i.id); })
-          .filter(function(id) { return !isNaN(id) && id > 0; });
+        const productIds = itemList.map(function(i) { return Number(i.id); })
+                                   .filter(function(id) { return !isNaN(id) && id > 0; });
         if (productIds.length) {
-          const prods = await sql`
-            SELECT id, file_url FROM products WHERE id = ANY(${productIds})
-          `;
-          const firstWithFile = prods.find(function(p) { return p.file_url; });
-          if (firstWithFile) topFileUrl = firstWithFile.file_url;
-          /* Merge file_url into each item */
+          const prods = await sql`SELECT id, file_url FROM products WHERE id = ANY(${productIds})`;
+          const first = prods.find(function(p) { return p.file_url; });
+          if (first) topFileUrl = first.file_url;
           itemList.forEach(function(item) {
-            const prod = prods.find(function(p) { return Number(p.id) === Number(item.id); });
-            if (prod && prod.file_url) {
-              item.fileUrl = prod.file_url;
-            }
+            const p = prods.find(function(p) { return Number(p.id) === Number(item.id); });
+            if (p && p.file_url) item.fileUrl = p.file_url;
           });
         }
       }
 
-      /* ── INSERT order ── */
-      const cleanAff = hasValidAff ? rawAff : null;
       await sql`
         INSERT INTO orders (
           id, user_id, customer, items, total,
@@ -252,24 +606,13 @@ module.exports = async function handler(req, res) {
           status, collected, mode, ref, shipping,
           delivery_code, file_url, date, created_at
         ) VALUES (
-          ${String(orderId)},
-          ${String(userId || '')},
-          ${JSON.stringify(customer  || {})},
-          ${JSON.stringify(itemList)},
-          ${amount},
-          ${split.platformFee},
-          ${split.sellerPayout},
-          ${split.affiliateFee},
-          ${cleanAff},
-          ${orderStatus},
-          ${false},
-          ${mode || 'standard'},
-          ${reference},
-          ${JSON.stringify(shipping || null)},
-          ${deliveryCode},
-          ${topFileUrl},
-          ${new Date().toLocaleDateString()},
-          NOW()
+          ${String(orderId)}, ${String(userId || '')},
+          ${JSON.stringify(customer || {})}, ${JSON.stringify(itemList)},
+          ${amount}, ${split.platformFee}, ${split.sellerPayout},
+          ${split.affiliateFee}, ${cleanAff}, ${orderStatus},
+          ${false}, ${mode || 'standard'}, ${reference},
+          ${JSON.stringify(shipping || null)}, ${deliveryCode}, ${topFileUrl},
+          ${new Date().toLocaleDateString()}, NOW()
         )
         ON CONFLICT (id) DO UPDATE SET
           status        = EXCLUDED.status,
@@ -278,181 +621,119 @@ module.exports = async function handler(req, res) {
           file_url      = COALESCE(EXCLUDED.file_url, orders.file_url)
       `;
 
-      /* ── Credit platform fee to admin_balance ── */
       if (split.platformFee > 0) {
         await sql`
-          UPDATE users
-          SET admin_balance = COALESCE(admin_balance, 0) + ${split.platformFee}
+          UPDATE users SET admin_balance = COALESCE(admin_balance, 0) + ${split.platformFee}
           WHERE LOWER(email) = LOWER(${ADMIN_EMAIL})
         `;
       }
 
-      /* ── Credit affiliate seller_balance ── */
       if (affUserId && split.affiliateFee > 0) {
         await sql`
-          UPDATE users
-          SET seller_balance = COALESCE(seller_balance, 0) + ${split.affiliateFee}
+          UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.affiliateFee}
           WHERE id = ${affUserId}
         `;
-        /* Record affiliate commission for audit trail */
         try {
           await sql`
             INSERT INTO affiliate_commissions
               (aff_user_id, aff_code, order_id, order_amount, commission, status, created_at)
-            VALUES
-              (${affUserId}, ${rawAff}, ${String(orderId)}, ${amount}, ${split.affiliateFee}, ${'pending'}, NOW())
+            VALUES (${affUserId}, ${rawAff}, ${String(orderId)}, ${amount}, ${split.affiliateFee}, ${'pending'}, NOW())
             ON CONFLICT (order_id) DO NOTHING
           `;
-        } catch (affRecErr) {
-          /* Non-fatal — table may not exist */
-          console.warn('[payment] affiliate_commissions insert (non-fatal):', affRecErr.message);
-        }
+        } catch (e) { console.warn('[payment/confirm] affiliate_commissions (non-fatal):', e.message); }
       }
 
-      /* ── For digital products: credit seller_balance immediately ──
-         Physical products: seller_balance is NOT credited here.
-         It is credited only when DVC is validated (dvc-release action). ── */
       if (isAllDigital && resolvedSellerId && split.sellerPayout > 0) {
         await sql`
-          UPDATE users
-          SET seller_balance = COALESCE(seller_balance, 0) + ${split.sellerPayout}
+          UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.sellerPayout}
           WHERE id = ${resolvedSellerId}
         `;
       }
 
-      /* ── Write to admin_transactions for admin dashboard visibility ── */
-      await recordAdminTransaction({
-        orderId:      String(orderId),
-        total:        amount,
+      await recordAdminTx({
+        orderId: String(orderId), total: amount,
+        platformFee: split.platformFee, sellerPayout: split.sellerPayout,
+        affiliateFee: split.affiliateFee, affCode: cleanAff,
+        sellerId: resolvedSellerId, type: 'payment'
+      });
+
+      console.log('[payment/confirm]', orderId, '₦' + amount, '| status:', orderStatus);
+
+      return res.status(200).json({
+        ok: true, orderId, amount,
         platformFee:  split.platformFee,
         sellerPayout: split.sellerPayout,
         affiliateFee: split.affiliateFee,
-        affCode:      cleanAff,
-        sellerId:     resolvedSellerId,
-        type:         'payment'
-      });
-
-      console.log('[payment] confirmed', orderId,
-        '₦' + amount,
-        '| platform ₦' + split.platformFee,
-        '| seller ₦' + split.sellerPayout,
-        '| affiliate ₦' + split.affiliateFee,
-        '| status:', orderStatus
-      );
-
-      return res.status(200).json({
-        ok:            true,
-        orderId,
-        amount,
-        platformFee:   split.platformFee,
-        sellerPayout:  split.sellerPayout,
-        affiliateFee:  split.affiliateFee,
-        hasValidAff,
-        status:        orderStatus,
-        deliveryCode:  orderStatus === 'escrow_held' ? deliveryCode : null
+        hasValidAff,  status: orderStatus,
+        deliveryCode: orderStatus === 'escrow_held' ? deliveryCode : null
       });
 
     } catch (err) {
-      console.error('[payment confirm]', err.message);
+      console.error('[payment/confirm]', err.message);
       return jsonErr(res, 500, 'Order save failed.', err.message);
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      POST ?action=dvc-release
-     Seller enters the buyer's 6-digit Delivery Verification Code.
-     1. Load order, check it's in escrow (not already completed)
-     2. Validate DVC against deterministic hash OR stored delivery_code
-     3. Compute split from stored order values (already set at confirm time)
-     4. Credit seller_balance
-     5. Credit affiliate if applicable
-     6. Mark order completed + set collected_at
-     7. Write completion row to admin_transactions
+     Seller enters 6-digit code → validates → releases escrow to seller.
      Body: { orderId, dvcCode, sellerUserId }
-  ══════════════════════════════════════════════════════════════ */
-  if (req.method === 'POST' && action === 'dvc-release') {
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'dvc-release' && req.method === 'POST') {
     const { orderId, dvcCode, sellerUserId } = req.body || {};
     if (!orderId || !dvcCode)
       return jsonErr(res, 400, 'orderId and dvcCode are required.');
 
     try {
-      const rows = await sql`
-        SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1
-      `;
-      if (!rows.length)
-        return jsonErr(res, 404, 'Order not found: ' + orderId);
+      const rows = await sql`SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
+      if (!rows.length) return jsonErr(res, 404, 'Order not found: ' + orderId);
 
       const order = rows[0];
 
-      /* Idempotency */
       if (order.status === 'completed' || order.collected) {
         return res.status(200).json({
-          ok:       true,
-          cached:   true,
-          message:  'Order already completed.',
+          ok: true, cached: true,
+          message: 'Order already completed.',
           released: parseFloat(order.seller_payout || 0)
         });
       }
 
-      /* Only release from escrow or paid status */
-      const releasable = ['escrow_held', 'paid', 'success'];
-      if (!releasable.includes(order.status)) {
-        return jsonErr(res, 400,
-          'Order cannot be released. Current status: ' + order.status
-        );
-      }
+      if (!['escrow_held','paid','success'].includes(order.status))
+        return jsonErr(res, 400, 'Order cannot be released. Status: ' + order.status);
 
-      /* ── Validate DVC: check stored delivery_code first, then hash fallback ── */
-      const storedCode  = order.delivery_code ? String(order.delivery_code).trim() : null;
-      const hashedCode  = generateDVC(String(orderId));
-      const expectedCode = storedCode || hashedCode;
+      const storedCode   = order.delivery_code ? String(order.delivery_code).trim() : null;
+      const expectedCode = storedCode || generateDVC(String(orderId));
 
-      if (String(dvcCode).trim() !== expectedCode) {
-        return jsonErr(res, 400,
-          'Incorrect delivery code. Ask the buyer to open their Orders page and share the code.'
-        );
-      }
+      if (String(dvcCode).trim() !== expectedCode)
+        return jsonErr(res, 400, 'Incorrect delivery code. Ask the buyer to open their Orders page and share it.');
 
-      /* ── Use stored split values (set at confirm time) ── */
-      const sellerPayout  = parseFloat(order.seller_payout  || 0);
-      const affiliateFee  = parseFloat(order.affiliate_fee  || 0);
+      const sellerPayout  = parseFloat(order.seller_payout || 0);
+      const affiliateFee  = parseFloat(order.affiliate_fee || 0);
       const collectedAt   = new Date().toISOString();
-
-      /* Determine seller ID — prefer passed sellerUserId, fall back to items */
-      let items = order.items;
-      if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-      if (!Array.isArray(items)) items = [];
+      const items         = safeJson(order.items, []);
 
       const resolvedSellerId = sellerUserId
         ? String(sellerUserId)
         : (items[0] && (items[0].sellerId || items[0].seller_id))
-          ? String(items[0].sellerId || items[0].seller_id)
-          : null;
+          ? String(items[0].sellerId || items[0].seller_id) : null;
 
-      /* ── Credit seller_balance ── */
       if (resolvedSellerId && sellerPayout > 0) {
         await sql`
-          UPDATE users
-          SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
+          UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
           WHERE id = ${resolvedSellerId}
         `;
       }
 
-      /* ── Credit affiliate if applicable ── */
       const affCode = order.aff_code ? String(order.aff_code).trim() : '';
       if (affCode.length > 2 && affiliateFee > 0) {
         try {
           await sql`
-            UPDATE users
-            SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
+            UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
             WHERE aff_code = ${affCode}
           `;
-        } catch (affErr) {
-          console.error('[payment dvc-release] Affiliate credit error (non-fatal):', affErr.message);
-        }
+        } catch (e) { console.error('[payment/dvc-release] affiliate (non-fatal):', e.message); }
       }
 
-      /* ── Mark order completed ── */
       await sql`
         UPDATE orders SET
           status       = 'completed',
@@ -461,109 +742,81 @@ module.exports = async function handler(req, res) {
         WHERE id = ${String(orderId)}
       `;
 
-      /* ── Record completion in admin_transactions ── */
-      await recordAdminTransaction({
-        orderId:      String(orderId),
-        total:        parseFloat(order.total || 0),
-        platformFee:  parseFloat(order.platform_fee || 0),
-        sellerPayout: sellerPayout,
-        affiliateFee: affiliateFee,
-        affCode:      affCode || null,
-        sellerId:     resolvedSellerId,
-        type:         'dvc_release'
+      await recordAdminTx({
+        orderId: String(orderId), total: parseFloat(order.total || 0),
+        platformFee: parseFloat(order.platform_fee || 0),
+        sellerPayout, affiliateFee, affCode: affCode || null,
+        sellerId: resolvedSellerId, type: 'dvc_release'
       });
 
-      console.log('[payment] DVC release — order', orderId,
-        '| seller ₦' + sellerPayout,
-        '| affiliate ₦' + affiliateFee
-      );
+      console.log('[payment/dvc-release]', orderId, '| seller ₦' + sellerPayout);
 
       return res.status(200).json({
-        ok:       true,
-        orderId,
-        released: sellerPayout,
-        message:  '✅ Delivery confirmed. ₦' + sellerPayout.toLocaleString() + ' released to your wallet.'
+        ok: true, orderId, released: sellerPayout,
+        message: '✅ Delivery confirmed. ₦' + sellerPayout.toLocaleString() + ' released to your wallet.'
       });
 
     } catch (err) {
-      console.error('[payment dvc-release]', err.message);
+      console.error('[payment/dvc-release]', err.message);
       return jsonErr(res, 500, 'DVC release failed.', err.message);
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      POST ?action=refund
-     Admin triggers a full Paystack refund for a disputed order.
-     Also marks the order 'refunded' in Neon.
+     Admin triggers full Paystack refund. Marks order 'refunded'.
      Body: { orderId, reference, amount }
-  ══════════════════════════════════════════════════════════════ */
-  if (req.method === 'POST' && action === 'refund') {
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'refund' && req.method === 'POST') {
     const { orderId, reference, amount } = req.body || {};
-    if (!orderId || !reference)
-      return jsonErr(res, 400, 'orderId and reference are required.');
-    if (!PSK)
-      return jsonErr(res, 500, 'PAYSTACK_SECRET_KEY not configured. Cannot issue refund.');
+    if (!orderId || !reference) return jsonErr(res, 400, 'orderId and reference are required.');
+    if (!PSK) return jsonErr(res, 500, 'PAYSTACK_SECRET_KEY not configured.');
 
     try {
       const body = { transaction: reference };
-      if (amount) body.amount = Math.round(parseFloat(amount) * 100); /* naira → kobo */
+      if (amount) body.amount = Math.round(parseFloat(amount) * 100);
 
       const r = await fetch('https://api.paystack.co/refund', {
-        method:  'POST',
-        headers: {
-          'Authorization': 'Bearer ' + PSK,
-          'Content-Type':  'application/json'
-        },
-        body: JSON.stringify(body)
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + PSK, 'Content-Type': 'application/json' },
+        body:   JSON.stringify(body)
       });
 
       let data;
-      try {
-        data = await r.json();
-      } catch(parseErr) {
-        return jsonErr(res, 502, 'Paystack returned non-JSON response. Check your dashboard.', parseErr.message);
-      }
+      try { data = await r.json(); }
+      catch (e) { return jsonErr(res, 502, 'Paystack returned non-JSON.', e.message); }
 
       if (!data.status)
-        return jsonErr(res, 400, 'Paystack refund failed: ' + (data.message || 'Unknown error'));
+        return jsonErr(res, 400, 'Paystack refund failed: ' + (data.message || 'Unknown'));
 
-      await sql`
-        UPDATE orders
-        SET status    = 'refunded',
-            collected = false
-        WHERE id = ${String(orderId)}
-      `;
+      await sql`UPDATE orders SET status = 'refunded', collected = false WHERE id = ${String(orderId)}`;
 
-      console.log('[payment] refund issued for', orderId, 'ref:', reference);
+      console.log('[payment/refund]', orderId, 'ref:', reference);
       return res.status(200).json({
-        ok:      true,
-        orderId,
-        message: 'Refund of ₦' + parseFloat(amount || 0).toLocaleString() + ' initiated via Paystack.'
+        ok: true, orderId,
+        message: 'Refund of ₦' + parseFloat(amount || 0).toLocaleString() + ' initiated.'
       });
 
     } catch (err) {
-      console.error('[payment refund]', err.message);
+      console.error('[payment/refund]', err.message);
       return jsonErr(res, 500, 'Refund failed.', err.message);
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      GET ?action=order&orderId=xxx
-     Returns full order data — drives download/confirm/DVC buttons.
-  ══════════════════════════════════════════════════════════════ */
-  if (req.method === 'GET' && action === 'order') {
-    const orderId = req.query.orderId;
-    if (!orderId) return jsonErr(res, 400, 'orderId required.');
-
+     Returns full order — drives download/DVC/confirm buttons.
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'order' && req.method === 'GET') {
     try {
-      const rows = await sql`
-        SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1
-      `;
+      const orderId = req.query.orderId;
+      if (!orderId) return jsonErr(res, 400, 'orderId required.');
+
+      const rows = await sql`SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
       if (!rows.length) return jsonErr(res, 404, 'Order not found: ' + orderId);
 
-      const r = rows[0];
-      let items = r.items;
-      if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+      const r     = rows[0];
+      const items = safeJson(r.items, []);
 
       return res.status(200).json({
         ok: true,
@@ -572,75 +825,64 @@ module.exports = async function handler(req, res) {
           userId:        r.user_id,
           status:        r.status,
           collected:     r.collected,
-          total:         parseFloat(r.total    || 0),
-          platformFee:   parseFloat(r.platform_fee   || 0),
-          sellerPayout:  parseFloat(r.seller_payout  || 0),
-          affiliateFee:  parseFloat(r.affiliate_fee  || 0),
+          total:         parseFloat(r.total         || 0),
+          platformFee:   parseFloat(r.platform_fee  || 0),
+          sellerPayout:  parseFloat(r.seller_payout || 0),
+          affiliateFee:  parseFloat(r.affiliate_fee || 0),
           affCode:       r.aff_code       || null,
-          items:         items || [],
+          items,
           ref:           r.ref            || '',
           deliveryCode:  r.delivery_code  || null,
           fileUrl:       r.file_url       || null,
           disputed:      r.disputed       || false,
           disputeReason: r.dispute_reason || null,
-          date:          r.date           || (r.created_at ? new Date(r.created_at).toLocaleDateString() : ''),
+          date:          r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : ''),
           createdAt:     r.created_at     || null
         }
       });
 
     } catch (err) {
-      console.error('[payment order]', err.message);
+      console.error('[payment/order GET]', err.message);
       return jsonErr(res, 500, 'Could not fetch order.', err.message);
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════════════════
      POST ?action=webhook
-     Paystack charge.success fallback webhook.
-     Primary webhook handler is /api/webhook.js (handles signature
-     verification via raw body). This route handles the legacy
-     ?action=webhook path that some Paystack dashboard configs use.
-     Sets order to 'escrow_held' if not already updated.
-     Webhook URL: https://neyo-market.vercel.app/api/payment?action=webhook
-  ══════════════════════════════════════════════════════════════ */
-  if (req.method === 'POST' && action === 'webhook') {
-    if (!PSK) {
-      console.warn('[payment webhook] PSK not set — signature check skipped');
-    } else {
-      const sig = req.headers['x-paystack-signature'] || '';
-      const expected = crypto
-        .createHmac('sha512', PSK)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-
+     Paystack charge.success fallback (primary handler is /api/webhook.js).
+     Sets order to 'escrow_held' on charge.success event.
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'webhook' && req.method === 'POST') {
+    if (PSK) {
+      const sig      = req.headers['x-paystack-signature'] || '';
+      const expected = crypto.createHmac('sha512', PSK)
+                             .update(JSON.stringify(req.body))
+                             .digest('hex');
       if (sig !== expected) {
-        console.warn('[payment webhook] Invalid signature — rejected');
+        console.warn('[payment/webhook] invalid signature');
         return res.status(200).json({ received: false, reason: 'invalid_signature' });
       }
     }
 
     const event = req.body || {};
     if (event.event === 'charge.success' || event.event === 'dedicated_virtual_account.success') {
-      const ref    = event.data && event.data.reference;
-      const amount = event.data && event.data.amount ? event.data.amount / 100 : 0;
+      const ref = event.data && event.data.reference;
       if (ref) {
         try {
           await sql`
-            UPDATE orders
-            SET status = 'escrow_held'
+            UPDATE orders SET status = 'escrow_held'
             WHERE ref = ${ref}
               AND status NOT IN ('paid','escrow_held','completed','refunded')
           `;
-          console.log('[payment webhook] charge.success:', ref, '₦' + amount);
+          console.log('[payment/webhook] charge.success:', ref);
         } catch (e) {
-          console.error('[payment webhook] DB error:', e.message);
+          console.error('[payment/webhook] DB error:', e.message);
         }
       }
     }
 
-    /* Always 200 — Paystack retries on non-2xx */
     return res.status(200).json({ received: true });
   }
 
-  return jsonErr(res, 405, 'Method not allowed. Use: confirm | dvc-release | refund | order | webhook');
+  return jsonErr(res, 405, 'Unknown action. Valid: orders | disputes | confirm | dvc-release | refund | order | webhook');
 };
