@@ -1984,7 +1984,7 @@ function loadAll() {
 
   /* Fetch live orders from Neon — always from DB, never from localStorage */
   if (CU) {
-    fetch('/api/orders?userId=' + encodeURIComponent(String(CU.id)))
+    fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
       .then(function(r){ return r.json(); })
       .then(function(data) {
         if (data && Array.isArray(data.orders)) {
@@ -2013,13 +2013,21 @@ function syncProductToAPI(product) {
 }
 
 function syncOrderToAPI(order) {
-  apiCall('/orders', 'POST', order).catch(function (e) {
+  fetch('/api/payment?action=orders', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(order)
+  }).catch(function (e) {
     console.warn('Order sync failed (saved locally):', e.message);
   });
 }
 
 function syncOrderUpdateToAPI(orderId, update) {
-  apiCall('/orders/' + orderId, 'PATCH', update).catch(function (e) {
+  fetch('/api/payment/' + String(orderId) + '?action=orders', {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(update)
+  }).catch(function (e) {
     console.warn('Order update sync failed:', e.message);
   });
 }
@@ -2044,7 +2052,7 @@ function runAutonomousCOO() {
   var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
 
   /* Fetch live orders from Neon so we don't rely on stale local cache */
-  fetch('/api/orders?userId=' + encodeURIComponent(String(CU.id)))
+  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var orders = data.orders || [];
@@ -3119,7 +3127,7 @@ function renderOrders() {
   list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem">⏳ Loading orders…</div>';
 
   /* Always fetch from DB — survives refresh */
-  fetch('/api/orders?userId=' + encodeURIComponent(String(CU.id)))
+  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var myOrders = data.orders || [];
@@ -3339,7 +3347,7 @@ function markDL(id) {
   saveAll();
 
   /* Sync to Neon — release escrow server-side */
-  fetch('/api/orders/' + id, {
+  fetch('/api/payment/' + String(id) + '?action=orders', {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
@@ -3412,12 +3420,11 @@ function disputeOrder(orderId) {
     if (!result.isConfirmed) return;
     var reason = result.value;
 
-    /* FIX: check response.ok before parsing — stops 'Unexpected token T' crash
-       when server returns HTML error page instead of JSON */
-    fetch('/api/orders/' + orderId, {
-      method:  'PATCH',
+    /* Saves dispute_reason to Neon via combined payment.js handler */
+    fetch('/api/payment?action=disputes', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ status: 'disputed', disputed: true, disputeReason: reason })
+      body:    JSON.stringify({ orderId: orderId, userId: CU ? String(CU.id) : null, reason: reason })
     })
     .then(function(r) {
       if (!r.ok) {
@@ -4824,7 +4831,7 @@ function aTab(tab, btn) {
   Promise.all([
     safeFetch('/api/products?admin=true'),
     safeFetch('/api/users'),
-    safeFetch('/api/orders')
+    safeFetch('/api/payment?action=orders&admin=true')
   ]).then(function(results) {
     var pData = results[0];
     var uData = results[1];
@@ -4835,9 +4842,6 @@ function aTab(tab, btn) {
     window.prods  = allProds;
     prods         = allProds;
     var allOrders = (oData && oData.orders) || [];
-    /* dummy nested-then closer to keep block structure */
-    (function(){
-    (function(){
 
     /* ─── OVERVIEW ─── */
     if (tab === 'ov') {
@@ -5202,7 +5206,7 @@ function aTab(tab, btn) {
         + '<div id="disputes-content"><div style="text-align:center;padding:30px;color:var(--muted)">⏳ Loading disputes…</div></div>';
 
       Promise.all([
-        fetch('/api/orders').then(function(r){ return r.json(); }),
+        fetch('/api/payment?action=orders&admin=true').then(function(r){ return r.json(); }),
         fetch('/api/users').then(function(r){ return r.json(); })
       ]).then(function(res) {
         var orders  = (res[0].orders  || []);
@@ -5304,8 +5308,8 @@ function aTab(tab, btn) {
         + '<button class="bg" style="padding:9px 22px;margin-top:4px" onclick="toast(\'Settings saved ✓\',\'ok\')">Save Settings</button>'
         + '</div>';
 
-    })(); /* close dummy user then */
-    })(); /* close dummy order then */
+    } /* end if/else tab chain */
+
   }).catch(function(e){
     console.error('[aTab] fetch error:', e.message);
     c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.88rem">Error loading dashboard data: '+e.message+'<br/><br/><button onclick="location.reload()" class="bg" style="padding:8px 16px">Retry</button></div>';
@@ -5450,7 +5454,7 @@ window.adminRefund = adminRefund;
 function adminRelease(orderId, userId, sellerAmount) {
   if (!confirm('Release ₦' + parseFloat(sellerAmount).toLocaleString() + ' to the seller? This marks the order complete.')) return;
 
-  fetch('/api/orders', {
+  fetch('/api/payment/' + String(orderId) + '?action=orders', {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ id: orderId, status: 'completed', collected: true })
