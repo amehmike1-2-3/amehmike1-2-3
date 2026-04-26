@@ -180,6 +180,83 @@ module.exports = async function handler(req, res) {
   const action = req.query.action || '';
 
   /* ══════════════════════════════════════════════════════════════════
+     USERS — GET ?action=users  (replaces /api/users which was deleted)
+     Admin: all users. Buyer/Seller: own record only.
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'users' && req.method === 'GET') {
+    try {
+      const userId  = req.query.userId;
+      const isAdmin = req.query.admin === 'true';
+      let rows;
+      if (isAdmin) {
+        rows = await sql`
+          SELECT id, name, email, role, phone,
+                 seller_balance, admin_balance, aff_code,
+                 kyc_status, kyc_type, is_verified,
+                 subaccount_code, created_at
+          FROM users ORDER BY created_at DESC LIMIT 500
+        `;
+      } else if (userId) {
+        rows = await sql`
+          SELECT id, name, email, role, phone,
+                 seller_balance, admin_balance, aff_code,
+                 kyc_status, kyc_type, is_verified,
+                 subaccount_code, created_at
+          FROM users WHERE id = ${String(userId)} LIMIT 1
+        `;
+      } else {
+        return jsonErr(res, 400, 'userId or ?admin=true required.');
+      }
+      const users = rows.map(function(r) {
+        return {
+          id:             r.id,
+          name:           r.name           || '',
+          email:          r.email          || '',
+          role:           r.role           || 'buyer',
+          phone:          r.phone          || '',
+          sellerBalance:  parseFloat(r.seller_balance || 0),
+          adminBalance:   parseFloat(r.admin_balance  || 0),
+          affCode:        r.aff_code       || null,
+          kycStatus:      r.kyc_status     || null,
+          kycType:        r.kyc_type       || null,
+          isVerified:     r.is_verified    || false,
+          subaccountCode: r.subaccount_code|| null,
+          createdAt:      r.created_at     || null
+        };
+      });
+      return res.status(200).json({ ok: true, users });
+    } catch (err) {
+      console.error('[payment/users GET]', err.message);
+      return jsonErr(res, 500, 'Could not fetch users.', err.message);
+    }
+  }
+
+  /* USERS — PATCH ?action=users  (approve KYC, update role, adjust balance) */
+  if (action === 'users' && req.method === 'PATCH') {
+    try {
+      const body = req.body || {};
+      if (!body.id) return jsonErr(res, 400, 'User id required.');
+      const uid         = String(body.id);
+      const newRole     = body.role          !== undefined ? String(body.role)               : null;
+      const newKyc      = body.kycStatus     !== undefined ? String(body.kycStatus)          : null;
+      const newVerified = body.isVerified    !== undefined ? Boolean(body.isVerified)        : null;
+      const newBalance  = body.sellerBalance !== undefined ? parseFloat(body.sellerBalance)  : null;
+      await sql`
+        UPDATE users SET
+          role           = COALESCE(${newRole},     role),
+          kyc_status     = COALESCE(${newKyc},      kyc_status),
+          is_verified    = COALESCE(${newVerified}, is_verified),
+          seller_balance = COALESCE(${newBalance},  seller_balance)
+        WHERE id = ${uid}
+      `;
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error('[payment/users PATCH]', err.message);
+      return jsonErr(res, 500, 'Could not update user.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
      ORDERS — GET ?action=orders
      ?userId=<id>   → buyer's own orders only
      ?admin=true    → all orders (admin only)
@@ -658,6 +735,50 @@ module.exports = async function handler(req, res) {
       });
 
       console.log('[payment/confirm]', orderId, '₦' + amount, '| status:', orderStatus);
+
+      /* ── Email buyer: order confirmation + download link (non-fatal) ──
+         Uses fetch to /api/auth?action=send-email so no extra dep needed.
+         Falls back gracefully if email service not configured.          */
+      const buyerEmail   = (customer && customer.email) ? String(customer.email) : '';
+      const buyerName    = (customer && customer.name)  ? String(customer.name)  : 'Valued Customer';
+      const productNames = itemList.map(function(i){ return i.name || 'Product'; }).join(', ');
+      const SITE         = process.env.SITE_URL || 'https://neyo-market.vercel.app';
+      if (buyerEmail) {
+        try {
+          const emailBody = [
+            '<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:20px">',
+            '<div style="background:#c9922a;padding:16px 20px;border-radius:8px 8px 0 0">',
+            '<h2 style="color:#fff;margin:0">NeyoMarket — Order Confirmed ✅</h2></div>',
+            '<div style="background:#f9fafb;padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">',
+            '<p>Hi <strong>' + buyerName + '</strong>,</p>',
+            '<p>Your order <strong>' + String(orderId) + '</strong> has been confirmed.</p>',
+            '<table style="width:100%;border-collapse:collapse;margin:12px 0">',
+            '<tr><td style="padding:6px 0;color:#6b7280">Items:</td><td style="padding:6px 0;font-weight:600">' + productNames + '</td></tr>',
+            '<tr><td style="padding:6px 0;color:#6b7280">Amount:</td><td style="padding:6px 0;font-weight:600">₦' + amount.toLocaleString() + '</td></tr>',
+            '<tr><td style="padding:6px 0;color:#6b7280">Status:</td><td style="padding:6px 0">' + (orderStatus === 'paid' ? '✅ Paid' : '🛡️ Escrow Held') + '</td></tr>',
+            '</table>',
+            isAllDigital && topFileUrl
+              ? '<div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin:14px 0"><p style="margin:0 0 8px;font-weight:700;color:#065f46">⬇️ Your Download Link</p><a href="' + topFileUrl + '" style="background:#059669;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700">Download Your Product</a><p style="margin:10px 0 0;font-size:.8rem;color:#6b7280">Link is also available in your Orders page on NeyoMarket.</p></div>'
+              : '<p>Track your order at: <a href="' + SITE + '">' + SITE + '</a></p>',
+            '<p style="color:#6b7280;font-size:.82rem;margin-top:20px">This is an automated email from NeyoMarket. Reply to this email if you need help.</p>',
+            '</div></body></html>'
+          ].join('');
+
+          /* Fire-and-forget — don't block the response */
+          fetch(SITE + '/api/auth?action=send-email', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              to:      buyerEmail,
+              subject: 'NeyoMarket — Order ' + String(orderId) + ' Confirmed ✅',
+              html:    emailBody
+            })
+          }).catch(function(e){ console.warn('[payment/confirm] email send (non-fatal):', e.message); });
+
+        } catch(emailErr) {
+          console.warn('[payment/confirm] email build error (non-fatal):', emailErr.message);
+        }
+      }
 
       return res.status(200).json({
         ok: true, orderId, amount,
