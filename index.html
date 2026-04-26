@@ -18,8 +18,10 @@
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://neyo-market.vercel.app/"/>
 <meta property="og:title" content="NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace"/>
-<meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers, 15–30% affiliate commissions. Zero scam guarantee."/>
+<meta property="og:description" content="Buy, sell, and earn on NeyoMarket. Escrow-protected payments, verified sellers. Zero scam guarantee."/>
 <meta property="og:image" content="https://neyo-market.vercel.app/og-image.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
 <meta property="og:site_name" content="NeyoMarket"/>
 <meta property="og:locale" content="en_NG"/>
 
@@ -2636,7 +2638,8 @@ function opn(id) {
         var isOnSale   = !!(p.isOnSale||p.is_on_sale);
         var discPrice  = parseFloat(p.discountPrice||p.discount_price||0);
         var saleEndsAt = p.saleEndsAt||p.sale_ends_at||null;
-        var saleActive = isOnSale && discPrice > 0 && discPrice < p.price && (!saleEndsAt || new Date(saleEndsAt) > new Date());
+        /* Show discount whenever discountPrice < price — no isOnSale flag required */
+        var saleActive = discPrice > 0 && discPrice < p.price && (!saleEndsAt || new Date(saleEndsAt) > new Date());
         var displayP   = saleActive ? discPrice : p.price;
         var saving     = saleActive ? Math.round(p.price-discPrice) : 0;
         return '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">'
@@ -2961,14 +2964,18 @@ function processPaystack(mode) {
   if (!name)  { toast('Please enter your full name to continue.', 'fail'); return; }
   if (isPhys && !addr) { toast('Please enter your delivery address.', 'fail'); return; }
 
-  /* Total = (discounted price + shipping) × qty */
+  /* Total = (discounted price + shipping) × qty
+     RULE: charge discount_price whenever it is set AND less than price,
+     regardless of isOnSale flag — matches the display logic on product cards */
   var total = 0;
   cart.forEach(function (i) {
-    var qty  = i.qty || 1;
-    var base = parseFloat(i.price || 0);
-    var disc = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0
-               ? parseFloat(i.discountPrice || i.discount_price)
-               : base;
+    var qty       = i.qty || 1;
+    var base      = parseFloat(i.price || 0);
+    var discVal   = parseFloat(i.discountPrice || i.discount_price || 0);
+    var saleEnds  = i.saleEndsAt || i.sale_ends_at || null;
+    var notExpired = !saleEnds || new Date(saleEnds) > new Date();
+    /* Use discount price if it exists, is less than base price, and not expired */
+    var disc = (discVal > 0 && discVal < base && notExpired) ? discVal : base;
     var ship = isPhys ? parseFloat(i.shippingFee || i.shipping_fee || 0) : 0;
     total += (disc + ship) * qty;
   });
@@ -3377,26 +3384,57 @@ function markDL(id) {
   })
   .catch(function(e){ console.warn('[markDL] Network error releasing escrow:', e.message); });
 
-  /* ── Step 2: open the file ── */
+  /* ── Step 2: Download the digital file ─────────────────────────
+     We fetch the URL as a blob and create an object URL.
+     This forces the browser to download the full original file
+     (multi-page PDF, ZIP, etc.) instead of previewing images.   */
   var downloaded = false;
-  o.items.forEach(function (item) {
-    var prod = (window.prods||[]).find(function (p) { return Number(p.id) === Number(item.id); });
-    if (prod) {
-      var url = prod.fileUrl || prod.file_url || item.fileUrl || item.file_url || '';
-      if (url && url.length > 10) {
-        var a = document.createElement('a');
-        a.href = url; a.download = prod.name + (prod.fileExt || '');
-        a.target = '_blank'; a.rel = 'noopener';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        downloaded = true;
-      }
+  o.items.forEach(function(item) {
+    var prod = (window.prods||[]).find(function(p){ return Number(p.id) === Number(item.id); });
+    var url  = (prod && (prod.fileUrl || prod.file_url)) || item.fileUrl || item.file_url || '';
+    if (!url || url.length < 10) return;
+
+    /* Determine filename with correct extension */
+    var ext      = (prod && prod.fileExt) ? String(prod.fileExt) : '';
+    var baseName = (prod && prod.name) ? String(prod.name) : (item.name || 'download');
+    /* Strip existing extension from baseName to avoid doubling */
+    if (ext && baseName.toLowerCase().endsWith(ext.toLowerCase())) {
+      baseName = baseName.slice(0, baseName.length - ext.length);
     }
+    var fileName = (baseName + ext).replace(/[^a-zA-Z0-9._\- ]/g, '_');
+
+    /* Fetch as blob so browser downloads full file, not just opens it */
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      })
+      .then(function(blob) {
+        var objectUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href     = objectUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        /* Revoke after short delay to free memory */
+        setTimeout(function(){ URL.revokeObjectURL(objectUrl); }, 10000);
+        toast('⬇️ Downloading: ' + (baseName || 'file') + ' — full file, not preview.', 'ok');
+      })
+      .catch(function(e) {
+        /* CORS fallback — open in new tab if blob fetch blocked */
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast('⬇️ Opening download in new tab.', 'ok');
+        console.warn('[markDL] blob fetch failed, opened tab:', e.message);
+      });
+
+    downloaded = true;
   });
 
   renderOrders();
-  toast(downloaded
-    ? '✅ Download started! Escrow released to seller 🎉'
-    : '✅ Escrow released! Contact seller for your download link.', 'ok');
+  if (!downloaded) {
+    toast('✅ Escrow released! Your download link will be emailed to you shortly.', 'ok');
+  }
 }
 window.markDL = markDL;
 
@@ -3779,7 +3817,7 @@ function refreshProf() {
   var av = document.getElementById('pav'); if (av) av.textContent = CU.name.charAt(0).toUpperCase();
   var pn = document.getElementById('p-name'); if (pn) pn.textContent = CU.name;
   /* Fetch latest balances from Neon on every profile load */
-  fetch('/api/users')
+  fetch('/api/payment?action=users&admin=true')
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var users = data.users || [];
@@ -4845,7 +4883,7 @@ function aTab(tab, btn) {
 
   Promise.all([
     safeFetch('/api/products?admin=true'),
-    safeFetch('/api/users'),
+    safeFetch('/api/payment?action=users&admin=true'),
     safeFetch('/api/payment?action=orders&admin=true')
   ]).then(function(results) {
     var pData = results[0];
@@ -5221,7 +5259,7 @@ function aTab(tab, btn) {
 
       Promise.all([
         fetch('/api/payment?action=orders&admin=true').then(function(r){ return r.json(); }),
-        fetch('/api/users').then(function(r){ return r.json(); })
+        fetch('/api/payment?action=users&admin=true').then(function(r){ return r.json(); })
       ]).then(function(res) {
         var orders  = (res[0].orders  || []);
         var users   = (res[1].users   || []);
@@ -5539,22 +5577,24 @@ function adminSetKYC(userId, status) {
   var label = status === 'verified' ? 'APPROVE' : 'REJECT';
   if (!confirm(label + ' KYC for this user? This will ' + (status === 'verified' ? 'unlock their seller features.' : 'block them from listing products.'))) return;
 
-  fetch('/api/auth?action=update-profile', {
-    method:  'POST',
+  fetch('/api/payment?action=users', {
+    method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ userId: userId, kycStatus: status })
+    body:    JSON.stringify({ id: userId, kycStatus: status })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0,100)); });
+    return r.json();
+  })
   .then(function(data) {
-    if (data.user || data.ok) {
+    if (data.ok) {
       toast(status === 'verified' ? '✅ KYC Approved — seller can now list products.' : '❌ KYC Rejected.', status === 'verified' ? 'ok' : 'warn');
-      /* Refresh KYC tab */
-      aTab('kyc', document.querySelector('.asb[onclick*="kyc"]'));
+      aTab('kyc', document.querySelector('.ads .asb[onclick*="kyc"]'));
     } else {
       toast(data.error || 'Update failed', 'fail');
     }
   })
-  .catch(function(){ toast('Network error — try again', 'fail'); });
+  .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
 }
 window.adminSetKYC = adminSetKYC;
 
@@ -5720,46 +5760,53 @@ window.startCountdownTicker = startCountdownTicker;
    Copies the clean ?prod=ID URL to clipboard.
 ════════════════════════════════════════════════════════ */
 function shareProduct(productId) {
-  /* FIX: cast to Number — prods array uses numeric IDs, callers may pass strings */
   var pid = Number(productId);
   var p   = (window.prods || []).find(function(x) { return Number(x.id) === pid; });
-
-  /* Fallback: try string match in case IDs are stored as strings */
   if (!p) p = (window.prods || []).find(function(x) { return String(x.id) === String(productId); });
+  if (!p) { toast('Could not find product to share. Try refreshing the page.', 'fail'); return; }
 
-  if (!p) {
-    toast('Could not find product to share. Try refreshing the page.', 'fail');
-    return;
-  }
-
-  var base  = window.location.origin + '/?prod=' + p.id;
-  var price = Number(p.discountPrice || p.discount_price || p.price);
-  var orig  = Number(p.price);
-  var onSale = !!(p.isOnSale || p.is_on_sale) && price < orig;
+  var base      = window.location.origin + '/?prod=' + p.id;
+  var price     = Number(p.discountPrice || p.discount_price || p.price);
+  var orig      = Number(p.price);
+  var onSale    = !!(p.isOnSale || p.is_on_sale) && price < orig;
   var priceLine = onSale
-    ? '\nWas: N' + orig.toLocaleString() + ' NOW: N' + price.toLocaleString() + ' FLASH SALE!'
-    : '\nPrice: N' + price.toLocaleString();
-  var delivery = p.type === 'digital' ? 'Instant Download' : 'Physical Delivery';
-  var msg = p.name + priceLine
-    + '\nSecure Escrow | ' + delivery
-    + '\n\n' + base
-    + '\n\nNeyoMarket Nigeria - Buy & Sell Safely';
+    ? '\nWas: \u20a6' + orig.toLocaleString() + ' NOW: \u20a6' + price.toLocaleString() + ' \uD83D\uDD25 FLASH SALE!'
+    : '\nPrice: \u20a6' + price.toLocaleString();
+  var desc    = (p.description || '').slice(0, 100) + (p.description && p.description.length > 100 ? '...' : '');
+  var imgUrl  = (p.imgs && p.imgs[0]) ? p.imgs[0] : (p.fileUrl || p.file_url || '');
 
-  /* Update OG meta dynamically so WhatsApp preview shows this product */
-  var og = function(prop, val) {
-    var el = document.querySelector('meta[property="' + prop + '"]');
+  /* ── Dynamic OG + Twitter meta update for WhatsApp/social preview ──
+     WhatsApp reads og:title, og:description, og:image at share time.
+     Updating these before window.open makes the preview show the product. */
+  var setMeta = function(sel, val) {
+    var el = document.querySelector(sel);
     if (el && val) el.setAttribute('content', val);
   };
-  og('og:title',       p.name + ' - NeyoMarket');
-  og('og:description', (p.description || 'Buy safely on NeyoMarket Nigeria').slice(0, 120));
-  og('og:url',         base);
-  if (p.imgs && p.imgs[0]) og('og:image', p.imgs[0]);
+  var productTitle = p.name + ' \u2014 NeyoMarket';
+  var productDesc  = '\u20a6' + price.toLocaleString() + (onSale ? ' (Sale!)' : '') + ' | ' + (desc || 'Buy safely on NeyoMarket Nigeria');
+
+  setMeta('meta[property="og:title"]',       productTitle);
+  setMeta('meta[property="og:description"]', productDesc);
+  setMeta('meta[property="og:url"]',         base);
+  setMeta('meta[property="og:image"]',       imgUrl || 'https://neyo-market.vercel.app/og-image.png');
+  setMeta('meta[property="og:type"]',        'product');
+  setMeta('meta[name="twitter:title"]',      productTitle);
+  setMeta('meta[name="twitter:description"]',productDesc);
+  setMeta('meta[name="twitter:image"]',      imgUrl || 'https://neyo-market.vercel.app/og-image.png');
+  /* Update page title so browser tab shows product name */
+  document.title = productTitle;
+
+  var msg = p.name + priceLine
+    + '\n\uD83D\uDEE1\uFE0F Escrow Protected | ' + (p.type === 'digital' ? 'Instant Download' : 'Physical Delivery')
+    + '\n\n' + base
+    + '\n\nNeyoMarket Nigeria \u2014 Buy & Sell Safely';
 
   if (navigator.clipboard) { navigator.clipboard.writeText(base).catch(function() {}); }
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
   toast('Sharing on WhatsApp! Product link copied.', 'ok');
 }
 window.shareProduct = shareProduct;
+
 
 /* ── Wire WA FAB support phone from env if available ── */
 (function() {
@@ -5838,7 +5885,7 @@ window.adminProcessWithdrawal = adminProcessWithdrawal;
 function loadAdminKYCPending() {
   var section = document.getElementById('kyc-pending-section');
   if (!section) return;
-  fetch('/api/users').then(function(r){ return r.json(); }).then(function(data) {
+  fetch('/api/payment?action=users&admin=true').then(function(r){ return r.json(); }).then(function(data) {
     var pending = (data.users||[]).filter(function(u){ return u.kycStatus === 'pending'; });
     if (!pending.length) {
       section.innerHTML = '<h3>🪪 Pending KYC Reviews</h3><div style="color:var(--muted);font-size:.84rem;padding:10px 0">✅ No pending KYC reviews.</div>';
@@ -5933,7 +5980,7 @@ function deleteUser(id) {
   var u = usrs.find(function(x){ return x.id === id; });
   if (!u) return;
   if (!confirm('DELETE account for ' + u.name + '?\n\nThis is PERMANENT and cannot be undone.')) return;
-  fetch('/api/users?userId=' + encodeURIComponent(String(id)), { method: 'DELETE' })
+  fetch('/api/payment?action=users&userId=' + encodeURIComponent(String(id)), { method: 'DELETE' })
     .then(function(r){ return r.json(); })
     .then(function(data) {
       if (data.ok) {
@@ -6356,7 +6403,7 @@ function loadWalletBalance() {
   var btnEl    = document.getElementById('wallet-withdraw-btn');
   if (!balEl) return;
 
-  fetch('/api/users')
+  fetch('/api/payment?action=users&admin=true')
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var u = (data.users||[]).find(function(x){ return String(x.id) === String(CU.id); });
@@ -6523,7 +6570,7 @@ function loadWithdrawBalance() {
   balEl.textContent = '⏳';
 
   /* Fetch fresh user data from Neon — gets real seller_balance */
-  fetch('/api/users')
+  fetch('/api/payment?action=users&admin=true')
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var u = (data.users||[]).find(function(x){ return String(x.id) === String(CU.id); });
