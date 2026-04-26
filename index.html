@@ -558,7 +558,8 @@ textarea.fi{resize:vertical;min-height:88px}
   top:var(--nh);
   height:calc(100vh - var(--nh));
   overflow-y:auto;
-  z-index:10;        /* above content, below modals */
+  z-index:50;
+  pointer-events:all;
 }
 @media(max-width:640px){
   .adl{flex-direction:column}
@@ -568,6 +569,7 @@ textarea.fi{resize:vertical;min-height:88px}
     padding:8px 6px;
     display:flex;flex-direction:row;flex-wrap:wrap;gap:4px;
     overflow-x:auto;overflow-y:hidden;
+    z-index:50;
   }
   .ads .asl{display:none}
 }
@@ -575,20 +577,25 @@ textarea.fi{resize:vertical;min-height:88px}
   flex:1;
   padding:20px 16px;
   overflow-y:auto;
-  min-width:0;       /* flex shrink fix */
+  min-width:0;
   position:relative;
   z-index:1;
+  pointer-events:all;
 }
 /* Sidebar group label */
 .asl{padding:4px 8px 4px 16px;font-size:.62rem;color:var(--muted2);
      text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:8px 0 2px;
      white-space:nowrap}
-/* Override asb to be full-width vertical in admin sidebar */
+/* Sidebar nav buttons — always on top and clickable */
 .ads .asb{
   display:block;width:100%;text-align:left;
-  border-bottom:none;border-left:3px solid transparent;
+  border:none;border-left:3px solid transparent;
   padding:9px 12px;border-radius:6px;font-size:.74rem;
-  margin-bottom:2px;
+  margin-bottom:2px;cursor:pointer;
+  background:none;color:var(--text);
+  position:relative;z-index:51;
+  pointer-events:all;
+  transition:background .15s;
 }
 .ads .asb.on{
   color:var(--gold);border-left-color:var(--gold);
@@ -2129,7 +2136,7 @@ function go(pageId) {
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
   if (pageId === 'aff')      { setTimeout(function() { if (typeof loadAffiliateLB === 'function') loadAffiliateLB(); }, 300); }
-  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.asb')); setTimeout(loadAdminKYCPending, 800); }
+  if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.ads .asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
     if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
     if (CU.role !== 'seller' && CU.role !== 'admin') {
@@ -4799,18 +4806,22 @@ window.updateBottomNav = updateBottomNav;
 
 /* ═══ ADMIN ═══ */
 function aTab(tab, btn) {
-  document.querySelectorAll('.asb').forEach(function(b) { b.classList.remove('on'); });
-  if (btn) btn.classList.add('on');
-  /* Mark active by tab name too so aTab(x, null) still highlights */
-  document.querySelectorAll('.asb').forEach(function(b) {
-    if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1) {
-      b.classList.add('on');
-    }
-  });
+  /* ── Highlight the clicked button FIRST — instant visual response ── */
+  document.querySelectorAll('.ads .asb').forEach(function(b) { b.classList.remove('on'); });
+  if (btn) {
+    btn.classList.add('on');
+  } else {
+    /* Called programmatically without a button reference — find by onclick */
+    document.querySelectorAll('.ads .asb').forEach(function(b) {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1) {
+        b.classList.add('on');
+      }
+    });
+  }
+
   var c = document.getElementById('adm-c');
   if (!c) return;
-
-  c.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading…</div>';
+  c.innerHTML = '<div style="padding:30px;color:var(--muted);text-align:center;font-size:.88rem">⏳ Loading ' + tab + '…</div>';
 
   /* ── FETCH GUARD: individual fetches wrapped so one failure never blocks all tabs ── */
   function safeFetch(url) {
@@ -4841,7 +4852,6 @@ function aTab(tab, btn) {
     var allOrders = (oData && oData.orders)   || [];
     window.prods  = allProds;
     prods         = allProds;
-    var allOrders = (oData && oData.orders) || [];
 
     /* ─── OVERVIEW ─── */
     if (tab === 'ov') {
