@@ -645,20 +645,24 @@ textarea.fi{resize:vertical;min-height:88px}
     display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
 .ov.open{display:flex;animation:fdin .2s ease}
 @keyframes fdin{from{opacity:0}to{opacity:1}}
-/* Product detail modal — image sticky at top, content scrolls below */
+/* Product detail modal — image at top, content scrolls below */
 .ms{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;
-    max-height:92vh;display:flex;flex-direction:column;overflow:hidden;
-    box-shadow:0 -4px 24px rgba(0,0,0,.12)}
-.mh{padding:14px 16px;border-bottom:1px solid var(--border);
+    max-height:94vh;display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 -4px 24px rgba(0,0,0,.18)}
+.mh{padding:12px 16px;border-bottom:1px solid #f1f5f9;
     display:flex;justify-content:space-between;align-items:center;background:#fff;
-    flex-shrink:0;position:sticky;top:0;z-index:10}
-.mh h3{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:var(--text)}
-.mx{color:var(--muted);font-size:1.2rem;cursor:pointer;background:none;border:none;padding:6px 10px}
-/* mb is the scrollable body — overflow-y:auto so content scrolls under sticky image */
-.mb{padding:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-.pdmi{width:100%;max-height:240px;object-fit:contain;background:#fff;
-      display:block;border-bottom:1px solid #f1f5f9;}
-.pdg{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding:8px 14px;
+    flex-shrink:0;z-index:10}
+.mh h3{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:#111827;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80%}
+.mx{color:#6b7280;font-size:1.3rem;cursor:pointer;background:none;border:none;
+    padding:4px 10px;flex-shrink:0}
+/* mb: scrollable body — image is FIRST child so it appears at top immediately on open */
+.mb{padding:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;scroll-behavior:auto}
+/* Product image — fills full width, white bg, never cropped, flex-shrink:0 so it never collapses */
+.pdmi{width:100%;height:220px;object-fit:contain;background:#fff;
+      display:block;border-bottom:1px solid #f1f5f9;flex-shrink:0}
+@media(max-width:400px){.pdmi{height:180px}}
+.pdg{display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding:8px 14px;
      background:#fff;border-bottom:1px solid #f1f5f9;flex-shrink:0}
 .pdg img{width:54px;height:54px;border-radius:4px;object-fit:contain;cursor:pointer;
          background:#fff;border:2px solid #e5e7eb;flex-shrink:0}
@@ -5945,7 +5949,14 @@ function deleteUser(id) {
 window.deleteUser = deleteUser;
 
 /* ═══ MODAL HELPERS ═══ */
-function oM(id) { var el = document.getElementById(id); if (el) el.classList.add('open'); }
+function oM(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  /* Always scroll the modal body back to top so image is first thing visible */
+  var body = el.querySelector('.mb');
+  if (body) { body.scrollTop = 0; }
+}
 function cM(id) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
 window.oM = oM; window.cM = cM;
 document.addEventListener('click', function (e) { if (e.target.classList.contains('ov')) e.target.classList.remove('open'); });
