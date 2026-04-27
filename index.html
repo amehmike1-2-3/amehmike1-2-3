@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1900,10 +1900,12 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 'use strict';
 
 /* ═══ CONSTANTS ═══ */
-/* Paystack public key — fetched from Vercel env var via /api/config
-   Falls back to the hardcoded key if the API is unavailable         */
-var PK = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
-fetch('/api/config').then(function(r){ return r.json(); }).then(function(d){ if(d && d.pk) PK = d.pk; }).catch(function(){});
+/* Paystack keys — switch between test and live by changing PK below.
+   Test key:  pk_test_...   (no real money, use card 4084084084084081)
+   Live key:  pk_live_...   (real payments)
+   No /api/config fetch needed — key is always available instantly.   */
+var PK            = 'pk_test_9405f98c7d44b2e8ee15a7b91dc9d5e4e5abe56c';  /* TEST MODE */
+var PK_LIVE       = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca'; /* switch when going live */
 var ADMIN_EMAIL   = 'admin@neyomarket.com';
 var ADMIN_PASS    = 'NEYO2026';
 var SUPPORT_PHONE = '+2349072212496';
@@ -2508,61 +2510,72 @@ function resetSell() {
 }
 
 /* ═══ PRODUCT GRID ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   mkCard(p) — builds one product card HTML string.
+   Standalone so renderHotDeals, rGrid, and any renderer can call it.
+═══════════════════════════════════════════════════════════════════ */
+function mkCard(p) {
+  var mi = (p.imgs && p.imgs[0])
+    ? '<img src="' + p.imgs[0] + '" alt="' + p.name + '"/>'
+    : '<div class="eph">' + (p.emoji || '\u{1F4E6}') + '</div>';
+  var tc = (p.type === 'digital' || p.type === 'course') ? 'dt' : 'pt';
+  var tl = p.type === 'digital' ? '\u26A1 Digital' : p.type === 'course' ? '\uD83C\uDF93 Course' : '\uD83D\uDCE6 Physical';
+
+  var discPrice    = parseFloat(p.discountPrice || p.discount_price || 0) || null;
+  var saleEnds     = p.saleEndsAt || p.sale_ends_at || null;
+  var hasDiscount  = discPrice && discPrice > 0 && discPrice < p.price;
+  var notExpired   = !saleEnds || new Date(saleEnds) > new Date();
+  var saleActive   = hasDiscount && notExpired;
+  var displayPrice = saleActive ? discPrice : p.price;
+  var saving       = saleActive ? Math.round(p.price - discPrice) : 0;
+  var savePct      = saleActive ? Math.round((saving / p.price) * 100) : 0;
+
+  var timerStr  = '';
+  var timerData = '';
+  if (saleActive && saleEnds) {
+    var diff = Math.max(0, new Date(saleEnds) - new Date());
+    if (diff > 0) {
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      timerStr  = (h > 0 ? h + 'h ' : '') + m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+      timerData = ' data-sale-ends="' + saleEnds + '" data-timer-id="t' + p.id + '"';
+    }
+  }
+
+  var verBadge = (p.sellerVerified || p.seller_verified)
+    ? '<span class="verified-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>' : '';
+  var trustBadge = (p.isVerified || p.is_verified)
+    ? '<span class="trust-badge">&#x2713; Trusted</span>' : '';
+
+  return '<div class="pcard" onclick="opn(' + p.id + ')"' + timerData + '>'
+    + '<div class="pci">' + mi
+    + (saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
+    + '<span class="pb2 ' + tc + '">' + tl + '</span>'
+    + '<span class="el">\uD83D\uDEE1 Escrow</span></div>'
+    + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + '</h4>'
+    + '<div class="pcs">by ' + p.seller + (p.reviews > 0 ? ' · \u2B50' + p.rating : '') + '</div>'
+    + (saleActive && saving > 0 ? '<div class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
+    + (timerStr ? '<div class="live-timer" id="t' + p.id + '"><span class="dot">&#x25CF;</span> <span>' + timerStr + '</span></div>' : '')
+    + '<div class="pcf"><div>'
+    + (saleActive ? '<span class="price-original">\u20a6' + p.price.toLocaleString() + '</span>' : '')
+    + '<span class="pcp' + (saleActive ? '" style="color:var(--red)' : '') + '">\u20a6' + displayPrice.toLocaleString() + '</span>'
+    + '</div>'
+    + (p.reviews > 0 ? '<span class="pcr">\u2B50' + p.rating + '</span>' : '<span style="font-size:.7rem;color:var(--muted)">New</span>')
+    + '</div><button class="addbtn" onclick="event.stopPropagation();addCart(' + p.id + ')">\uD83D\uDED2 Add to Cart</button></div></div>';
+}
+window.mkCard = mkCard;
+
+/* ════════════════════════════════════════════════════════════════
+   mkCard(p) — single product card HTML. Used by rGrid, renderHotDeals.
+════════════════════════════════════════════════════════════════ */
 function rGrid(cid, items) {
   var el = document.getElementById(cid); if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div class="eg"><div style="font-size:2.2rem;margin-bottom:10px">📦</div><p>No products yet. Be the first to list one!</p></div>'; return; }
-  el.innerHTML = items.map(function (p) {
-    var mi = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" alt="' + p.name + '"/>' : '<div class="eph">' + p.emoji + '</div>';
-    var tc = (p.type === 'digital' || p.type === 'course') ? 'dt' : 'pt';
-    var tl = p.type === 'digital' ? '⚡ Digital' : p.type === 'course' ? '🎓 Course' : '📦 Physical';
-
-    /* Sale / discount logic */
-    var isOnSale    = p.isOnSale || p.is_on_sale || false;
-    var discPrice   = parseFloat(p.discountPrice || p.discount_price || 0) || null;
-    var saleEnds    = p.saleEndsAt  || p.sale_ends_at  || null;
-    /* FIX: show discount whenever discountPrice exists AND is less than price,
-       regardless of whether isOnSale flag is set — sellers may forget to check it */
-    var hasDiscount = discPrice && discPrice > 0 && discPrice < p.price;
-    var notExpired  = !saleEnds || new Date(saleEnds) > new Date();
-    var saleActive  = hasDiscount && notExpired;
-    var displayPrice = saleActive ? discPrice : p.price;
-    var saving       = saleActive ? Math.round(p.price - discPrice) : 0;
-    var savePct      = saleActive ? Math.round((saving / p.price) * 100) : 0;
-
-    /* Sale timer string */
-    var timerStr = '';
-    if (saleActive && saleEnds) {
-      var diff = Math.max(0, new Date(saleEnds) - new Date());
-      var hrs  = Math.floor(diff / 3600000);
-      var mins = Math.floor((diff % 3600000) / 60000);
-      timerStr = hrs > 0 ? 'Ends in ' + hrs + 'h ' + mins + 'm' : 'Ends in ' + mins + 'm';
-    }
-
-    /* Verified badge */
-    var verBadge = (p.sellerVerified || p.seller_verified)
-      ? '<span class="verified-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>'
-      : '';
-    var trustBadge = (p.isVerified || p.is_verified)
-      ? '<span class="trust-badge">✓ Trusted</span>'
-      : '';
-
-    return '<div class="pcard" onclick="opn(' + p.id + ')">'
-      + '<div class="pci">' + mi
-      + (saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
-      + '<span class="pb2 ' + tc + '">' + tl + '</span>'
-      + '<span class="el">🛡 Escrow</span></div>'
-      + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + '</h4>'
-      + '<div class="pcs">by ' + p.seller + (p.reviews > 0 ? ' · ⭐' + p.rating : '') + '</div>'
-      + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ₦' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
-      + (timerStr ? '<div class="sale-timer">⏰ ' + timerStr + '</div>' : '')
-      + '<div class="pcf">'
-      + '<div>'
-      + (saleActive ? '<span class="price-original">₦' + p.price.toLocaleString() + '</span>' : '')
-      + '<span class="pcp' + (saleActive ? '" style="color:var(--red)' : '') + '">₦' + displayPrice.toLocaleString() + '</span>'
-      + '</div>'
-      + (p.reviews > 0 ? '<span class="pcr">⭐' + p.rating + '</span>' : '<span style="font-size:.7rem;color:var(--muted)">New</span>')
-      + '</div><button class="addbtn" onclick="event.stopPropagation();addCart(' + p.id + ')">🛒 Add to Cart</button></div></div>';
-  }).join('');
+  if (!items || !items.length) {
+    el.innerHTML = '<div class="eg"><div style="font-size:2.2rem;margin-bottom:10px">\uD83D\uDCE6</div><p>No products yet. Be the first to list one!</p></div>';
+    return;
+  }
+  el.innerHTML = items.map(mkCard).join('');
 }
 
 function fHome(el, cat) {
@@ -4886,11 +4899,14 @@ function aTab(tab, btn) {
     safeFetch('/api/payment?action=users&admin=true'),
     safeFetch('/api/payment?action=orders&admin=true')
   ]).then(function(results) {
-    var pData = results[0];
-    var uData = results[1];
-    var oData = results[2];
+    var pData     = results[0];
+    var uData     = results[1];
+    var oData     = results[2];
     var allProds  = (pData && pData.products) || [];
     var allUsers  = (uData && uData.users)    || [];
+    var allOrders = (oData && oData.orders)   || [];
+    window.prods  = allProds;
+    prods         = allProds;
     var allOrders = (oData && oData.orders)   || [];
     window.prods  = allProds;
     prods         = allProds;
@@ -5364,7 +5380,12 @@ function aTab(tab, btn) {
 
   }).catch(function(e){
     console.error('[aTab] fetch error:', e.message);
-    c.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.88rem">Error loading dashboard data: '+e.message+'<br/><br/><button onclick="location.reload()" class="bg" style="padding:8px 16px">Retry</button></div>';
+    if (c) c.innerHTML = '<div style="padding:30px;text-align:center">'
+      + '<div style="font-size:2rem;margin-bottom:12px">\u26A0\uFE0F</div>'
+      + '<p style="color:var(--text);font-weight:600;margin-bottom:8px">Could not load data</p>'
+      + '<p style="color:var(--muted);font-size:.82rem;margin-bottom:16px">' + e.message + '</p>'
+      + '<button onclick="aTab(\'' + tab + '\',this)" class="bg" style="padding:9px 22px">Retry</button>'
+      + '</div>';
   });
 }
 /* ════════════════════════════════════════════════
@@ -6403,40 +6424,44 @@ function loadWalletBalance() {
   var btnEl    = document.getElementById('wallet-withdraw-btn');
   if (!balEl) return;
 
-  fetch('/api/payment?action=users&admin=true')
-    .then(function(r){ return r.json(); })
+  /* Fetch only this user's own record — not the full admin list */
+  fetch('/api/payment?action=users&userId=' + encodeURIComponent(String(CU.id)))
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(data) {
-      var u = (data.users||[]).find(function(x){ return String(x.id) === String(CU.id); });
+      var u = (data.users && data.users[0]) || null;
       if (!u) return;
       var bal = parseFloat(u.sellerBalance || u.seller_balance || 0);
       CU.sellerBalance = bal;
       CU.kycStatus     = u.kycStatus || CU.kycStatus;
       localStorage.setItem('nm_current_user', JSON.stringify(CU));
 
-      if (balEl) balEl.textContent = '₦' + bal.toLocaleString();
+      if (balEl) balEl.textContent = '\u20A6' + bal.toLocaleString();
 
-      var kyc = CU.kycStatus === 'verified';
+      var kyc  = CU.kycStatus === 'verified';
       var canW = kyc && bal >= 2000;
 
       if (statusEl) {
         if (!kyc) {
-          statusEl.textContent = '⚠ KYC verification required to withdraw';
-          statusEl.style.color = 'rgba(255,200,0,.8)';
+          statusEl.textContent = '\u26A0 KYC verification required to withdraw';
+          statusEl.style.color  = 'rgba(255,200,0,.8)';
         } else if (bal < 2000) {
-          statusEl.textContent = 'Minimum ₦2,000 required to withdraw';
-          statusEl.style.color = 'rgba(255,255,255,.5)';
+          statusEl.textContent = 'Minimum \u20A62,000 required to withdraw';
+          statusEl.style.color  = 'rgba(255,255,255,.5)';
         } else {
-          statusEl.textContent = '✓ Ready to withdraw';
-          statusEl.style.color = 'rgba(45,212,170,.9)';
+          statusEl.textContent = '\u2713 Ready to withdraw';
+          statusEl.style.color  = 'rgba(45,212,170,.9)';
         }
       }
       if (btnEl) {
-        btnEl.disabled       = !canW;
-        btnEl.style.opacity  = canW ? '1' : '0.4';
-        btnEl.style.cursor   = canW ? 'pointer' : 'not-allowed';
+        btnEl.disabled      = !canW;
+        btnEl.style.opacity = canW ? '1' : '0.4';
+        btnEl.style.cursor  = canW ? 'pointer' : 'not-allowed';
       }
     })
-    .catch(function(){ if (balEl) balEl.textContent = '₦0'; });
+    .catch(function(){ if (balEl) balEl.textContent = '\u20A60'; });
 }
 window.loadWalletBalance = loadWalletBalance;
 
