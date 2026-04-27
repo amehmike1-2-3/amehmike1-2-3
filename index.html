@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://neyo-market.vercel.app/og-image.png"/>
 
 <!-- ═══ GOOGLE SITE VERIFICATION (replace with your code from Search Console) ═══ -->
-<meta name="google-site-verification" content="wxaYym-eCRT3wOttnqBl-btQ0Sk3puhWKUve3p0OZKU" />
+<meta name="google-site-verification" content="YOUR_GOOGLE_SEARCH_CONSOLE_VERIFICATION_CODE"/>
 
 <!-- ═══ STRUCTURED DATA — JSON-LD (Google Rich Results) ═══ -->
 <script type="application/ld+json">
@@ -1900,12 +1900,8 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 'use strict';
 
 /* ═══ CONSTANTS ═══ */
-/* Paystack keys — switch between test and live by changing PK below.
-   Test key:  pk_test_...   (no real money, use card 4084084084084081)
-   Live key:  pk_live_...   (real payments)
-   No /api/config fetch needed — key is always available instantly.   */
-var PK            = 'pk_test_9405f98c7d44b2e8ee15a7b91dc9d5e4e5abe56c';  /* TEST MODE */
-var PK_LIVE       = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca'; /* switch when going live */
+/* Paystack LIVE public key — backend uses PAYSTACK_SECRET_KEY from Vercel env vars */
+var PK            = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
 var ADMIN_EMAIL   = 'admin@neyomarket.com';
 var ADMIN_PASS    = 'NEYO2026';
 var SUPPORT_PHONE = '+2349072212496';
@@ -5388,6 +5384,9 @@ function aTab(tab, btn) {
       + '</div>';
   });
 }
+/* Expose aTab globally so onclick="aTab(...)" in HTML attributes always works.
+   Without this, the function is scoped inside the IIFE and not reachable. */
+window.aTab = aTab;
 /* ════════════════════════════════════════════════
    DELIVERY VERIFICATION CODE (DVC) SYSTEM
    Physical products only — buyer generates code,
