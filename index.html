@@ -3049,7 +3049,23 @@ function processPaystack(mode) {
         orderId:       trackId,
         userId:        CU ? String(CU.id) : '',
         sellerUserId:  sellerUserId || '',
-        items:         cart.map(function(i){ return { id: i.id, name: i.name, type: i.type, price: i.price, qty: i.qty || 1, emoji: i.emoji }; }),
+        /* FIX: include fileUrl + fileName from local prods so server can write it to the order */
+        items:         cart.map(function(i) {
+          var prod = (window.prods || []).find(function(p){ return Number(p.id) === Number(i.id); });
+          return {
+            id:       i.id,
+            name:     i.name,
+            type:     i.type,
+            price:    i.price,
+            qty:      i.qty || 1,
+            emoji:    i.emoji,
+            sellerId: i.sellerId || (prod && prod.sellerId) || null,
+            /* The actual downloadable file URL — NOT the product image */
+            fileUrl:  (prod && (prod.fileUrl || prod.file_url)) || null,
+            fileName: (prod && (prod.fileName || prod.file_name)) || null,
+            fileExt:  (prod && (prod.fileExt  || prod.file_ext))  || null
+          };
+        }),
         total:         total,
         customer:      { name: name, email: maskEmail(email), whatsapp: wa || '', address: addr || '' },
         mode:          mode,
@@ -3081,13 +3097,17 @@ function processPaystack(mode) {
           platformFee:  data.platformFee  || Math.round(total * 0.05),
           sellerPayout: data.sellerAmount || Math.round(total * 0.90),
           affiliateFee: data.affiliateFee || 0,
-          status:       'paid',
+          status:       data.status || 'paid',
           mode:         mode,
           date:         new Date().toLocaleDateString(),
-          collected:    false
+          collected:    false,
+          /* FIX: copy fileUrl from server response OR from the cart item's product
+             so the Download button shows immediately without a page refresh */
+          fileUrl:      data.fileUrl || (orderPayload.items[0] && (orderPayload.items[0].fileUrl || orderPayload.items[0].file_url)) || null
         };
         ords.push(order);
         cart = []; updBadge();
+        saveAll();  /* persist to localStorage so order survives refresh */
 
         /* Show receipt */
         var ri = document.getElementById('rec-id');
@@ -3182,12 +3202,10 @@ function renderOrders() {
         var actionBtn = '';
         var fileUrl = o.fileUrl || o.file_url || '';
         if (allDig && (isPaid || isDone)) {
-          /* PAID digital — download button persists on every refresh */
-          if (fileUrl) {
-            actionBtn = '<a href="' + fileUrl + '" target="_blank" class="dl-btn">⬇️ Download Product</a>';
-          } else {
-            actionBtn = '<button onclick="markDL(\'' + o.id + '\')" class="dl-btn">⬇️ Download Product</button>';
-          }
+          /* PAID digital — always call markDL() which uses blob force-download.
+             NEVER use a raw <a href> because that opens the image preview, not the file.
+             markDL() looks up file_url from the products table, not the order image. */
+          actionBtn = '<button onclick="markDL(\'' + o.id + '\')" class="dl-btn">⬇️ Download Product</button>';
         } else if (isDone) {
           actionBtn = '<div style="color:var(--green);font-size:.84rem;font-weight:600;margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:6px;text-align:center">✅ Order Complete</div>';
         } else if (isPhys && isPaid) {
@@ -3393,56 +3411,128 @@ function markDL(id) {
   })
   .catch(function(e){ console.warn('[markDL] Network error releasing escrow:', e.message); });
 
-  /* ── Step 2: Download the digital file ─────────────────────────
-     We fetch the URL as a blob and create an object URL.
-     This forces the browser to download the full original file
-     (multi-page PDF, ZIP, etc.) instead of previewing images.   */
+  /* ── Step 2: Resolve the correct file URL then force-download ──────
+     PRIORITY ORDER for file URL:
+       1. products table file_url  (the actual PDF/ZIP/document file)
+       2. item.fileUrl             (set by webhook when order was created)
+       3. order.file_url           (top-level fallback on order record)
+     We NEVER use product.imgs[0] — that is the preview image, not the file.
+     If not in local prods cache, fetch live from /api/products?id= first. */
   var downloaded = false;
-  o.items.forEach(function(item) {
-    var prod = (window.prods||[]).find(function(p){ return Number(p.id) === Number(item.id); });
+
+  function resolveAndDownload(prod, item) {
+    /* Strictly prefer the seller's uploaded FILE — not the product image */
     var url  = (prod && (prod.fileUrl || prod.file_url)) || item.fileUrl || item.file_url || '';
-    if (!url || url.length < 10) return;
-
-    /* Determine filename with correct extension */
-    var ext      = (prod && prod.fileExt) ? String(prod.fileExt) : '';
-    var baseName = (prod && prod.name) ? String(prod.name) : (item.name || 'download');
-    /* Strip existing extension from baseName to avoid doubling */
-    if (ext && baseName.toLowerCase().endsWith(ext.toLowerCase())) {
-      baseName = baseName.slice(0, baseName.length - ext.length);
+    /* Safety: if the url looks like an imgbb image preview (contains /image/) but
+       the product also has a separate file_url, prefer file_url */
+    if (!url || url.length < 10) {
+      toast('Download link not found. Contact the seller or support.', 'fail');
+      return;
     }
-    var fileName = (baseName + ext).replace(/[^a-zA-Z0-9._\- ]/g, '_');
 
-    /* Fetch as blob so browser downloads full file, not just opens it */
+    var ext      = '';
+    if (prod && prod.fileExt) {
+      ext = String(prod.fileExt);
+    } else {
+      /* Detect extension from URL */
+      var urlPath = url.split('?')[0];
+      var lastDot = urlPath.lastIndexOf('.');
+      if (lastDot > urlPath.lastIndexOf('/')) ext = urlPath.slice(lastDot);
+    }
+    var rawName  = (prod && prod.fileName) || (prod && prod.name) || item.name || 'download';
+    /* Remove any existing extension from name to avoid doubling */
+    if (ext && rawName.toLowerCase().endsWith(ext.toLowerCase())) {
+      rawName = rawName.slice(0, rawName.length - ext.length);
+    }
+    var fileName = (rawName + ext).replace(/[^a-zA-Z0-9._\- ]/g, '_');
+
+    /* Try blob fetch first — forces Save dialog on all devices */
     fetch(url)
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.blob();
       })
       .then(function(blob) {
-        var objectUrl = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href     = objectUrl;
-        a.download = fileName;
+        /* Use correct MIME type for PDF so it saves as PDF not binary */
+        var mimeBlob = blob;
+        if (ext.toLowerCase() === '.pdf' && blob.type !== 'application/pdf') {
+          mimeBlob = new Blob([blob], { type: 'application/pdf' });
+        }
+        var objectUrl = URL.createObjectURL(mimeBlob);
+        var a         = document.createElement('a');
+        a.href        = objectUrl;
+        a.download    = fileName;
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        /* Revoke after short delay to free memory */
-        setTimeout(function(){ URL.revokeObjectURL(objectUrl); }, 10000);
-        toast('⬇️ Downloading: ' + (baseName || 'file') + ' — full file, not preview.', 'ok');
+        setTimeout(function(){ URL.revokeObjectURL(objectUrl); }, 30000);
+        toast('⬇️ Downloading "' + rawName + '" — full file saved to your device.', 'ok');
+        downloaded = true;
       })
-      .catch(function(e) {
-        /* CORS fallback — open in new tab if blob fetch blocked */
-        window.open(url, '_blank', 'noopener,noreferrer');
-        toast('⬇️ Opening download in new tab.', 'ok');
-        console.warn('[markDL] blob fetch failed, opened tab:', e.message);
+      .catch(function(blobErr) {
+        console.warn('[markDL] Blob fetch failed:', blobErr.message, '— trying direct link');
+        /* Fallback: force download via hidden anchor with download attribute */
+        var a2        = document.createElement('a');
+        a2.href       = url;
+        a2.download   = fileName;
+        a2.target     = '_blank';
+        a2.rel        = 'noopener noreferrer';
+        a2.style.display = 'none';
+        document.body.appendChild(a2);
+        a2.click();
+        document.body.removeChild(a2);
+        toast('⬇️ Download started in new tab. If it shows a preview, use your browser Save option.', 'ok');
+        downloaded = true;
       });
+  }
 
-    downloaded = true;
+  /* Process each item — fetch product live from Neon if not in local cache */
+  var itemsToProcess = o.items || [];
+  var processed = 0;
+
+  itemsToProcess.forEach(function(item) {
+    var prod = (window.prods || []).find(function(p) {
+      return Number(p.id) === Number(item.id);
+    });
+
+    if (prod && (prod.fileUrl || prod.file_url)) {
+      /* Product in local cache and has a file URL — download immediately */
+      resolveAndDownload(prod, item);
+      processed++;
+    } else {
+      /* Not in cache or no fileUrl — fetch live from products API */
+      fetch('/api/products?id=' + Number(item.id))
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          var liveProd = data.product || null;
+          if (liveProd) {
+            /* Merge into local cache so next download is instant */
+            var idx = (window.prods || []).findIndex(function(p) {
+              return Number(p.id) === Number(item.id);
+            });
+            if (idx !== -1) { window.prods[idx] = liveProd; prods[idx] = liveProd; }
+            else { if (window.prods) window.prods.push(liveProd); }
+            resolveAndDownload(liveProd, item);
+          } else {
+            /* Product record missing — use whatever is on the order item */
+            resolveAndDownload(null, item);
+          }
+        })
+        .catch(function() {
+          /* API failed — try with whatever URLs exist on the item */
+          resolveAndDownload(null, item);
+        });
+      processed++;
+    }
   });
 
   renderOrders();
-  if (!downloaded) {
-    toast('✅ Escrow released! Your download link will be emailed to you shortly.', 'ok');
+  if (processed === 0) {
+    toast('No downloadable items found in this order. Contact support.', 'fail');
   }
 }
 window.markDL = markDL;
