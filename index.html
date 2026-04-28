@@ -3200,12 +3200,56 @@ function renderOrders() {
 
         /* Action button — tied to DB status, survives refresh */
         var actionBtn = '';
-        var fileUrl = o.fileUrl || o.file_url || '';
         if (allDig && (isPaid || isDone)) {
-          /* PAID digital — always call markDL() which uses blob force-download.
-             NEVER use a raw <a href> because that opens the image preview, not the file.
-             markDL() looks up file_url from the products table, not the order image. */
-          actionBtn = '<button onclick="markDL(\'' + o.id + '\')" class="dl-btn">⬇️ Download Product</button>';
+          /* Resolve file URL at render time — look in items first, then order top-level */
+          var rawFileUrl = '';
+          /* Priority 1: file URL stored on each item (set at checkout + webhook) */
+          for (var ii = 0; ii < o.items.length; ii++) {
+            var itm = o.items[ii];
+            var candidate = itm.fileUrl || itm.file_url || '';
+            /* Skip ImgBB image URLs that are just the preview thumbnail */
+            if (candidate && candidate.length > 10 &&
+                candidate.indexOf('/image/') === -1) {
+              rawFileUrl = candidate; break;
+            }
+            /* Accept any URL — prefer ones that look like real file downloads */
+            if (candidate && candidate.length > 10 && !rawFileUrl) {
+              rawFileUrl = candidate;
+            }
+          }
+          /* Priority 2: top-level order file_url */
+          if (!rawFileUrl) rawFileUrl = o.fileUrl || o.file_url || '';
+
+          /* Normalize URL for known hosting providers:
+             ImgBB  : /image/xxx  → already direct, use as-is
+             Google Drive : /file/d/ID/view → /uc?export=download&id=ID
+             Dropbox: ?dl=0 → ?dl=1
+             Direct : use as-is */
+          var cleanUrl = rawFileUrl;
+          if (cleanUrl) {
+            /* Google Drive viewer → direct download */
+            var gdMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+            if (gdMatch) {
+              cleanUrl = 'https://drive.google.com/uc?export=download&id=' + gdMatch[1];
+            }
+            /* Dropbox preview → direct download */
+            if (cleanUrl.indexOf('dropbox.com') !== -1) {
+              cleanUrl = cleanUrl.replace('?dl=0','?dl=1').replace('www.dropbox.com','dl.dropboxusercontent.com');
+            }
+          }
+
+          if (cleanUrl) {
+            /* Direct anchor with download + target="_blank":
+               - download attribute tells browser to save, not preview
+               - target="_blank" ensures it works on mobile browsers that ignore download
+               - rel="noopener" for security
+               NO blob fetch — avoids the CORS/redirect 98KB corrupted file bug */
+            actionBtn = '<a href="' + cleanUrl + '" download target="_blank" rel="noopener noreferrer" class="dl-btn" '
+              + 'onclick="markDLEscrow(\'' + o.id + '\')">⬇️ Download Product</a>';
+          } else {
+            /* File URL not in order yet — fetch live from products API */
+            actionBtn = '<button onclick="markDL(\'' + o.id + '\')" class="dl-btn">⬇️ Download Product</button>';
+          }
         } else if (isDone) {
           actionBtn = '<div style="color:var(--green);font-size:.84rem;font-weight:600;margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:6px;text-align:center">✅ Order Complete</div>';
         } else if (isPhys && isPaid) {
@@ -3361,17 +3405,20 @@ function markCol(id) {
 }
 window.markCol = markCol;
 
-function markDL(id) {
-  var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
+/* ════════════════════════════════════════════════════════════════
+   markDLEscrow — called by the onclick of the direct download anchor.
+   ONLY releases escrow server-side. Does NOT touch the file download.
+   The <a download> tag handles the actual file delivery directly.
+════════════════════════════════════════════════════════════════ */
+function markDLEscrow(id) {
+  var o = ords.find(function(x) { return x.id === id; });
+  if (!o || o.collected || o.status === 'completed') return; /* already done */
 
-  /* ── Step 1: trigger server-side escrow release BEFORE opening file ──
-     This is the critical fix — download must release funds to seller.
-     We call /api/orders/:id PATCH with the revenue split, then open file. */
-  var hasPhysical  = (o.items||[]).some(function(i){ return i.type==='physical'; });
-  var platformRate = hasPhysical ? 0.05 : 0.15;
-  var rawAff       = o.affCode || o.aff_code || null;
-  var buyerAff     = CU ? (CU.affCode || CU.aff_code) : null;
-  var validAff     = rawAff && rawAff.length > 2 && rawAff !== buyerAff;
+  var hasPhysical   = (o.items||[]).some(function(i){ return i.type==='physical'; });
+  var platformRate  = hasPhysical ? 0.05 : 0.15;
+  var rawAff        = o.affCode || o.aff_code || null;
+  var buyerAff      = CU ? (CU.affCode || CU.aff_code) : null;
+  var validAff      = rawAff && rawAff.length > 2 && rawAff !== buyerAff;
   var affiliateRate = validAff ? 0.05 : 0;
   var sellerRate    = 1 - platformRate - affiliateRate;
   var total         = parseFloat(o.total || 0);
@@ -3380,18 +3427,18 @@ function markDL(id) {
   var sellerPayout  = Math.round(total * sellerRate);
   var now           = new Date().toISOString();
 
-  /* Update local state immediately so UI refreshes */
-  o.collected  = true;
-  o.status     = 'completed';
-  o.completedAt = now;
-  o.platformFee = platformFee;
+  /* Update local state immediately */
+  o.collected    = true;
+  o.status       = 'completed';
+  o.completedAt  = now;
+  o.platformFee  = platformFee;
   o.sellerPayout = sellerPayout;
   o.affiliateFee = affiliateFee;
   if (!o.downloadLog) o.downloadLog = [];
   o.downloadLog.push({ time: now });
   saveAll();
 
-  /* Sync to Neon — release escrow server-side */
+  /* Fire-and-forget escrow release to server — does not block the download */
   fetch('/api/payment/' + String(id) + '?action=orders', {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -3407,132 +3454,92 @@ function markDL(id) {
   })
   .then(function(r){ return r.json(); })
   .then(function(data){
-    if (!data.ok) console.warn('[markDL] Server PATCH failed:', data.error);
+    if (!data.ok) console.warn('[markDLEscrow] Server PATCH failed:', data.error);
   })
-  .catch(function(e){ console.warn('[markDL] Network error releasing escrow:', e.message); });
+  .catch(function(e){ console.warn('[markDLEscrow] Network error:', e.message); });
 
-  /* ── Step 2: Resolve the correct file URL then force-download ──────
-     PRIORITY ORDER for file URL:
-       1. products table file_url  (the actual PDF/ZIP/document file)
-       2. item.fileUrl             (set by webhook when order was created)
-       3. order.file_url           (top-level fallback on order record)
-     We NEVER use product.imgs[0] — that is the preview image, not the file.
-     If not in local prods cache, fetch live from /api/products?id= first. */
-  var downloaded = false;
+  /* Refresh UI after a short delay so status badge updates */
+  setTimeout(function(){ renderOrders(); }, 800);
+}
+window.markDLEscrow = markDLEscrow;
 
-  function resolveAndDownload(prod, item) {
-    /* Strictly prefer the seller's uploaded FILE — not the product image */
-    var url  = (prod && (prod.fileUrl || prod.file_url)) || item.fileUrl || item.file_url || '';
-    /* Safety: if the url looks like an imgbb image preview (contains /image/) but
-       the product also has a separate file_url, prefer file_url */
-    if (!url || url.length < 10) {
-      toast('Download link not found. Contact the seller or support.', 'fail');
+/* ════════════════════════════════════════════════════════════════
+   markDL — fallback when the order doesn't have a file URL yet.
+   Fetches the product live from Neon, gets the direct file URL,
+   releases escrow, then triggers a direct anchor download.
+   NO blob fetch — avoids the CORS corrupted-file bug entirely.
+════════════════════════════════════════════════════════════════ */
+function markDL(id) {
+  var o = ords.find(function(x) { return x.id === id; });
+  if (!o) return;
+
+  /* Release escrow first */
+  markDLEscrow(id);
+
+  /* Find all items that need a file URL */
+  var items = o.items || [];
+  var triggered = 0;
+
+  function doDirectDownload(fileUrl, fileName) {
+    if (!fileUrl || fileUrl.length < 10) {
+      toast('No download file found. Contact support or the seller directly.', 'fail');
       return;
     }
-
-    var ext      = '';
-    if (prod && prod.fileExt) {
-      ext = String(prod.fileExt);
-    } else {
-      /* Detect extension from URL */
-      var urlPath = url.split('?')[0];
-      var lastDot = urlPath.lastIndexOf('.');
-      if (lastDot > urlPath.lastIndexOf('/')) ext = urlPath.slice(lastDot);
+    /* Normalize URL */
+    var url = fileUrl;
+    var gdMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+    if (gdMatch) url = 'https://drive.google.com/uc?export=download&id=' + gdMatch[1];
+    if (url.indexOf('dropbox.com') !== -1) {
+      url = url.replace('?dl=0','?dl=1').replace('www.dropbox.com','dl.dropboxusercontent.com');
     }
-    var rawName  = (prod && prod.fileName) || (prod && prod.name) || item.name || 'download';
-    /* Remove any existing extension from name to avoid doubling */
-    if (ext && rawName.toLowerCase().endsWith(ext.toLowerCase())) {
-      rawName = rawName.slice(0, rawName.length - ext.length);
-    }
-    var fileName = (rawName + ext).replace(/[^a-zA-Z0-9._\- ]/g, '_');
 
-    /* Try blob fetch first — forces Save dialog on all devices */
-    fetch(url)
-      .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.blob();
-      })
-      .then(function(blob) {
-        /* Use correct MIME type for PDF so it saves as PDF not binary */
-        var mimeBlob = blob;
-        if (ext.toLowerCase() === '.pdf' && blob.type !== 'application/pdf') {
-          mimeBlob = new Blob([blob], { type: 'application/pdf' });
-        }
-        var objectUrl = URL.createObjectURL(mimeBlob);
-        var a         = document.createElement('a');
-        a.href        = objectUrl;
-        a.download    = fileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(objectUrl); }, 30000);
-        toast('⬇️ Downloading "' + rawName + '" — full file saved to your device.', 'ok');
-        downloaded = true;
-      })
-      .catch(function(blobErr) {
-        console.warn('[markDL] Blob fetch failed:', blobErr.message, '— trying direct link');
-        /* Fallback: force download via hidden anchor with download attribute */
-        var a2        = document.createElement('a');
-        a2.href       = url;
-        a2.download   = fileName;
-        a2.target     = '_blank';
-        a2.rel        = 'noopener noreferrer';
-        a2.style.display = 'none';
-        document.body.appendChild(a2);
-        a2.click();
-        document.body.removeChild(a2);
-        toast('⬇️ Download started in new tab. If it shows a preview, use your browser Save option.', 'ok');
-        downloaded = true;
-      });
+    var a = document.createElement('a');
+    a.href     = url;
+    a.download = (fileName || 'download').replace(/[^a-zA-Z0-9._\- ]/g,'_');
+    a.target   = '_blank';
+    a.rel      = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast('⬇️ Download started! If prompted, tap "Save".', 'ok');
+    triggered++;
   }
 
-  /* Process each item — fetch product live from Neon if not in local cache */
-  var itemsToProcess = o.items || [];
-  var processed = 0;
+  items.forEach(function(item) {
+    /* Check local cache first */
+    var prod = (window.prods || []).find(function(p){ return Number(p.id) === Number(item.id); });
+    var url  = (prod && (prod.fileUrl || prod.file_url)) || item.fileUrl || item.file_url || '';
 
-  itemsToProcess.forEach(function(item) {
-    var prod = (window.prods || []).find(function(p) {
-      return Number(p.id) === Number(item.id);
-    });
-
-    if (prod && (prod.fileUrl || prod.file_url)) {
-      /* Product in local cache and has a file URL — download immediately */
-      resolveAndDownload(prod, item);
-      processed++;
+    if (url && url.indexOf('/image/') === -1 && url.length > 10) {
+      var name = (prod && (prod.fileName || prod.name)) || item.name || 'download';
+      doDirectDownload(url, name);
     } else {
-      /* Not in cache or no fileUrl — fetch live from products API */
+      /* Fetch live from Neon */
       fetch('/api/products?id=' + Number(item.id))
-        .then(function(r) {
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
+        .then(function(r){ return r.json(); })
         .then(function(data) {
-          var liveProd = data.product || null;
-          if (liveProd) {
-            /* Merge into local cache so next download is instant */
-            var idx = (window.prods || []).findIndex(function(p) {
-              return Number(p.id) === Number(item.id);
-            });
-            if (idx !== -1) { window.prods[idx] = liveProd; prods[idx] = liveProd; }
-            else { if (window.prods) window.prods.push(liveProd); }
-            resolveAndDownload(liveProd, item);
+          var lp = data.product;
+          if (lp) {
+            /* Update local cache */
+            var idx = (window.prods||[]).findIndex(function(p){ return Number(p.id)===Number(item.id); });
+            if (idx !== -1) { window.prods[idx] = lp; prods[idx] = lp; }
+            else if (window.prods) { window.prods.push(lp); }
+            var furl = lp.fileUrl || lp.file_url || item.fileUrl || item.file_url || '';
+            var fname = lp.fileName || lp.file_name || lp.name || item.name || 'download';
+            doDirectDownload(furl, fname);
           } else {
-            /* Product record missing — use whatever is on the order item */
-            resolveAndDownload(null, item);
+            doDirectDownload(item.fileUrl || item.file_url || '', item.name || 'download');
           }
         })
-        .catch(function() {
-          /* API failed — try with whatever URLs exist on the item */
-          resolveAndDownload(null, item);
+        .catch(function(){
+          doDirectDownload(item.fileUrl || item.file_url || '', item.name || 'download');
         });
-      processed++;
     }
   });
 
-  renderOrders();
-  if (processed === 0) {
-    toast('No downloadable items found in this order. Contact support.', 'fail');
+  if (items.length === 0) {
+    toast('No items found in this order. Contact support.', 'fail');
   }
 }
 window.markDL = markDL;
