@@ -3064,24 +3064,12 @@ function swImg(el, src) {
 }
 window.swImg = swImg;
 
-/* ═══ UNIVERSAL COPY FUNCTION — Works even when Clipboard API is blocked ═══ */
+/* ═══ UNIVERSAL COPY FUNCTION — FORCE FALLBACK (skip blocked Clipboard API) ═══ */
 function safeCopy(text, message) {
   message = message || 'Copied!';
   
-  // Try Clipboard API first
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text)
-      .then(function() {
-        toast(message, 'ok');
-      })
-      .catch(function(err) {
-        console.warn('[safeCopy] Clipboard API blocked, using fallback:', err);
-        copyFallback(text, message);
-      });
-  } else {
-    // Fallback for older browsers or blocked Clipboard API
-    copyFallback(text, message);
-  }
+  // SKIP Clipboard API - go straight to fallback to avoid permission violations
+  copyFallback(text, message);
 }
 
 function copyFallback(text, message) {
@@ -3094,6 +3082,7 @@ function copyFallback(text, message) {
   textarea.style.opacity = '0';
   textarea.style.left = '-9999px';
   textarea.style.top = '-9999px';
+  textarea.style.zIndex = '-9999';
   
   document.body.appendChild(textarea);
   
@@ -3106,14 +3095,15 @@ function copyFallback(text, message) {
     
     if (successful) {
       toast(message, 'ok');
-      console.log('[safeCopy] Fallback copy successful');
+      console.log('[safeCopy] Copy successful using execCommand');
     } else {
-      toast('Could not copy. Please try again.', 'error');
-      console.error('[safeCopy] execCommand returned false');
+      console.error('[safeCopy] execCommand returned false, showing manual copy');
+      toast('Copy this: ' + text, 'warn');
+      alert('Please copy this manually:\n\n' + text);
     }
   } catch (err) {
-    console.error('[safeCopy] Fallback error:', err);
-    alert('Please copy this manually: ' + text);
+    console.error('[safeCopy] Error:', err);
+    alert('Please copy this manually:\n\n' + text);
   } finally {
     document.body.removeChild(textarea);
   }
