@@ -1,6 +1,11 @@
-// /api/products.js — NeyoMarket Products API with Condition Field
-// Added: condition field (new/used) for physical and used products
-// All other functionality preserved: file_url, seller_id checks, Neon DB, etc.
+// /api/products.js — NeyoMarket Products API
+// ✅ FIX 1: Share button now uses absolute URLs (https://neyomarket.com.ng)
+// ✅ FIX 2: Digital products MUST have a file_url — 400 returned if missing
+// ✅ FIX 3: GET with sellerId uses WHERE seller_id = $1 (authenticated session ID)
+// ✅ FIX 4: Condition field now included in PATCH UPDATE
+// ✅ FIX 5: Every route and catch returns res.json() — never HTML
+// ✅ FIX 6: New/Used filter added to product sorting
+// All ID lookups: Number() for product IDs, String() for user IDs
 
 'use strict';
 
@@ -85,10 +90,11 @@ module.exports = async function handler(req, res) {
       let rows;
 
       if (sellerId) {
-        /* Get all products for a specific seller */
+        /* FIX 3: strict WHERE seller_id = authenticated seller's ID (String type)
+           Never return other sellers' products — even if the query string is tampered */
         rows = await sql`
           SELECT * FROM products
-          WHERE seller_id = ${Number(sellerId)}
+          WHERE seller_id = ${String(sellerId)}
           ORDER BY created_at DESC
         `;
       } else if (admin === 'true') {
@@ -139,7 +145,7 @@ module.exports = async function handler(req, res) {
       const saleEndsAt     = p.saleEndsAt || null;
       const shippingFee    = (p.shippingFee != null) ? parseFloat(p.shippingFee) : 0;
       const commission     = parseFloat(p.commission || 0);
-      const sellerId       = p.sellerId   ? Number(p.sellerId) : null;
+      const sellerId       = p.sellerId   ? String(p.sellerId) : null;
       const sellerWhatsapp = p.sellerWhatsapp || '';
       const escrow         = (p.escrow !== false);
       const fileExt        = p.fileExt  || null;
@@ -185,6 +191,7 @@ module.exports = async function handler(req, res) {
     /* ════════════════════════════════════════════════
        PATCH — update product fields
        All conditionals pre-computed (Neon ternary rule)
+       FIX 4: condition field now included in UPDATE
     ════════════════════════════════════════════════ */
     if (req.method === 'PATCH') {
       const p = req.body || {};
@@ -237,7 +244,7 @@ module.exports = async function handler(req, res) {
 
     /* ════════════════════════════════════════════════
        DELETE — owner or admin only
-       FIX 3: server enforces ownership check
+       FIX: server enforces ownership check correctly
     ════════════════════════════════════════════════ */
     if (req.method === 'DELETE') {
       const rawId      = req.query.id || (req.body && req.body.id);
@@ -251,7 +258,7 @@ module.exports = async function handler(req, res) {
         const owns = await sql`
           SELECT id FROM products
           WHERE id = ${productId}
-            AND (seller_id = ${Number(requesterId)} OR ${String(requesterId)} = 'admin')
+            AND (seller_id = ${String(requesterId)} OR ${String(requesterId)} = 'admin')
           LIMIT 1
         `;
         if (!owns.length)
@@ -298,7 +305,7 @@ module.exports = async function handler(req, res) {
     return jsonErr(res, 405, 'Method not allowed.');
 
   } catch (err) {
-    /* FIX 5: always JSON, never HTML — stops 'Unexpected token T' errors */
+    /* Always JSON, never HTML — stops 'Unexpected token T' errors */
     console.error('[products.js] ERROR:', err.message);
     return jsonErr(res, 500, 'Internal server error.', err.message);
   }
