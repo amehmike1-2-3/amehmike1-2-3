@@ -7334,27 +7334,37 @@ validateSell();
   var pid = params.get('p');
   if (pid) {
     var numId = parseInt(pid, 10);
-    // Show marketplace first so the modal has context
-    go('market');
     
-    // CRITICAL FIX: Wait for products to load before trying to find them
-    // Retry up to 20 times (5 seconds total) to let prods array populate
-    var retries = 0;
-    var findProduct = setInterval(function() {
-      retries++;
-      if (prods && prods.length > 0) {
-        clearInterval(findProduct);
-        var found = prods.find(function (x) { return x.id === numId; });
-        if (found) {
-          setTimeout(function() { opn(numId); }, 300);
+    /* CRITICAL FIX: Fetch products FIRST, THEN open the product */
+    fetch('/api/products')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.products && Array.isArray(data.products)) {
+          // Populate global prods array
+          window.prods = data.products;
+          prods = data.products;
+          console.log('[deeplink] Loaded', prods.length, 'products');
+          
+          // Now try to find and open the product
+          go('market');
+          setTimeout(function() {
+            var found = prods.find(function (x) { return x.id === numId; });
+            if (found) {
+              opn(numId);
+              console.log('[deeplink] Opened product:', numId);
+            } else {
+              console.error('[deeplink] Product not found:', numId);
+              toast('Product not found or has been removed.', 'warn');
+            }
+          }, 300);
         } else {
-          toast('Product not found or has been removed.', 'warn');
+          toast('Could not load products. Please refresh.', 'error');
         }
-      } else if (retries > 20) {
-        clearInterval(findProduct);
-        toast('Could not load product. Please try again.', 'error');
-      }
-    }, 250);
+      })
+      .catch(function(err) {
+        console.error('[deeplink fetch error]', err);
+        toast('Connection error. Please refresh and try again.', 'error');
+      });
   }
 })();
 
