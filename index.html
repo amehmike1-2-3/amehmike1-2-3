@@ -6299,24 +6299,54 @@ function showShareMenu(p) {
   var shareUrl  = 'https://neyomarket.com.ng/?p=' + p.id;
   var imgUrl    = (p.imgs && p.imgs[0]) ? p.imgs[0] : 'https://neyomarket.com.ng/og-image.png';
   
-  // Update OG tags for social crawlers
+  // CRITICAL: Ensure image URL is absolute (must start with https://)
+  if (imgUrl && !imgUrl.startsWith('http')) {
+    imgUrl = 'https://' + imgUrl.replace(/^\/+/, '');
+  }
+  
+  console.log('[share] Image URL being used:', imgUrl);
+  
+  // Update OG tags for social crawlers - IMMEDIATELY
   var setMeta = function(sel, val) {
     var el = document.querySelector(sel);
-    if (el && val) el.setAttribute('content', val);
+    if (!el) {
+      // Create meta tag if it doesn't exist
+      el = document.createElement('meta');
+      var parts = sel.match(/property="([^"]+)"|name="([^"]+)"/);
+      if (parts) {
+        if (parts[1]) el.setAttribute('property', parts[1]);
+        if (parts[2]) el.setAttribute('name', parts[2]);
+      }
+      document.head.appendChild(el);
+    }
+    if (el && val) {
+      el.setAttribute('content', val);
+      console.log('[share] Set', sel, '=', val);
+    }
   };
   
   var productTitle = p.name + ' | NeyoMarket';
   var productDesc  = '₦' + price.toLocaleString() + ' — ' + (desc || 'Buy safely on NeyoMarket Nigeria');
   
+  // Update ALL social meta tags
   setMeta('meta[property="og:title"]',       productTitle);
   setMeta('meta[property="og:description"]', productDesc);
   setMeta('meta[property="og:url"]',         shareUrl);
-  setMeta('meta[property="og:image"]',       imgUrl);
+  setMeta('meta[property="og:image"]',       imgUrl);  // ABSOLUTE URL HERE
+  setMeta('meta[property="og:image:url"]',   imgUrl);  // Some crawlers use this
+  setMeta('meta[property="og:image:secure_url"]', imgUrl);  // HTTPS version
   setMeta('meta[name="twitter:title"]',      productTitle);
   setMeta('meta[name="twitter:description"]',productDesc);
-  setMeta('meta[name="twitter:image"]',      imgUrl);
+  setMeta('meta[name="twitter:image"]',      imgUrl);  // ABSOLUTE URL HERE
   
   document.title = productTitle;
+  
+  console.log('[share] OG tags updated. Ready to share:', {
+    title: productTitle,
+    desc: productDesc,
+    url: shareUrl,
+    image: imgUrl
+  });
   
   // Create share menu modal
   var shareModal = document.createElement('div');
@@ -6349,9 +6379,13 @@ function showShareMenu(p) {
   var waLink = document.createElement('a');
   waLink.href = 'https://wa.me/?text=' + encodeURIComponent(waMsg);
   waLink.target = '_blank';
+  waLink.rel = 'noopener noreferrer';
   waLink.style.cssText = buttonStyle + ';color:#25d366;border:1px solid #25d366';
   waLink.innerHTML = '💬 <span>WhatsApp</span>';
-  waLink.onclick = function() { shareModal.remove(); };
+  waLink.onclick = function() { 
+    console.log('[share] Sharing to WhatsApp with image:', imgUrl);
+    shareModal.remove(); 
+  };
   buttonsDiv.appendChild(waLink);
   
   // Twitter
@@ -6359,6 +6393,7 @@ function showShareMenu(p) {
   var twLink = document.createElement('a');
   twLink.href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(twitterText);
   twLink.target = '_blank';
+  twLink.rel = 'noopener noreferrer';
   twLink.style.cssText = buttonStyle + ';color:#1DA1F2;border:1px solid #1DA1F2';
   twLink.innerHTML = '𝕏 <span>Twitter</span>';
   twLink.onclick = function() { shareModal.remove(); };
@@ -6368,6 +6403,7 @@ function showShareMenu(p) {
   var fbLink = document.createElement('a');
   fbLink.href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl);
   fbLink.target = '_blank';
+  fbLink.rel = 'noopener noreferrer';
   fbLink.style.cssText = buttonStyle + ';color:#1877F2;border:1px solid #1877F2';
   fbLink.innerHTML = '📘 <span>Facebook</span>';
   fbLink.onclick = function() { shareModal.remove(); };
