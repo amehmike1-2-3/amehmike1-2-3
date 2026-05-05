@@ -1181,6 +1181,8 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         <option value="pa">Price: Low to High</option>
         <option value="pd">Price: High to Low</option>
         <option value="r">Top Rated</option>
+        <option value="new">New Items</option>
+        <option value="used">Used Items</option>
       </select>
     </div>
     <div class="cats" id="mkt-cats">
@@ -2780,6 +2782,8 @@ function doSrt(v) {
   if (v === 'pa') s.sort(function (a, b) { return a.price - b.price; });
   else if (v === 'pd') s.sort(function (a, b) { return b.price - a.price; });
   else if (v === 'r') s.sort(function (a, b) { return b.rating - a.rating; });
+  else if (v === 'new') s = s.filter(function (p) { return (p.condition || '').toLowerCase() === 'new'; });
+  else if (v === 'used') s = s.filter(function (p) { return (p.condition || '').toLowerCase() === 'used'; });
   rGrid('mkt-grid', s);
 }
 window.doSrt = doSrt;
@@ -6257,7 +6261,7 @@ function shareProduct(productId) {
   if (!p) p = (window.prods || []).find(function(x) { return String(x.id) === String(productId); });
   if (!p) { toast('Could not find product to share. Try refreshing the page.', 'fail'); return; }
 
-  var base      = window.location.origin + '/?prod=' + p.id;
+  var base      = 'https://neyomarket.com.ng/?prod=' + p.id;
   var price     = Number(p.discountPrice || p.discount_price || p.price);
   var orig      = Number(p.price);
   var onSale    = !!(p.isOnSale || p.is_on_sale) && price < orig;
@@ -6267,15 +6271,16 @@ function shareProduct(productId) {
   var desc    = (p.description || '').slice(0, 100) + (p.description && p.description.length > 100 ? '...' : '');
   var imgUrl  = (p.imgs && p.imgs[0]) ? p.imgs[0] : (p.fileUrl || p.file_url || '');
 
-  /* ── Dynamic OG + Twitter meta update for WhatsApp/social preview ──
-     WhatsApp reads og:title, og:description, og:image at share time.
-     Updating these before window.open makes the preview show the product. */
+  /* ── CRITICAL: Dynamic OG + Twitter meta update for WhatsApp/social preview ──
+     WhatsApp reads og:title, og:description, og:image BEFORE share.
+     MUST use ABSOLUTE URLs (https://neyomarket.com.ng) for og:image.
+     Updates these metas so bot crawlers see product image, price, name correctly. */
   var setMeta = function(sel, val) {
     var el = document.querySelector(sel);
     if (el && val) el.setAttribute('content', val);
   };
-  var productTitle = p.name + ' \u2014 NeyoMarket';
-  var productDesc  = '\u20a6' + price.toLocaleString() + (onSale ? ' (Sale!)' : '') + ' | ' + (desc || 'Buy safely on NeyoMarket Nigeria');
+  var productTitle = p.name + ' | NeyoMarket';
+  var productDesc  = '\u20a6' + price.toLocaleString() + (onSale ? ' ⚡ FLASH SALE' : '') + ' — ' + (desc || 'Buy safely on NeyoMarket Nigeria');
 
   setMeta('meta[property="og:title"]',       productTitle);
   setMeta('meta[property="og:description"]', productDesc);
@@ -6285,6 +6290,7 @@ function shareProduct(productId) {
   setMeta('meta[name="twitter:title"]',      productTitle);
   setMeta('meta[name="twitter:description"]',productDesc);
   setMeta('meta[name="twitter:image"]',      imgUrl || 'https://neyomarket.com.ng/og-image.png');
+  
   /* Update page title so browser tab shows product name */
   document.title = productTitle;
 
