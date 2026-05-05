@@ -3063,6 +3063,63 @@ function swImg(el, src) {
 }
 window.swImg = swImg;
 
+/* ═══ UNIVERSAL COPY FUNCTION — Works even when Clipboard API is blocked ═══ */
+function safeCopy(text, message) {
+  message = message || 'Copied!';
+  
+  // Try Clipboard API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function() {
+        toast(message, 'ok');
+      })
+      .catch(function(err) {
+        console.warn('[safeCopy] Clipboard API blocked, using fallback:', err);
+        copyFallback(text, message);
+      });
+  } else {
+    // Fallback for older browsers or blocked Clipboard API
+    copyFallback(text, message);
+  }
+}
+
+function copyFallback(text, message) {
+  message = message || 'Copied!';
+  
+  // Create temporary textarea
+  var textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '-9999px';
+  
+  document.body.appendChild(textarea);
+  
+  try {
+    // Select and copy
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // For mobile
+    
+    var successful = document.execCommand('copy');
+    
+    if (successful) {
+      toast(message, 'ok');
+      console.log('[safeCopy] Fallback copy successful');
+    } else {
+      toast('Could not copy. Please try again.', 'error');
+      console.error('[safeCopy] execCommand returned false');
+    }
+  } catch (err) {
+    console.error('[safeCopy] Fallback error:', err);
+    alert('Please copy this manually: ' + text);
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+window.safeCopy = safeCopy;
+
 /* ═══ AFFILIATE LINK — product-specific, uses real GitHub Pages base URL ═══ */
 var SITE_BASE = 'https://neyomarket.com.ng/';
 
@@ -3070,12 +3127,7 @@ function cpyAffProd(id) {
   var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
   // Format: ?ref=AFFILIATE_ID&p=PRODUCT_ID  — deep-links directly to the product
   var link = SITE_BASE + '?ref=' + code + '&p=' + id;
-  navigator.clipboard.writeText(link)
-    .then(function () { toast('Affiliate link copied! 🔗', 'ok'); })
-    .catch(function () {
-      // Mobile fallback when clipboard API is blocked
-      prompt('Copy your affiliate link:', link);
-    });
+  safeCopy(link, 'Affiliate link copied! 🔗');
 }
 window.cpyAffProd = cpyAffProd;
 
@@ -4560,7 +4612,7 @@ function renderSellerPage() {
           + '<div style="font-size:.82rem;font-weight:600;margin-bottom:7px">' + p.emoji + ' ' + p.name.substring(0, 40) + '</div>'
           + '<div style="display:flex;gap:7px">'
           + '<input readonly value="' + link + '" style="flex:1;background:var(--dark);border:1px solid var(--border);color:var(--muted);padding:7px 10px;border-radius:7px;font-size:.72rem;outline:none;min-width:0"/>'
-          + '<button onclick="navigator.clipboard.writeText(\'' + link + '\').then(function(){toast(\'Link copied! 🔗\',\'ok\')})" style="background:var(--gold);color:var(--dark);border:none;padding:7px 13px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">Copy</button>'
+          + '<button onclick="safeCopy(\'' + link + '\', \'Link copied! 🔗\')" style="background:var(--gold);color:var(--dark);border:none;padding:7px 13px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">Copy</button>'
           + '</div></div>';
       }).join('');
     }
@@ -5209,7 +5261,7 @@ window.changePassword = changePassword;
 
 function cpyAff() {
   var v = document.getElementById('aff-l'); if (!v) return;
-  navigator.clipboard.writeText(v.value).then(function () { toast('Affiliate link copied! 🔗', 'ok'); }).catch(function () { toast('Copied!', 'ok'); });
+  safeCopy(v.value, 'Affiliate link copied! 🔗');
 }
 window.cpyAff = cpyAff;
 
@@ -6414,12 +6466,8 @@ function showShareMenu(p) {
   copyBtn.style.cssText = buttonStyle + ';color:#c9922a;border:1px solid #c9922a';
   copyBtn.innerHTML = '🔗 <span>Copy Link</span>';
   copyBtn.onclick = function() {
-    navigator.clipboard.writeText(shareUrl).then(function() {
-      toast('Link copied! 🔗', 'ok');
-      shareModal.remove();
-    }).catch(function() {
-      alert('Copy this link: ' + shareUrl);
-    });
+    safeCopy(shareUrl, 'Link copied! 🔗');
+    shareModal.remove();
   };
   buttonsDiv.appendChild(copyBtn);
   
@@ -7728,11 +7776,7 @@ function copyAffiliateLink() {
   try {
     var affData = JSON.parse(affCode);
     var shareUrl = 'https://neyomarket.com.ng/?ref=' + affData.code;
-    navigator.clipboard.writeText(shareUrl).then(function() {
-      toast('✅ Affiliate link copied!', 'ok');
-    }).catch(function(){
-      alert('Copy this link: ' + shareUrl);
-    });
+    safeCopy(shareUrl, '✅ Affiliate link copied!');
   } catch(e) {
     toast('Error copying link', 'err');
   }
