@@ -4088,6 +4088,42 @@ function doSignIn() {
     })
     .catch(function (apiErr) {
       restoreBtn();
+      
+      // ═══ EMAIL VERIFICATION REQUIRED ═══
+      if (apiErr.requiresVerification) {
+        if (err) err.textContent = apiErr.message;
+        var verMsg = document.createElement('div');
+        verMsg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+        
+        var verContent = document.createElement('div');
+        verContent.style.cssText = 'background:#fff;border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
+        
+        var icon = document.createElement('div');
+        icon.textContent = '⏳';
+        icon.style.cssText = 'font-size:60px;margin-bottom:16px';
+        verContent.appendChild(icon);
+        
+        var title = document.createElement('h2');
+        title.textContent = 'Email Not Verified Yet';
+        title.style.cssText = 'font-size:24px;font-weight:700;color:#0a0a1a;margin-bottom:12px;font-family:"Cormorant Garamond",serif';
+        verContent.appendChild(title);
+        
+        var msg = document.createElement('p');
+        msg.textContent = 'Please check your email for the verification link and click it to activate your account.';
+        msg.style.cssText = 'color:#4b5563;font-size:14px;line-height:1.6;margin-bottom:24px';
+        verContent.appendChild(msg);
+        
+        var btn1 = document.createElement('button');
+        btn1.textContent = '← Back to Sign In';
+        btn1.style.cssText = 'background:linear-gradient(135deg,#c9922a 0%,#a6741f 100%);color:#fff;border:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;width:100%;';
+        btn1.onclick = function() { verMsg.remove(); };
+        verContent.appendChild(btn1);
+        
+        verMsg.appendChild(verContent);
+        document.body.appendChild(verMsg);
+        return;
+      }
+      
       if (err) err.textContent = apiErr.message || 'Incorrect email or password.';
     });
 }
@@ -4115,6 +4151,62 @@ function doSignUp() {
   apiCall('/auth?action=register', 'POST', { name: name, email: email, phone: phone, role: role, password: pass, affCode: affCode })
     .then(function (data) {
       var u = data.user;
+      
+      // ═══ EMAIL VERIFICATION FLOW ═══
+      if (data.requiresVerification) {
+        // Show professional verification message
+        var verMsg = document.createElement('div');
+        verMsg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .3s ease-out';
+        
+        var verContent = document.createElement('div');
+        verContent.style.cssText = 'background:#fff;border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
+        
+        var icon = document.createElement('div');
+        icon.textContent = '📧';
+        icon.style.cssText = 'font-size:60px;margin-bottom:16px';
+        verContent.appendChild(icon);
+        
+        var title = document.createElement('h2');
+        title.textContent = 'Verify Your Email';
+        title.style.cssText = 'font-size:24px;font-weight:700;color:#0a0a1a;margin-bottom:12px;font-family:"Cormorant Garamond",serif';
+        verContent.appendChild(title);
+        
+        var msg = document.createElement('p');
+        msg.textContent = 'Success! We\'ve sent a verification link to ' + email + '. Please check your inbox to activate your account.';
+        msg.style.cssText = 'color:#4b5563;font-size:14px;line-height:1.6;margin-bottom:24px';
+        verContent.appendChild(msg);
+        
+        var tip = document.createElement('p');
+        tip.textContent = '💡 Tip: Check your spam folder if you don\'t see the email within a few minutes.';
+        tip.style.cssText = 'background:#fef3c7;border-left:4px solid #c9922a;padding:12px 16px;border-radius:4px;color:#92400e;font-size:12px;margin-bottom:24px;text-align:left';
+        verContent.appendChild(tip);
+        
+        var btn1 = document.createElement('button');
+        btn1.textContent = '✅ Continue';
+        btn1.style.cssText = 'background:linear-gradient(135deg,#c9922a 0%,#a6741f 100%);color:#fff;border:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;width:100%;transition:all .2s';
+        btn1.onclick = function() {
+          verMsg.remove();
+          go('home');
+          toast('You can log in once you verify your email.', 'ok');
+        };
+        verContent.appendChild(btn1);
+        
+        verMsg.appendChild(verContent);
+        document.body.appendChild(verMsg);
+        
+        // Also allow clicking background to close
+        verMsg.addEventListener('click', function(e) {
+          if (e.target === verMsg) {
+            verMsg.remove();
+            go('home');
+          }
+        });
+        
+        // Reset button
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Account 🚀'; }
+        return;
+      }
+      
       CU = u;
       var uStr = JSON.stringify(u);
       localStorage.setItem('nm_current_user', uStr);
