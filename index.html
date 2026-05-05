@@ -4234,13 +4234,9 @@ function doSignOut() {
 window.doSignOut = doSignOut;
 
 /* ═══════════════════════════════════════════════════════════════
-   EMAILJS PASSWORD RESET
-   ─────────────────────────────────────────────────────────────
-   PASTE YOUR 3 KEYS BELOW — get them from emailjs.com (free):
-   ─────────────────────────────────────────────────────────────
-   Service ID  → Dashboard → Email Services → your service
-   Template ID → Dashboard → Email Templates → your template
-   Public Key  → Dashboard → Account → General → Public Key
+   EMAILJS CONFIGURATION
+   ⚠️  DEPRECATED FOR PASSWORD RESET — now uses Brevo SMTP backend
+   Keep these keys only if EmailJS is used elsewhere in the app
    ═══════════════════════════════════════════════════════════════ */
 var EJ_SERVICE  = 'service_d2wut7b';
 var EJ_TEMPLATE = 'template_d32vaay';
@@ -4271,7 +4267,7 @@ function hideForgotPanel() {
 }
 window.hideForgotPanel = hideForgotPanel;
 
-/* ── sendResetEmail — fixed recipient passing ── */
+/* ── sendResetEmail — uses Brevo SMTP backend (not EmailJS) ── */
 function sendResetEmail() {
   var emailEl = document.getElementById('fp-email');
   var errEl   = document.getElementById('fp-err');
@@ -4293,95 +4289,49 @@ function sendResetEmail() {
     return;
   }
 
-  /* find user — always reload to guarantee master admin is present */
-  usrs = loadUsers();
-  var user = usrs.find(function (u) {
-    return u.email.trim().toLowerCase() === email;
-  });
-
-  if (!user) {
-    if (errEl) errEl.textContent = 'No NeyoMarket account found for that email. Check spelling or sign up.';
-    return;
-  }
-
-  /* generate a 10-char temp password */
-  var chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  var tempPass = '';
-  for (var i = 0; i < 10; i++) {
-    tempPass += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-
-  /* save temp password to account right now (local + API) */
-  user.password = tempPass;
-  var idx = usrs.findIndex(function (u) { return u.email.trim().toLowerCase() === email; });
-  if (idx > -1) { usrs[idx] = user; sv('nm_users', usrs); }
-  /* Sync password change to API */
-  apiCall('/auth?action=reset-password', 'POST', { email: email, tempPassword: tempPass }).catch(function(){});
-
   /* loading state */
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
 
-  /* ── LIVE MODE: use EmailJS REST API directly via fetch ──
-     This bypasses the "Allowed Origins" subscription limit
-     completely — no SDK origin check on the REST endpoint.    */
-  var templateParams = {
-    service_id:  EJ_SERVICE,
-    template_id: EJ_TEMPLATE,
-    user_id:     EJ_PUBLIC,
-    template_params: {
-      email:          email,
-      to_email:       email,
-      reply_to:       email,
-      to_name:        user.name || 'NeyoMarket User',
-      user_name:      user.name || 'NeyoMarket User',
-      temp_password:  tempPass,
-      login_url:      'https://neyomarket.com.ng/'
-    }
-  };
-
-  fetch('https://api.emailjs.com/api/v1.0/email/send', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(templateParams)
-  })
-  .then(function (res) {
-    if (res.ok || res.status === 200) {
-      /* ── SUCCESS ── */
+  /* ── NEW: Call backend /api/auth?action=reset-password endpoint ──
+     Backend will:
+     1. Check if email exists
+     2. Generate 32-byte reset token
+     3. Save token to database with 1-hour expiry
+     4. Send email via Brevo SMTP from support@neyomarket.com.ng
+     5. Return 200 success (email enumeration protected)
+  */
+  apiCall('/auth?action=reset-password', 'POST', { email: email })
+    .then(function (data) {
+      /* Success — show confirmation message */
       if (sucEl) {
         sucEl.style.display = 'block';
         if (sentEl) sentEl.textContent = 'Sent to: ' + maskEmail(email);
       }
-      if (btn)   { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
+      if (btn) { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
       if (errEl) errEl.textContent = '';
-      toast('Reset email sent! Check your inbox 📧', 'ok');
-    } else {
-      return res.text().then(function (txt) { throw new Error(txt || ('HTTP ' + res.status)); });
-    }
-  })
-  .catch(function (err) {
-    if (btn) { btn.disabled = false; btn.textContent = '📧 Try Again'; }
-    var detail = err && err.message ? err.message : String(err);
-
-    var msg = '';
-    if (detail.toLowerCase().includes('recipient') || detail.toLowerCase().includes('address') || detail.toLowerCase().includes('empty')) {
-      msg = 'Fix: In your EmailJS template → "To Email" field → set it to {{email}} → Save Template. Then try again.';
-    } else if (detail.toLowerCase().includes('service')) {
-      msg = 'Wrong Service ID. Double-check on EmailJS → Email Services.';
-    } else if (detail.toLowerCase().includes('template')) {
-      msg = 'Wrong Template ID. Double-check on EmailJS → Email Templates.';
-    } else if (detail.toLowerCase().includes('block') || detail.toLowerCase().includes('origin') || detail.toLowerCase().includes('limit')) {
-      msg = 'Origin blocked. Go to EmailJS → Account → Security → Allowed Origins → add https://neyomarket.com.ng';
-    } else {
-      msg = detail;
-    }
-
-    if (errEl) errEl.textContent = '❌ ' + msg;
-    toast('Email failed — see message above.', 'fail');
-  });
+      toast('Reset link sent! Check your inbox 📧', 'ok');
+      
+      /* Optional: Auto-hide after 5 seconds */
+      setTimeout(function() {
+        hideForgotPanel();
+      }, 5000);
+    })
+    .catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = '📧 Try Again'; }
+      var errMsg = err && err.message ? err.message : String(err);
+      
+      if (errEl) {
+        if (errMsg.includes('network') || errMsg.includes('Network')) {
+          errEl.textContent = 'Network error. Please check your connection and try again.';
+        } else {
+          errEl.textContent = errMsg || 'Failed to send reset email. Please try again.';
+        }
+      }
+    });
 }
 window.sendResetEmail = sendResetEmail;
 
-/* ── Keep old alias ── */
+/* ── Keep old alias for backward compatibility ── */
 function forgotPassword() { showForgotPanel(); }
 window.forgotPassword = forgotPassword;
 
