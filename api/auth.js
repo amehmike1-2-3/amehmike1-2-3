@@ -5,9 +5,31 @@
 const { neon } = require('@neondatabase/serverless');
 const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
+const nodemailer = require('nodemailer');
 
 const sql = neon(process.env.DATABASE_URL);
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+/* ════════════════════════════════════════════════════════
+   BREVO SMTP CONFIGURATION
+   Uses environment variables for security — credentials NOT hardcoded
+   Set these in Vercel Environment Variables:
+   - BREVO_SMTP_HOST
+   - BREVO_SMTP_PORT
+   - BREVO_SMTP_USER
+   - BREVO_SMTP_PASS
+════════════════════════════════════════════════════════ */
+const brevoTransporter = nodemailer.createTransport({
+  host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
+  port: parseInt(process.env.BREVO_SMTP_PORT) || 587,
+  secure: false, // TLS, not SSL
+  auth: {
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS
+  },
+  logger: false, // Set to true for debugging SMTP issues
+  debug: false
+});
 
 /* ════════════════════════════════════════════════════════
    IN-MEMORY RATE LIMITER
@@ -220,8 +242,88 @@ async function sendVerificationEmail(userEmail, userName, verificationToken) {
 }
 
 /* ════════════════════════════════════════════════════════
-   MAIN HANDLER
+   PASSWORD RESET EMAIL — via Brevo SMTP
+   Uses nodemailer to send from support@neyomarket.com.ng
 ════════════════════════════════════════════════════════ */
+async function sendPasswordResetEmail(userEmail, userName, resetLink) {
+  try {
+    const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+          .container { max-width: 600px; margin: 0 auto; background: #fff; }
+          .header { background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #fff; font-size: 32px; font-weight: 700; margin-bottom: 10px; font-family: 'Cormorant Garamond', serif; }
+          .header p { color: rgba(255,255,255,0.9); font-size: 14px; }
+          .content { padding: 40px 20px; color: #111827; }
+          .content h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #0a0a1a; }
+          .content p { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #4b5563; }
+          .cta-button { display: inline-block; background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; text-align: center; margin: 20px 0; }
+          .cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(201, 146, 42, 0.2); }
+          .footer { background: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+          .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #991b1b; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🛍️ NeyoMarket</h1>
+            <p>Nigeria's Secure Marketplace</p>
+          </div>
+          
+          <div class="content">
+            <h2>Password Reset Request 🔐</h2>
+            <p>Hi ${userName},</p>
+            <p>We received a request to reset the password for your NeyoMarket account. Click the button below to create a new password:</p>
+            
+            <a href="${resetLink}" class="cta-button">🔑 Reset Your Password</a>
+            
+            <p style="margin-top: 20px;">Or copy and paste this link in your browser:</p>
+            <p style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; color: #374151;">
+              ${resetLink}
+            </p>
+            
+            <div class="warning">
+              <strong>⚠️ Security Alert:</strong> This link will expire in 1 hour. If you didn't request a password reset, please ignore this email and your account will remain secure.
+            </div>
+            
+            <p style="margin-top: 20px; color: #6b7280; font-size: 13px;">
+              <strong>Need help?</strong> Contact our support team at support@neyomarket.com.ng
+            </p>
+          </div>
+          
+          <div class="footer">
+            <p>&copy; 2026 NeyoMarket. All rights reserved.</p>
+            <p>You're receiving this email because a password reset was requested for your account.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const info = await brevoTransporter.sendMail({
+      from: 'support@neyomarket.com.ng',
+      to: userEmail,
+      subject: '🔐 Password Reset - NeyoMarket',
+      html: emailContent,
+      replyTo: 'support@neyomarket.com.ng',
+    });
+
+    console.log('[Brevo SMTP] Password reset email sent to', userEmail, '- Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.error('[Brevo SMTP] Error sending password reset email:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   MAIN HANDLER
+   ════════════════════════════════════════════════════════ */
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -410,23 +512,97 @@ module.exports = async function handler(req, res) {
     /* ────────────────────────────────────────────────────
        RESET PASSWORD (admin sends temp password)
     ──────────────────────────────────────────────────── */
+    /* ────────────────────────────────────────────────────
+       RESET PASSWORD
+       UPDATED: Send reset link via Brevo SMTP email
+    ──────────────────────────────────────────────────── */
     if (action === 'reset-password') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
-      const { email, tempPassword } = req.body || {};
-      if (!email || !tempPassword)
-        return res.status(400).json({ error: 'Email and temporary password are required.' });
+      const { email } = req.body || {};
+      if (!email)
+        return res.status(400).json({ error: 'Email is required.' });
 
       const rows = await sql`
-        SELECT id FROM users WHERE LOWER(email) = LOWER(${email.trim()}) LIMIT 1
+        SELECT id, name, email FROM users WHERE LOWER(email) = LOWER(${email.trim()}) LIMIT 1
       `;
-      // Don't reveal whether email exists — always return 200
-      if (rows.length) {
-        const hash = await bcrypt.hash(tempPassword, 10);
-        await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${rows[0].id}`;
+
+      // Always return 200 to prevent email enumeration
+      if (!rows.length) {
+        return res.status(200).json({ 
+          ok: true,
+          message: 'If an account with this email exists, a password reset link has been sent.'
+        });
       }
 
-      return res.status(200).json({ ok: true });
+      const user = rows[0];
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const resetLink = `https://neyomarket.com.ng/reset-password.html?token=${resetToken}`;
+
+      // Save reset token in database
+      await sql`
+        UPDATE users 
+        SET reset_token = ${resetToken}, reset_token_expiry = ${tokenExpiry.toISOString()}
+        WHERE id = ${user.id}
+      `;
+
+      // Send password reset email via Brevo SMTP
+      const emailResult = await sendPasswordResetEmail(user.email, user.name, resetLink);
+
+      if (!emailResult.success) {
+        console.error('[reset-password] Email send failed:', emailResult.error);
+        return res.status(500).json({ 
+          error: 'Failed to send reset email. Please try again later.'
+        });
+      }
+
+      return res.status(200).json({ 
+        ok: true,
+        message: 'Password reset link has been sent to your email. Link expires in 1 hour.'
+      });
+    }
+
+    /* ────────────────────────────────────────────────────
+       CONFIRM PASSWORD RESET
+       NEW: Validate reset token and set new password
+    ──────────────────────────────────────────────────── */
+    if (action === 'confirm-password-reset') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+
+      const { token, newPassword } = req.body || {};
+      if (!token || !newPassword)
+        return res.status(400).json({ error: 'Token and new password are required.' });
+      if (newPassword.length < 8)
+        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+      const rows = await sql`
+        SELECT * FROM users 
+        WHERE reset_token = ${token}
+        AND reset_token_expiry > NOW()
+        LIMIT 1
+      `;
+
+      if (!rows.length) {
+        return res.status(400).json({ 
+          error: 'Invalid or expired password reset token. Please request a new reset link.'
+        });
+      }
+
+      const user = rows[0];
+      const hash = await bcrypt.hash(newPassword, 10);
+
+      // Update password and clear reset token
+      await sql`
+        UPDATE users 
+        SET password_hash = ${hash}, reset_token = NULL, reset_token_expiry = NULL
+        WHERE id = ${user.id}
+      `;
+
+      return res.status(200).json({
+        ok: true,
+        message: 'Password reset successfully! You can now log in with your new password.'
+      });
     }
 
     /* ────────────────────────────────────────────────────
