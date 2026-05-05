@@ -7313,7 +7313,7 @@ rGrid('home-grid', getActive().slice(0, 8));
 var hc = document.getElementById('hero-cnt'); if (hc) hc.textContent = getActive().length;
 validateSell();
 
-// ── Deep-link & affiliate URL param handling ──
+// ── Deep-link & affiliate URL param handling ── BULLETPROOF VERSION
 (function handleURLParams() {
   var params = new URLSearchParams(window.location.search);
 
@@ -7325,46 +7325,91 @@ validateSell();
       localStorage.setItem('nm_ref', JSON.stringify(refData));
       console.log('Referral saved:', ref);
     } catch(e) {
-      /* localStorage might be blocked — use sessionStorage fallback */
       try { sessionStorage.setItem('nm_ref_session', ref.trim()); } catch(e2) {}
     }
   }
 
-  // Deep-link: ?p=PRODUCT_ID  — open the product immediately
+  // Deep-link: ?p=PRODUCT_ID  — BULLETPROOF VERSION
   var pid = params.get('p');
   if (pid) {
-    var numId = parseInt(pid, 10);
+    var productId = String(pid).trim();
+    var numId = parseInt(productId, 10);
     
-    /* CRITICAL FIX: Fetch products FIRST, THEN open the product */
-    fetch('/api/products')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data && data.products && Array.isArray(data.products)) {
-          // Populate global prods array
-          window.prods = data.products;
-          prods = data.products;
-          console.log('[deeplink] Loaded', prods.length, 'products');
-          
-          // Now try to find and open the product
-          go('market');
-          setTimeout(function() {
-            var found = prods.find(function (x) { return x.id === numId; });
-            if (found) {
-              opn(numId);
-              console.log('[deeplink] Opened product:', numId);
-            } else {
-              console.error('[deeplink] Product not found:', numId);
-              toast('Product not found or has been removed.', 'warn');
-            }
-          }, 300);
-        } else {
-          toast('Could not load products. Please refresh.', 'error');
-        }
-      })
-      .catch(function(err) {
-        console.error('[deeplink fetch error]', err);
-        toast('Connection error. Please refresh and try again.', 'error');
+    console.log('[deeplink] Starting with pid:', productId, 'numId:', numId);
+    
+    // Navigate to marketplace
+    go('market');
+    
+    // Function to find and open product
+    function findAndOpenProduct() {
+      if (!prods || !Array.isArray(prods) || prods.length === 0) {
+        console.error('[deeplink] prods array is empty or undefined');
+        return false;
+      }
+      
+      // Try numeric match first
+      var found = prods.find(function(x) { 
+        return Number(x.id) === numId; 
       });
+      
+      // If not found, try string match
+      if (!found) {
+        found = prods.find(function(x) { 
+          return String(x.id) === productId; 
+        });
+      }
+      
+      // If still not found, try loose comparison
+      if (!found) {
+        found = prods.find(function(x) { 
+          return Number(x.id) == numId; 
+        });
+      }
+      
+      if (found) {
+        console.log('[deeplink] Found product:', found.id, found.name);
+        // Call opn with the found product's ID
+        opn(found.id);
+        return true;
+      } else {
+        console.error('[deeplink] Product not found in prods array. Available IDs:', prods.map(function(p) { return p.id; }));
+        return false;
+      }
+    }
+    
+    // Try immediately first
+    setTimeout(function() {
+      if (findAndOpenProduct()) return;
+      
+      // If not found, fetch products from API
+      console.log('[deeplink] Products not in memory, fetching from API...');
+      fetch('/api/products')
+        .then(function(r) { 
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json(); 
+        })
+        .then(function(data) {
+          console.log('[deeplink] API response:', data);
+          
+          if (data && data.products && Array.isArray(data.products)) {
+            window.prods = data.products;
+            prods = data.products;
+            console.log('[deeplink] Loaded', prods.length, 'products from API');
+            
+            // Now try to find and open
+            if (!findAndOpenProduct()) {
+              toast('This product is no longer available.', 'error');
+              console.error('[deeplink] Product still not found after API fetch');
+            }
+          } else {
+            throw new Error('Invalid API response structure');
+          }
+        })
+        .catch(function(err) {
+          console.error('[deeplink] Fatal error:', err.message);
+          toast('Could not load product. Please refresh and try again.', 'error');
+        });
+    }, 200);
   }
 })();
 
