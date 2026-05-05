@@ -1,11 +1,13 @@
-// /api/auth.js — NeyoMarket Authentication API
-// Features: login, register, reset-password, change-password,
-//           update-profile, kyc — all with rate limiting
+// /api/auth.js — NeyoMarket Authentication API with Brevo Email Verification
+// Features: login, register (with email verification via Brevo), reset-password, change-password,
+//           update-profile, kyc, verify-email — all with rate limiting
 
 const { neon } = require('@neondatabase/serverless');
 const bcrypt   = require('bcryptjs');
+const crypto   = require('crypto');
 
 const sql = neon(process.env.DATABASE_URL);
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 /* ════════════════════════════════════════════════════════
    IN-MEMORY RATE LIMITER
@@ -80,6 +82,7 @@ function toPublicUser(row) {
     phone:            row.phone             || '',
     role:             row.role              || 'buyer',
     affCode:          row.aff_code          || '',
+    isVerified:       row.is_verified       || false,
     joined:           row.joined ? new Date(row.joined).toLocaleDateString() : '',
     payoutBank:       row.payout_bank       || '',
     payoutAcct:       row.payout_acct       || '',
@@ -99,6 +102,123 @@ function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function generateVerificationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/* ════════════════════════════════════════════════════════
+   BREVO EMAIL SENDING
+════════════════════════════════════════════════════════ */
+async function sendVerificationEmail(userEmail, userName, verificationToken) {
+  if (!BREVO_API_KEY) {
+    console.error('[Brevo] API key not configured');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  const verificationLink = `https://neyomarket.com.ng/verify.html?token=${verificationToken}`;
+
+  const emailContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; }
+        .header { background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); padding: 40px 20px; text-align: center; }
+        .header h1 { color: #fff; font-size: 32px; font-weight: 700; margin-bottom: 10px; font-family: 'Cormorant Garamond', serif; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 14px; }
+        .content { padding: 40px 20px; color: #111827; }
+        .content h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #0a0a1a; }
+        .content p { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #4b5563; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; text-align: center; margin: 20px 0; }
+        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(201, 146, 42, 0.2); }
+        .footer { background: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+        .security-note { background: #fef3c7; border-left: 4px solid #c9922a; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #92400e; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🛍️ NeyoMarket</h1>
+          <p>Nigeria's Secure Marketplace</p>
+        </div>
+        
+        <div class="content">
+          <h2>Welcome, ${userName}! 👋</h2>
+          <p>Thank you for joining NeyoMarket, Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.</p>
+          
+          <p><strong>Verify Your Email Address</strong></p>
+          <p>To get started and unlock full marketplace access, please verify your email by clicking the button below:</p>
+          
+          <a href="${verificationLink}" class="cta-button">✅ Verify Your Email</a>
+          
+          <p style="margin-top: 20px;">Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; color: #374151;">
+            ${verificationLink}
+          </p>
+          
+          <div class="security-note">
+            <strong>🔒 Security Tip:</strong> This link will expire in 24 hours. If you didn't create this account, please ignore this email.
+          </div>
+          
+          <p style="margin-top: 20px; color: #6b7280; font-size: 13px;">
+            Need help? Contact our support team at support@neyomarket.com.ng
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p>&copy; 2026 NeyoMarket. All rights reserved.</p>
+          <p>You're receiving this email because you created an account on NeyoMarket.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'NeyoMarket',
+          email: 'noreply@neyomarket.com.ng',
+        },
+        to: [
+          {
+            email: userEmail,
+            name: userName,
+          },
+        ],
+        subject: '✅ Verify Your Email - NeyoMarket Account Activation',
+        htmlContent: emailContent,
+        replyTo: {
+          email: 'support@neyomarket.com.ng',
+          name: 'NeyoMarket Support',
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[Brevo] Email sent successfully to', userEmail);
+      return { success: true, messageId: data.messageId };
+    } else {
+      const error = await response.json();
+      console.error('[Brevo] Error:', error);
+      return { success: false, error: error.message || 'Failed to send email' };
+    }
+  } catch (err) {
+    console.error('[Brevo] Network error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 /* ════════════════════════════════════════════════════════
    MAIN HANDLER
 ════════════════════════════════════════════════════════ */
@@ -113,6 +233,7 @@ module.exports = async function handler(req, res) {
     /* ────────────────────────────────────────────────────
        LOGIN
        Rate limited: 5 attempts per IP+email per 15 minutes
+       UPDATED: Check is_verified flag
     ──────────────────────────────────────────────────── */
     if (action === 'login') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
@@ -152,6 +273,15 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: msg });
       }
 
+      // UPDATED: Check if email is verified
+      if (!user.is_verified) {
+        return res.status(403).json({ 
+          error: 'Please verify your account via email to continue.',
+          requiresVerification: true,
+          email: user.email
+        });
+      }
+
       if (user.suspended) {
         return res.status(403).json({ error: 'This account has been suspended. Contact support.' });
       }
@@ -163,6 +293,7 @@ module.exports = async function handler(req, res) {
 
     /* ────────────────────────────────────────────────────
        REGISTER
+       UPDATED: Generate verification token, send Brevo email, save with is_verified: false
     ──────────────────────────────────────────────────── */
     if (action === 'register') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
@@ -189,9 +320,11 @@ module.exports = async function handler(req, res) {
       const hash     = await bcrypt.hash(password, 10);
       const safeRole = ['buyer', 'seller', 'affiliate'].includes(role) ? role : 'buyer';
       const code     = 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase();
+      const verificationToken = generateVerificationToken();
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       const inserted = await sql`
-        INSERT INTO users (name, email, phone, role, password_hash, aff_code, joined)
+        INSERT INTO users (name, email, phone, role, password_hash, aff_code, is_verified, verification_token, token_expiry, joined)
         VALUES (
           ${name.trim()},
           ${email.trim().toLowerCase()},
@@ -199,11 +332,79 @@ module.exports = async function handler(req, res) {
           ${safeRole},
           ${hash},
           ${code},
+          false,
+          ${verificationToken},
+          ${tokenExpiry.toISOString()},
           NOW()
         )
         RETURNING *
       `;
-      return res.status(201).json({ user: toPublicUser(inserted[0]) });
+
+      // Send verification email via Brevo
+      const emailResult = await sendVerificationEmail(
+        inserted[0].email,
+        inserted[0].name,
+        verificationToken
+      );
+
+      if (!emailResult.success) {
+        console.error('[register] Email send failed:', emailResult.error);
+        // Still return success but notify user about email
+        return res.status(201).json({
+          user: toPublicUser(inserted[0]),
+          requiresVerification: true,
+          emailSent: false,
+          message: 'Account created but verification email could not be sent. Please contact support.'
+        });
+      }
+
+      return res.status(201).json({
+        user: toPublicUser(inserted[0]),
+        requiresVerification: true,
+        emailSent: true,
+        message: 'Account created! Verification email sent to ' + inserted[0].email
+      });
+    }
+
+    /* ────────────────────────────────────────────────────
+       VERIFY EMAIL
+       NEW: Verify token from URL, set is_verified = true
+    ──────────────────────────────────────────────────── */
+    if (action === 'verify-email') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+
+      const { token } = req.body || {};
+      if (!token)
+        return res.status(400).json({ error: 'Verification token is required.' });
+
+      const rows = await sql`
+        SELECT * FROM users 
+        WHERE verification_token = ${token}
+        AND token_expiry > NOW()
+        LIMIT 1
+      `;
+
+      if (!rows.length) {
+        return res.status(400).json({ 
+          error: 'Invalid or expired verification token. Please request a new one.'
+        });
+      }
+
+      const user = rows[0];
+
+      // Mark as verified
+      await sql`
+        UPDATE users 
+        SET is_verified = true, verification_token = NULL, token_expiry = NULL
+        WHERE id = ${user.id}
+      `;
+
+      const updated = await sql`SELECT * FROM users WHERE id = ${user.id} LIMIT 1`;
+      return res.status(200).json({
+        ok: true,
+        message: 'Email verified successfully! You can now log in.',
+        user: toPublicUser(updated[0])
+      });
     }
 
     /* ────────────────────────────────────────────────────
