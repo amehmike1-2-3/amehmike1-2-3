@@ -17,6 +17,7 @@ function toPublicUser(row) {
     phone:            row.phone             || '',
     role:             row.role              || 'buyer',
     affCode:          row.aff_code          || '',
+    isVerified:       row.is_verified       || false,
     joined:           row.joined ? new Date(row.joined).toLocaleDateString() : '',
     payoutBank:       row.payout_bank       || '',
     payoutAcct:       row.payout_acct       || '',
