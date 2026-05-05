@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<meta http-equiv="Permissions-Policy" content="clipboard-read=(self), clipboard-write=(self)"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 
 <!-- ═══ SEO META TAGS ═══ -->
@@ -3111,6 +3110,14 @@ function copyFallback(text, message) {
 
 window.safeCopy = safeCopy;
 
+function copyLinkButton(productId) {
+  var input = document.getElementById('link-' + productId);
+  if (input) {
+    safeCopy(input.value, 'Link copied! 🔗');
+  }
+}
+window.copyLinkButton = copyLinkButton;
+
 /* ═══ AFFILIATE LINK — product-specific, uses real GitHub Pages base URL ═══ */
 var SITE_BASE = 'https://neyomarket.com.ng/';
 
@@ -4602,8 +4609,8 @@ function renderSellerPage() {
         return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:9px">'
           + '<div style="font-size:.82rem;font-weight:600;margin-bottom:7px">' + p.emoji + ' ' + p.name.substring(0, 40) + '</div>'
           + '<div style="display:flex;gap:7px">'
-          + '<input readonly value="' + link + '" style="flex:1;background:var(--dark);border:1px solid var(--border);color:var(--muted);padding:7px 10px;border-radius:7px;font-size:.72rem;outline:none;min-width:0"/>'
-          + '<button onclick="safeCopy(\'' + link + '\', \'Link copied! 🔗\')" style="background:var(--gold);color:var(--dark);border:none;padding:7px 13px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">Copy</button>'
+          + '<input readonly value="' + link + '" style="flex:1;background:var(--dark);border:1px solid var(--border);color:var(--muted);padding:7px 10px;border-radius:7px;font-size:.72rem;outline:none;min-width:0" id="link-' + p.id + '"/>'
+          + '<button onclick="copyLinkButton(\'' + p.id + '\')" style="background:var(--gold);color:var(--dark);border:none;padding:7px 13px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">Copy</button>'
           + '</div></div>';
       }).join('');
     }
