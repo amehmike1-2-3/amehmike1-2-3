@@ -388,6 +388,13 @@ nav{
 ══════════════════════════════════════ */
 .pg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
 @media(min-width:900px){.pg{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}}
+
+/* Share Modal Animation */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 .pcard{background:#fff;border:1px solid var(--border);border-radius:var(--r);
        overflow:hidden;cursor:pointer;transition:var(--tr);box-shadow:var(--shadow);position:relative}
 .pcard:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
@@ -6259,51 +6266,139 @@ function shareProduct(productId) {
   var pid = Number(productId);
   var p   = (window.prods || []).find(function(x) { return Number(x.id) === pid; });
   if (!p) p = (window.prods || []).find(function(x) { return String(x.id) === String(productId); });
-  if (!p) { toast('Could not find product to share. Try refreshing the page.', 'fail'); return; }
+  
+  // If product not in memory, fetch it
+  if (!p) {
+    fetch('/api/products?id=' + productId)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.product) {
+          p = data.product;
+          showShareMenu(p);
+        } else {
+          toast('Product not found.', 'error');
+        }
+      })
+      .catch(function(err) {
+        toast('Could not load product details.', 'error');
+      });
+    return;
+  }
+  
+  showShareMenu(p);
+}
 
-  var base      = 'https://neyomarket.com.ng/?p=' + p.id;
+function showShareMenu(p) {
+  if (!p) {
+    toast('Product not found.', 'error');
+    return;
+  }
+
   var price     = Number(p.discountPrice || p.discount_price || p.price);
-  var orig      = Number(p.price);
-  var onSale    = !!(p.isOnSale || p.is_on_sale) && price < orig;
-  var priceLine = onSale
-    ? '\nWas: \u20a6' + orig.toLocaleString() + ' NOW: \u20a6' + price.toLocaleString() + ' \uD83D\uDD25 FLASH SALE!'
-    : '\nPrice: \u20a6' + price.toLocaleString();
-  var desc    = (p.description || '').slice(0, 100) + (p.description && p.description.length > 100 ? '...' : '');
-  var imgUrl  = (p.imgs && p.imgs[0]) ? p.imgs[0] : (p.fileUrl || p.file_url || '');
-
-  /* ── CRITICAL: Dynamic OG + Twitter meta update for WhatsApp/social preview ──
-     WhatsApp reads og:title, og:description, og:image BEFORE share.
-     MUST use ABSOLUTE URLs (https://neyomarket.com.ng) for og:image.
-     Updates these metas so bot crawlers see product image, price, name correctly. */
+  var desc      = (p.description || '').slice(0, 80) + (p.description && p.description.length > 80 ? '...' : '');
+  var shareUrl  = 'https://neyomarket.com.ng/?p=' + p.id;
+  var imgUrl    = (p.imgs && p.imgs[0]) ? p.imgs[0] : 'https://neyomarket.com.ng/og-image.png';
+  
+  // Update OG tags for social crawlers
   var setMeta = function(sel, val) {
     var el = document.querySelector(sel);
     if (el && val) el.setAttribute('content', val);
   };
+  
   var productTitle = p.name + ' | NeyoMarket';
-  var productDesc  = '\u20a6' + price.toLocaleString() + (onSale ? ' ⚡ FLASH SALE' : '') + ' — ' + (desc || 'Buy safely on NeyoMarket Nigeria');
-
+  var productDesc  = '₦' + price.toLocaleString() + ' — ' + (desc || 'Buy safely on NeyoMarket Nigeria');
+  
   setMeta('meta[property="og:title"]',       productTitle);
   setMeta('meta[property="og:description"]', productDesc);
-  setMeta('meta[property="og:url"]',         base);
-  setMeta('meta[property="og:image"]',       imgUrl || 'https://neyomarket.com.ng/og-image.png');
-  setMeta('meta[property="og:type"]',        'product');
+  setMeta('meta[property="og:url"]',         shareUrl);
+  setMeta('meta[property="og:image"]',       imgUrl);
   setMeta('meta[name="twitter:title"]',      productTitle);
   setMeta('meta[name="twitter:description"]',productDesc);
-  setMeta('meta[name="twitter:image"]',      imgUrl || 'https://neyomarket.com.ng/og-image.png');
+  setMeta('meta[name="twitter:image"]',      imgUrl);
   
-  /* Update page title so browser tab shows product name */
   document.title = productTitle;
-
-  var msg = p.name + priceLine
-    + '\n\uD83D\uDEE1\uFE0F Escrow Protected | ' + (p.type === 'digital' ? 'Instant Download' : 'Physical Delivery')
-    + '\n\n' + base
-    + '\n\nNeyoMarket Nigeria \u2014 Buy & Sell Safely';
-
-  if (navigator.clipboard) { navigator.clipboard.writeText(base).catch(function() {}); }
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
-  toast('Sharing on WhatsApp! Product link copied.', 'ok');
+  
+  // Create share menu modal
+  var shareModal = document.createElement('div');
+  shareModal.id = 'share-modal-temp';
+  shareModal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:9999;animation:slideUp .3s ease-out';
+  
+  var menuContent = document.createElement('div');
+  menuContent.style.cssText = 'background:#fff;width:100%;border-radius:16px 16px 0 0;padding:24px 16px 32px;box-shadow:0 -4px 12px rgba(0,0,0,.15);position:relative';
+  
+  // Close button
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#999;width:32px;height:32px';
+  closeBtn.onclick = function() { shareModal.remove(); };
+  menuContent.appendChild(closeBtn);
+  
+  // Title
+  var titleEl = document.createElement('h3');
+  titleEl.textContent = 'Share ' + p.name;
+  titleEl.style.cssText = 'font-size:1.1rem;font-weight:700;color:#111827;margin:0 0 16px;padding-right:32px';
+  menuContent.appendChild(titleEl);
+  
+  // Button container
+  var buttonsDiv = document.createElement('div');
+  
+  var buttonStyle = 'display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;text-decoration:none;color:inherit;border:none';
+  
+  // WhatsApp
+  var waMsg = 'Check out: ' + p.name + ' - ₦' + price.toLocaleString() + '\n\n' + shareUrl;
+  var waLink = document.createElement('a');
+  waLink.href = 'https://wa.me/?text=' + encodeURIComponent(waMsg);
+  waLink.target = '_blank';
+  waLink.style.cssText = buttonStyle + ';color:#25d366;border:1px solid #25d366';
+  waLink.innerHTML = '💬 <span>WhatsApp</span>';
+  waLink.onclick = function() { shareModal.remove(); };
+  buttonsDiv.appendChild(waLink);
+  
+  // Twitter
+  var twitterText = p.name + ' ₦' + price.toLocaleString() + ' on NeyoMarket ' + shareUrl;
+  var twLink = document.createElement('a');
+  twLink.href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(twitterText);
+  twLink.target = '_blank';
+  twLink.style.cssText = buttonStyle + ';color:#1DA1F2;border:1px solid #1DA1F2';
+  twLink.innerHTML = '𝕏 <span>Twitter</span>';
+  twLink.onclick = function() { shareModal.remove(); };
+  buttonsDiv.appendChild(twLink);
+  
+  // Facebook
+  var fbLink = document.createElement('a');
+  fbLink.href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl);
+  fbLink.target = '_blank';
+  fbLink.style.cssText = buttonStyle + ';color:#1877F2;border:1px solid #1877F2';
+  fbLink.innerHTML = '📘 <span>Facebook</span>';
+  fbLink.onclick = function() { shareModal.remove(); };
+  buttonsDiv.appendChild(fbLink);
+  
+  // Copy Link
+  var copyBtn = document.createElement('button');
+  copyBtn.style.cssText = buttonStyle + ';color:#c9922a;border:1px solid #c9922a';
+  copyBtn.innerHTML = '🔗 <span>Copy Link</span>';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(shareUrl).then(function() {
+      toast('Link copied! 🔗', 'ok');
+      shareModal.remove();
+    }).catch(function() {
+      alert('Copy this link: ' + shareUrl);
+    });
+  };
+  buttonsDiv.appendChild(copyBtn);
+  
+  menuContent.appendChild(buttonsDiv);
+  shareModal.appendChild(menuContent);
+  document.body.appendChild(shareModal);
+  
+  // Close on overlay click
+  shareModal.addEventListener('click', function(e) {
+    if (e.target === shareModal) shareModal.remove();
+  });
 }
+
 window.shareProduct = shareProduct;
+window.showShareMenu = showShareMenu;
 
 
 /* ── Wire WA FAB support phone from env if available ── */
