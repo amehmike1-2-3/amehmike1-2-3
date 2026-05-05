@@ -7336,13 +7336,23 @@ validateSell();
     var numId = parseInt(pid, 10);
     // Show marketplace first so the modal has context
     go('market');
-    // Small delay to let the page render before opening the modal
-    setTimeout(function () {
-      var found = prods.find(function (x) { return x.id === numId; });
-      if (found) {
-        opn(numId);
-      } else {
-        toast('Product not found or has been removed.', 'warn');
+    
+    // CRITICAL FIX: Wait for products to load before trying to find them
+    // Retry up to 20 times (5 seconds total) to let prods array populate
+    var retries = 0;
+    var findProduct = setInterval(function() {
+      retries++;
+      if (prods && prods.length > 0) {
+        clearInterval(findProduct);
+        var found = prods.find(function (x) { return x.id === numId; });
+        if (found) {
+          setTimeout(function() { opn(numId); }, 300);
+        } else {
+          toast('Product not found or has been removed.', 'warn');
+        }
+      } else if (retries > 20) {
+        clearInterval(findProduct);
+        toast('Could not load product. Please try again.', 'error');
       }
     }, 250);
   }
