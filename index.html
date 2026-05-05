@@ -6261,7 +6261,7 @@ function shareProduct(productId) {
   if (!p) p = (window.prods || []).find(function(x) { return String(x.id) === String(productId); });
   if (!p) { toast('Could not find product to share. Try refreshing the page.', 'fail'); return; }
 
-  var base      = 'https://neyomarket.com.ng/?prod=' + p.id;
+  var base      = 'https://neyomarket.com.ng/?p=' + p.id;
   var price     = Number(p.discountPrice || p.discount_price || p.price);
   var orig      = Number(p.price);
   var onSale    = !!(p.isOnSale || p.is_on_sale) && price < orig;
