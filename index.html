@@ -2338,40 +2338,17 @@ function onImgPick(e) {
   var slot = activeSlot;
   var sl = document.getElementById('sl-' + slot);
 
-  /* Show preview immediately using base64 */
   var r = new FileReader();
   r.onload = function (ev) {
     var base64 = ev.target.result;
-    sl.innerHTML = '<img src="' + base64 + '" alt=""/><div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff">Uploading…</div>';
+    sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
     sl.classList.add('filled');
-
-    /* Upload to ImgBB */
-    var formData = new FormData();
-    formData.append('image', base64.split(',')[1]);
-    fetch('https://api.imgbb.com/1/upload?key=b2c01e6615189dbcad9377d41098676e', {
-      method: 'POST',
-      body: formData
-    })
-    .then(function(res){ return res.json(); })
-    .then(function(data) {
-      if (data && data.data && data.data.url) {
-        uploadedImages[slot] = data.data.url;
-        sl.innerHTML = '<img src="' + data.data.url + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
-        validateSell();
-        toast('Image uploaded ✓', 'ok');
-      } else {
-        /* ImgBB failed — keep base64 as fallback */
-        uploadedImages[slot] = base64;
-        sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
-        validateSell();
-      }
-    })
-    .catch(function() {
-      /* Network error — keep base64 */
-      uploadedImages[slot] = base64;
-      sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
-      validateSell();
-    });
+    uploadedImages[slot] = base64;
+    validateSell();
+    toast('Image uploaded ✓', 'ok');
+  };
+  r.onerror = function() {
+    toast('Failed to read image. Try again.', 'fail');
   };
   r.readAsDataURL(f);
 }
@@ -4315,6 +4292,7 @@ function refreshProf() {
         CU.affiliateBalance = parseFloat(u.affiliateBalance || u.affiliate_balance || 0);
         CU.adminBalance     = parseFloat(u.adminBalance     || u.admin_balance     || 0);
         CU.kycStatus        = u.kycStatus || CU.kycStatus;
+        CU.isVerified       = u.is_verified || u.isVerified || false;
         localStorage.setItem('nm_current_user', JSON.stringify(CU));
         /* Update balance displays */
         var selBal  = document.getElementById('seller-earned');
