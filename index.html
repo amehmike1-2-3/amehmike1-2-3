@@ -1633,44 +1633,6 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         </button>
       </div>
 
-      <!-- Change Password -->
-      <div class="dc" style="margin-top:14px">
-        <h3>🔒 Change Password</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
-          Got a temporary password? Set your own personal password here.
-        </p>
-        <div class="fg">
-          <label>Current Password <span style="color:var(--red)">*</span></label>
-          <div style="position:relative">
-            <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
-            <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
-          </div>
-        </div>
-        <div class="fg">
-          <label>New Password <span style="color:var(--red)">*</span></label>
-          <div style="position:relative">
-            <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
-            <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
-            <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-            <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-            <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-            <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
-          </div>
-          <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
-        </div>
-        <div class="fg">
-          <label>Confirm New Password <span style="color:var(--red)">*</span></label>
-          <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
-        </div>
-        <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
-        <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
-          ✅ Password changed successfully! Use your new password next time you sign in.
-        </div>
-        <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
-      </div>
-
       <!-- KYC Verification -->
       <div class="dc" style="margin-top:14px">
         <h3>🪪 Identity Verification (KYC)</h3>
@@ -2298,6 +2260,9 @@ window.go = go;
    PSK is NEVER stored in code — sessionStorage only
    ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
+  /* Load Paystack public key from config or hardcode */
+  window.PK = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+  
   var logo = document.getElementById('nav-logo');
   if (!logo) return;
 
