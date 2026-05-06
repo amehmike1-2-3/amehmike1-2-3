@@ -4377,7 +4377,7 @@ function refreshProf() {
   /* Update Trusted Seller badge UI */
   var verifBtn    = document.getElementById('verif-btn');
   var verifStatus = document.getElementById('verif-status');
-  if (CU.isVerified === true || CU.is_verified === true) {
+  if (CU.isVerified === true) {
     if (verifBtn)    { verifBtn.textContent = '✓ Already Trusted'; verifBtn.disabled = true; verifBtn.style.opacity = '.6'; }
     if (verifStatus) verifStatus.textContent = '✓ Your Trusted badge is live on all listings';
   } else {
