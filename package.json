@@ -3,6 +3,5 @@
     "@neondatabase/serverless": "^0.10.0",
     "bcryptjs": "^2.4.3",
     "nodemailer": "^6.9.13",
-    "jsonwebtoken": "^9.1.0"
   }
 }
