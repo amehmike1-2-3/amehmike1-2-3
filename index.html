@@ -3989,7 +3989,6 @@ function payVerifFee() {
     toast('✅ You are already a Trusted Seller!', 'ok'); return;
   }
 
-  /* FIX: use PK which is already loaded from /api/config on startup */
   var pubKey = window.PK || PK || window.PAYSTACK_PUBLIC_KEY || window.PAYSTACK_PK || '';
   if (!pubKey || pubKey.length < 10) {
     toast('Payment gateway not ready. Please refresh the page and try again.', 'fail'); return;
@@ -4001,11 +4000,12 @@ function payVerifFee() {
   var handler = PaystackPop.setup({
     key:      pubKey,
     email:    CU.email,
-    amount:   200000,          /* ₦2,000 in kobo */
+    amount:   200000,
     currency: 'NGN',
     ref:      'VERIF-' + CU.id + '-' + Date.now(),
     metadata: { userId: String(CU.id), type: 'verification_fee' },
     callback: function(response) {
+      /* CRITICAL: Only verify seller AFTER payment success */
       fetch('/api/auth?action=verify-seller', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4018,10 +4018,10 @@ function payVerifFee() {
           var idx = usrs.findIndex(function(u){ return String(u.id) === String(CU.id); });
           if (idx !== -1) usrs[idx].isVerified = true;
           sv('nm_users', usrs);
-          toast('🎉 You are now a ✓ Trusted Seller! Badge is live on all your listings.', 'ok');
+          toast('🎉 Payment confirmed! You are now a ✓ Trusted Seller! Badge is live on all your listings.', 'ok');
           refreshProf();
         } else {
-          toast('Payment received but badge update failed. Contact support with ref: ' + response.reference, 'fail');
+          toast('❌ ' + (data.error || 'Verification failed after payment'), 'fail');
         }
       })
       .catch(function(e){ toast('Network error: ' + e.message, 'fail'); });
@@ -4377,7 +4377,7 @@ function refreshProf() {
   /* Update Trusted Seller badge UI */
   var verifBtn    = document.getElementById('verif-btn');
   var verifStatus = document.getElementById('verif-status');
-  if (CU.isVerified === true) {
+  if (CU.isVerified || CU.is_verified) {
     if (verifBtn)    { verifBtn.textContent = '✓ Already Trusted'; verifBtn.disabled = true; verifBtn.style.opacity = '.6'; }
     if (verifStatus) verifStatus.textContent = '✓ Your Trusted badge is live on all listings';
   } else {
