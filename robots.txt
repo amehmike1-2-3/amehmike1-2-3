@@ -1,16 +1,10 @@
 # NeyoMarket Official - robots.txt
-# Organized by NeyoMarket Administration
-
 User-agent: *
 Allow: /
-Allow: /api/public  # Allows Google to see product data if stored here
 
-# Block private and admin-level pages from public search
+# Only block the big folders, don't list specific API paths
 Disallow: /admin/
-Disallow: /admin-gate/
 Disallow: /dashboard/
-Disallow: /api/auth/
-Disallow: /api/admin/
 Disallow: /temp/
 
 # Direct Google to our official product list
