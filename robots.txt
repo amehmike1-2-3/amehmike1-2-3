@@ -3,14 +3,15 @@
 
 User-agent: *
 Allow: /
+Allow: /api/public  # Allows Google to see product data if stored here
 
 # Block private and admin-level pages from public search
-Disallow: /#admin
-Disallow: /admin-gate
-Disallow: /dashboard
-Disallow: /api
-Disallow: /temp
+Disallow: /admin/
+Disallow: /admin-gate/
+Disallow: /dashboard/
+Disallow: /api/auth/
+Disallow: /api/admin/
+Disallow: /temp/
 
 # Direct Google to our official product list
 Sitemap: https://neyomarket.com.ng/sitemap.xml
-
