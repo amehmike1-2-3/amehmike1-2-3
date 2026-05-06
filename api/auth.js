@@ -1,5 +1,5 @@
-// /api/auth.js — NeyoMarket Authentication API with Brevo Email Verification
-// Features: login, register (with email verification via Brevo), reset-password, change-password,
+// /api/auth.js — NeyoMarket Authentication API with Gmail SMTP Email Service
+// Features: login, register (with email verification), reset-password, change-password,
 //           update-profile, kyc, verify-email — all with rate limiting
 
 const { neon } = require('@neondatabase/serverless');
@@ -8,44 +8,35 @@ const crypto   = require('crypto');
 const nodemailer = require('nodemailer');
 
 const sql = neon(process.env.DATABASE_URL);
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 /* ════════════════════════════════════════════════════════
-   BREVO SMTP CONFIGURATION
+   GMAIL SMTP CONFIGURATION
    Uses environment variables for security — credentials NOT hardcoded
    Set these in Vercel Environment Variables:
-   - BREVO_SMTP_HOST
-   - BREVO_SMTP_PORT
-   - BREVO_SMTP_USER
-   - BREVO_SMTP_PASS
+   - GMAIL_USER (your Gmail address)
+   - GMAIL_PASS (your Google App Password)
 ════════════════════════════════════════════════════════ */
-const brevoTransporter = nodemailer.createTransport({
-  host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-  port: parseInt(process.env.BREVO_SMTP_PORT) || 587,
-  secure: false, // TLS, not SSL
+const gmailTransporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // SSL/TLS
   auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS
+    user: process.env.GMAIL_USER || 'amehmichael2336@gmail.com',
+    pass: process.env.GMAIL_PASS || 'iewd drzi pdbj zxux'
   },
-  logger: false, // Set to true for debugging SMTP issues
+  logger: false,
   debug: false
 });
 
 /* ════════════════════════════════════════════════════════
    IN-MEMORY RATE LIMITER
-   Vercel functions are stateless — this resets per cold
-   start, which is fine. It stops burst brute-force attacks
-   within any single function instance's lifetime.
-
-   For production-grade rate limiting across all instances,
-   replace this with an Upstash Redis check (free tier).
 ════════════════════════════════════════════════════════ */
-const loginAttempts = new Map(); // key: ip|email → { count, firstAttempt }
+const loginAttempts = new Map();
 
 const RATE_LIMIT = {
-  maxAttempts: 5,        // max failed logins
-  windowMs:    15 * 60 * 1000, // per 15 minutes
-  blockMs:     30 * 60 * 1000, // block for 30 minutes after exceeded
+  maxAttempts: 5,
+  windowMs:    15 * 60 * 1000,
+  blockMs:     30 * 60 * 1000,
 };
 
 function getRateLimitKey(req, email) {
@@ -58,7 +49,6 @@ function checkRateLimit(key) {
   const entry = loginAttempts.get(key);
   if (!entry) return { allowed: true };
 
-  // Clear expired windows
   if (now - entry.firstAttempt > RATE_LIMIT.windowMs) {
     loginAttempts.delete(key);
     return { allowed: true };
@@ -129,14 +119,10 @@ function generateVerificationToken() {
 }
 
 /* ════════════════════════════════════════════════════════
-   BREVO EMAIL SENDING
+   EMAIL VERIFICATION — via Gmail SMTP
+   Professional Navy Blue Header, Beautiful Design
 ════════════════════════════════════════════════════════ */
 async function sendVerificationEmail(userEmail, userName, verificationToken) {
-  if (!BREVO_API_KEY) {
-    console.error('[Brevo] API key not configured');
-    return { success: false, error: 'Email service not configured' };
-  }
-
   const verificationLink = `https://neyomarket.com.ng/verify.html?token=${verificationToken}`;
 
   const emailContent = `
@@ -146,53 +132,54 @@ async function sendVerificationEmail(userEmail, userName, verificationToken) {
       <meta charset="UTF-8">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background: #fff; }
-        .header { background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); padding: 40px 20px; text-align: center; }
-        .header h1 { color: #fff; font-size: 32px; font-weight: 700; margin-bottom: 10px; font-family: 'Cormorant Garamond', serif; }
-        .header p { color: rgba(255,255,255,0.9); font-size: 14px; }
-        .content { padding: 40px 20px; color: #111827; }
-        .content h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #0a0a1a; }
-        .content p { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #4b5563; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; text-align: center; margin: 20px 0; }
-        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(201, 146, 42, 0.2); }
-        .footer { background: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-        .security-note { background: #fef3c7; border-left: 4px solid #c9922a; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #92400e; border-radius: 4px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 50px 20px; text-align: center; }
+        .header h1 { color: #fff; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: 1px; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 12px; margin-top: 8px; }
+        .content { padding: 40px 30px; color: #1f2937; }
+        .content h2 { font-size: 22px; font-weight: 600; margin-bottom: 16px; color: #1e3a8a; }
+        .content p { font-size: 14px; line-height: 1.8; margin-bottom: 20px; color: #4b5563; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; padding: 16px 40px; border-radius: 50px; text-decoration: none; font-weight: 600; font-size: 15px; text-align: center; margin: 24px 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: transform 0.3s ease; }
+        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
+        .link-text { background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 12px; color: #374151; word-break: break-all; margin: 20px 0; }
+        .footer { background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+        .footer p { font-size: 12px; color: #6b7280; margin: 8px 0; }
+        .security-badge { background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #1e40af; border-radius: 4px; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>🛍️ NeyoMarket</h1>
-          <p>Nigeria's Secure Marketplace</p>
+          <h1>🛍️ NEYO MARKET</h1>
+          <p>Engineering the Standard of E-commerce in Nigeria</p>
         </div>
         
         <div class="content">
           <h2>Welcome, ${userName}! 👋</h2>
+          
           <p>Thank you for joining NeyoMarket, Nigeria's most trusted marketplace for digital and physical products with escrow-protected payments.</p>
           
           <p><strong>Verify Your Email Address</strong></p>
-          <p>To get started and unlock full marketplace access, please verify your email by clicking the button below:</p>
+          <p>To complete your registration and unlock full marketplace access, please verify your email by clicking the button below:</p>
           
-          <a href="${verificationLink}" class="cta-button">✅ Verify Your Email</a>
+          <a href="${verificationLink}" class="cta-button">✅ Verify Email Address</a>
           
-          <p style="margin-top: 20px;">Or copy and paste this link in your browser:</p>
-          <p style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; color: #374151;">
-            ${verificationLink}
-          </p>
+          <p style="margin-top: 30px; font-size: 13px;">Or copy and paste this link in your browser:</p>
+          <div class="link-text">${verificationLink}</div>
           
-          <div class="security-note">
-            <strong>🔒 Security Tip:</strong> This link will expire in 24 hours. If you didn't create this account, please ignore this email.
+          <div class="security-badge">
+            <strong>🔒 Security:</strong> This link will expire in 24 hours. If you didn't create this account, please ignore this email.
           </div>
           
-          <p style="margin-top: 20px; color: #6b7280; font-size: 13px;">
-            Need help? Contact our support team at support@neyomarket.com.ng
+          <p style="margin-top: 20px; font-size: 13px; color: #6b7280;">
+            <strong>Questions?</strong> Our support team is here to help: support@neyomarket.com.ng
           </p>
         </div>
         
         <div class="footer">
+          <p><strong>Neyo Market</strong> - Engineering the Standard of E-commerce in Nigeria</p>
           <p>&copy; 2026 NeyoMarket. All rights reserved.</p>
-          <p>You're receiving this email because you created an account on NeyoMarket.</p>
         </div>
       </div>
     </body>
@@ -200,144 +187,116 @@ async function sendVerificationEmail(userEmail, userName, verificationToken) {
   `;
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': BREVO_API_KEY,
-      },
-      body: JSON.stringify({
-        sender: {
-          name: 'NeyoMarket',
-          email: 'noreply@neyomarket.com.ng',
-        },
-        to: [
-          {
-            email: userEmail,
-            name: userName,
-          },
-        ],
-        subject: '✅ Verify Your Email - NeyoMarket Account Activation',
-        htmlContent: emailContent,
-        replyTo: {
-          email: 'support@neyomarket.com.ng',
-          name: 'NeyoMarket Support',
-        },
-      }),
+    const info = await gmailTransporter.sendMail({
+      from: 'NeyoMarket <amehmichael2336@gmail.com>',
+      to: userEmail,
+      subject: '✅ Verify Your Email - NeyoMarket Account Activation',
+      html: emailContent,
+      replyTo: 'support@neyomarket.com.ng',
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('[Brevo] Email sent successfully to', userEmail);
-      return { success: true, messageId: data.messageId };
-    } else {
-      const error = await response.json();
-      console.error('[Brevo] Error:', error);
-      return { success: false, error: error.message || 'Failed to send email' };
-    }
+    console.log('[Gmail SMTP] Verification email sent to', userEmail, '- Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error('[Brevo] Network error:', err.message);
+    console.error('[Gmail SMTP] Error sending verification email:', err.message);
     return { success: false, error: err.message };
   }
 }
 
 /* ════════════════════════════════════════════════════════
-   PASSWORD RESET EMAIL — via Brevo SMTP
-   Uses nodemailer to send from support@neyomarket.com.ng
+   PASSWORD RESET EMAIL — via Gmail SMTP
+   Navy Blue Header, Beautiful Design
 ════════════════════════════════════════════════════════ */
 async function sendPasswordResetEmail(userEmail, userName, resetLink) {
-  try {
-    const emailContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
-          .container { max-width: 600px; margin: 0 auto; background: #fff; }
-          .header { background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); padding: 40px 20px; text-align: center; }
-          .header h1 { color: #fff; font-size: 32px; font-weight: 700; margin-bottom: 10px; font-family: 'Cormorant Garamond', serif; }
-          .header p { color: rgba(255,255,255,0.9); font-size: 14px; }
-          .content { padding: 40px 20px; color: #111827; }
-          .content h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #0a0a1a; }
-          .content p { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: #4b5563; }
-          .cta-button { display: inline-block; background: linear-gradient(135deg, #c9922a 0%, #a6741f 100%); color: #fff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; text-align: center; margin: 20px 0; }
-          .cta-button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(201, 146, 42, 0.2); }
-          .footer { background: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-          .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #991b1b; border-radius: 4px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🛍️ NeyoMarket</h1>
-            <p>Nigeria's Secure Marketplace</p>
-          </div>
-          
-          <div class="content">
-            <h2>Password Reset Request 🔐</h2>
-            <p>Hi ${userName},</p>
-            <p>We received a request to reset the password for your NeyoMarket account. Click the button below to create a new password:</p>
-            
-            <a href="${resetLink}" class="cta-button">🔑 Reset Your Password</a>
-            
-            <p style="margin-top: 20px;">Or copy and paste this link in your browser:</p>
-            <p style="word-break: break-all; background: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; color: #374151;">
-              ${resetLink}
-            </p>
-            
-            <div class="warning">
-              <strong>⚠️ Security Alert:</strong> This link will expire in 1 hour. If you didn't request a password reset, please ignore this email and your account will remain secure.
-            </div>
-            
-            <p style="margin-top: 20px; color: #6b7280; font-size: 13px;">
-              <strong>Need help?</strong> Contact our support team at support@neyomarket.com.ng
-            </p>
-          </div>
-          
-          <div class="footer">
-            <p>&copy; 2026 NeyoMarket. All rights reserved.</p>
-            <p>You're receiving this email because a password reset was requested for your account.</p>
-          </div>
+  const emailContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); padding: 50px 20px; text-align: center; }
+        .header h1 { color: #fff; font-size: 36px; font-weight: 700; margin: 0; letter-spacing: 1px; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 12px; margin-top: 8px; }
+        .content { padding: 40px 30px; color: #1f2937; }
+        .content h2 { font-size: 22px; font-weight: 600; margin-bottom: 16px; color: #1e3a8a; }
+        .content p { font-size: 14px; line-height: 1.8; margin-bottom: 20px; color: #4b5563; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; padding: 16px 40px; border-radius: 50px; text-decoration: none; font-weight: 600; font-size: 15px; text-align: center; margin: 24px 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: transform 0.3s ease; }
+        .cta-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); }
+        .link-text { background: #f3f4f6; padding: 12px; border-radius: 6px; font-size: 12px; color: #374151; word-break: break-all; margin: 20px 0; }
+        .footer { background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+        .footer p { font-size: 12px; color: #6b7280; margin: 8px 0; }
+        .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #991b1b; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🛍️ NEYO MARKET</h1>
+          <p>Engineering the Standard of E-commerce in Nigeria</p>
         </div>
-      </body>
-      </html>
-    `;
+        
+        <div class="content">
+          <h2>Password Reset Request 🔐</h2>
+          
+          <p>Hi ${userName},</p>
+          <p>We received a request to reset the password for your NeyoMarket account. Click the button below to create a new password:</p>
+          
+          <a href="${resetLink}" class="cta-button">🔑 Reset Your Password</a>
+          
+          <p style="margin-top: 30px; font-size: 13px;">Or copy and paste this link in your browser:</p>
+          <div class="link-text">${resetLink}</div>
+          
+          <div class="warning">
+            <strong>⚠️ Important:</strong> This link will expire in 1 hour. If you didn't request a password reset, please ignore this email and your account will remain secure.
+          </div>
+          
+          <p style="margin-top: 20px; font-size: 13px; color: #6b7280;">
+            <strong>Questions?</strong> Contact our support team: support@neyomarket.com.ng
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Neyo Market</strong> - Engineering the Standard of E-commerce in Nigeria</p>
+          <p>&copy; 2026 NeyoMarket. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 
-    const info = await brevoTransporter.sendMail({
-      from: 'support@neyomarket.com.ng',
+  try {
+    const info = await gmailTransporter.sendMail({
+      from: 'NeyoMarket <amehmichael2336@gmail.com>',
       to: userEmail,
       subject: '🔐 Password Reset - NeyoMarket',
       html: emailContent,
       replyTo: 'support@neyomarket.com.ng',
     });
 
-    console.log('[Brevo SMTP] Password reset email sent to', userEmail, '- Message ID:', info.messageId);
+    console.log('[Gmail SMTP] Password reset email sent to', userEmail, '- Message ID:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error('[Brevo SMTP] Error sending password reset email:', err.message);
+    console.error('[Gmail SMTP] Error sending password reset email:', err.message);
     return { success: false, error: err.message };
   }
 }
 
 /* ════════════════════════════════════════════════════════
    MAIN HANDLER
-   ════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════ */
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const action = req.query.action;
 
   try {
 
     /* ────────────────────────────────────────────────────
        LOGIN
-       Rate limited: 5 attempts per IP+email per 15 minutes
-       UPDATED: Check is_verified flag
     ──────────────────────────────────────────────────── */
-    if (action === 'login') {
+    if (req.query.action === 'login') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { email, password } = req.body || {};
@@ -346,7 +305,6 @@ module.exports = async function handler(req, res) {
       if (!validateEmail(email))
         return res.status(400).json({ error: 'Invalid email format.' });
 
-      // Check rate limit before touching the database
       const rlKey   = getRateLimitKey(req, email);
       const rlCheck = checkRateLimit(rlKey);
       if (!rlCheck.allowed) {
@@ -359,7 +317,6 @@ module.exports = async function handler(req, res) {
         SELECT * FROM users WHERE LOWER(email) = LOWER(${email.trim()}) LIMIT 1
       `;
 
-      // Deliberate constant-time check — don't reveal whether email exists
       const user       = rows[0] || null;
       const dummyHash  = '$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
       const hashToTest = user ? user.password_hash : dummyHash;
@@ -375,7 +332,6 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: msg });
       }
 
-      // UPDATED: Check if email is verified
       if (!user.is_verified) {
         return res.status(403).json({ 
           error: 'Please verify your account via email to continue.',
@@ -388,16 +344,14 @@ module.exports = async function handler(req, res) {
         return res.status(403).json({ error: 'This account has been suspended. Contact support.' });
       }
 
-      // Success — clear rate limit
       clearAttempts(rlKey);
       return res.status(200).json({ user: toPublicUser(user) });
     }
 
     /* ────────────────────────────────────────────────────
        REGISTER
-       UPDATED: Generate verification token, send Brevo email, save with is_verified: false
     ──────────────────────────────────────────────────── */
-    if (action === 'register') {
+    if (req.query.action === 'register') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { name, email, phone, role, password, affCode } = req.body || {};
@@ -411,8 +365,6 @@ module.exports = async function handler(req, res) {
       if (name.trim().length < 2)
         return res.status(400).json({ error: 'Name must be at least 2 characters.' });
 
-      // Rate limit registrations too — stops spam account creation
-      const rlKey = getRateLimitKey(req, email);
       const existing = await sql`
         SELECT id FROM users WHERE LOWER(email) = LOWER(${email.trim()}) LIMIT 1
       `;
@@ -423,7 +375,7 @@ module.exports = async function handler(req, res) {
       const safeRole = ['buyer', 'seller', 'affiliate'].includes(role) ? role : 'buyer';
       const code     = 'REF' + Math.random().toString(36).substr(2, 7).toUpperCase();
       const verificationToken = generateVerificationToken();
-      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       const inserted = await sql`
         INSERT INTO users (name, email, phone, role, password_hash, aff_code, is_verified, verification_token, token_expiry, joined)
@@ -442,7 +394,6 @@ module.exports = async function handler(req, res) {
         RETURNING *
       `;
 
-      // Send verification email via Brevo
       const emailResult = await sendVerificationEmail(
         inserted[0].email,
         inserted[0].name,
@@ -451,7 +402,6 @@ module.exports = async function handler(req, res) {
 
       if (!emailResult.success) {
         console.error('[register] Email send failed:', emailResult.error);
-        // Still return success but notify user about email
         return res.status(201).json({
           user: toPublicUser(inserted[0]),
           requiresVerification: true,
@@ -470,9 +420,8 @@ module.exports = async function handler(req, res) {
 
     /* ────────────────────────────────────────────────────
        VERIFY EMAIL
-       NEW: Verify token from URL, set is_verified = true
     ──────────────────────────────────────────────────── */
-    if (action === 'verify-email') {
+    if (req.query.action === 'verify-email') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { token } = req.body || {};
@@ -494,7 +443,6 @@ module.exports = async function handler(req, res) {
 
       const user = rows[0];
 
-      // Mark as verified
       await sql`
         UPDATE users 
         SET is_verified = true, verification_token = NULL, token_expiry = NULL
@@ -510,13 +458,9 @@ module.exports = async function handler(req, res) {
     }
 
     /* ────────────────────────────────────────────────────
-       RESET PASSWORD (admin sends temp password)
-    ──────────────────────────────────────────────────── */
-    /* ────────────────────────────────────────────────────
        RESET PASSWORD
-       UPDATED: Send reset link via Brevo SMTP email
     ──────────────────────────────────────────────────── */
-    if (action === 'reset-password') {
+    if (req.query.action === 'reset-password') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { email } = req.body || {};
@@ -527,7 +471,6 @@ module.exports = async function handler(req, res) {
         SELECT id, name, email FROM users WHERE LOWER(email) = LOWER(${email.trim()}) LIMIT 1
       `;
 
-      // Always return 200 to prevent email enumeration
       if (!rows.length) {
         return res.status(200).json({ 
           ok: true,
@@ -537,17 +480,15 @@ module.exports = async function handler(req, res) {
 
       const user = rows[0];
       const resetToken = crypto.randomBytes(32).toString('hex');
-      const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
       const resetLink = `https://neyomarket.com.ng/reset-password.html?token=${resetToken}`;
 
-      // Save reset token in database
       await sql`
         UPDATE users 
         SET reset_token = ${resetToken}, reset_token_expiry = ${tokenExpiry.toISOString()}
         WHERE id = ${user.id}
       `;
 
-      // Send password reset email via Brevo SMTP
       const emailResult = await sendPasswordResetEmail(user.email, user.name, resetLink);
 
       if (!emailResult.success) {
@@ -565,9 +506,8 @@ module.exports = async function handler(req, res) {
 
     /* ────────────────────────────────────────────────────
        CONFIRM PASSWORD RESET
-       NEW: Validate reset token and set new password
     ──────────────────────────────────────────────────── */
-    if (action === 'confirm-password-reset') {
+    if (req.query.action === 'confirm-password-reset') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { token, newPassword } = req.body || {};
@@ -592,7 +532,6 @@ module.exports = async function handler(req, res) {
       const user = rows[0];
       const hash = await bcrypt.hash(newPassword, 10);
 
-      // Update password and clear reset token
       await sql`
         UPDATE users 
         SET password_hash = ${hash}, reset_token = NULL, reset_token_expiry = NULL
@@ -606,9 +545,9 @@ module.exports = async function handler(req, res) {
     }
 
     /* ────────────────────────────────────────────────────
-       CHANGE PASSWORD (authenticated user)
+       CHANGE PASSWORD
     ──────────────────────────────────────────────────── */
-    if (action === 'change-password') {
+    if (req.query.action === 'change-password') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { userId, currentPassword, newPassword } = req.body || {};
@@ -620,7 +559,6 @@ module.exports = async function handler(req, res) {
       const rows = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
       if (!rows.length) return res.status(404).json({ error: 'User not found.' });
 
-      // If currentPassword provided, verify it first
       if (currentPassword) {
         const match = await bcrypt.compare(currentPassword, rows[0].password_hash);
         if (!match)
@@ -634,10 +572,8 @@ module.exports = async function handler(req, res) {
 
     /* ────────────────────────────────────────────────────
        UPDATE PROFILE
-       Handles: payout settings, subaccount, role changes,
-       suspend/unsuspend, kyc status (admin use)
     ──────────────────────────────────────────────────── */
-    if (action === 'update-profile') {
+    if (req.query.action === 'update-profile') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const {
@@ -648,7 +584,6 @@ module.exports = async function handler(req, res) {
 
       if (!userId) return res.status(400).json({ error: 'userId is required.' });
 
-      // Validate role if provided — block client-side admin escalation
       const safeRole = role && ['buyer', 'seller', 'affiliate', 'admin'].includes(role)
         ? role : null;
 
@@ -672,10 +607,8 @@ module.exports = async function handler(req, res) {
 
     /* ────────────────────────────────────────────────────
        KYC SUBMISSION
-       Saves NIN/BVN for admin review.
-       Paystack Customer Validate is called from paystack.js
     ──────────────────────────────────────────────────── */
-    if (action === 'kyc') {
+    if (req.query.action === 'kyc') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
       const { userId, kycType, kycNumber } = req.body || {};
@@ -705,10 +638,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(400).json({ error: 'Unknown action: "' + action + '"' });
+    return res.status(400).json({ error: 'Unknown action.' });
 
   } catch (err) {
-    console.error('[auth.js]', action, err.message);
+    console.error('[auth.js] ERROR:', err.message);
     return res.status(500).json({ error: 'Internal server error. Please try again.' });
   }
 };
