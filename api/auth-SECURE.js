@@ -5,7 +5,7 @@ const { neon } = require('@neondatabase/serverless');
 const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
 const nodemailer = require('nodemailer');
-const jwt      = require('jsonwebtoken');
+// const jwt = require('jsonwebtoken');
 
 const sql = neon(process.env.DATABASE_URL);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
