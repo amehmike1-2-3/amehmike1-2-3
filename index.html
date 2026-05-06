@@ -88,8 +88,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
 
-<!-- ═══ EMAILJS — sends real password reset emails from the browser ═══ -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- ═══ EMAIL SERVICE: Gmail SMTP (backend only) — password reset & verification ═══ -->
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
@@ -4267,7 +4266,7 @@ function hideForgotPanel() {
 }
 window.hideForgotPanel = hideForgotPanel;
 
-/* ── sendResetEmail — uses Brevo SMTP backend (not EmailJS) ── */
+/* ── sendResetEmail — uses Gmail SMTP backend (not EmailJS) ── */
 function sendResetEmail() {
   var emailEl = document.getElementById('fp-email');
   var errEl   = document.getElementById('fp-err');
@@ -4297,7 +4296,7 @@ function sendResetEmail() {
      1. Check if email exists
      2. Generate 32-byte reset token
      3. Save token to database with 1-hour expiry
-     4. Send email via Brevo SMTP from support@neyomarket.com.ng
+     4. Send email via Gmail SMTP (amehmichael2336@gmail.com)
      5. Return 200 success (email enumeration protected)
   */
   apiCall('/auth?action=reset-password', 'POST', { email: email })
