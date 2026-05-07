@@ -3304,7 +3304,7 @@ function processPaystack(mode) {
   }
 
   var cfg = {
-    key:      PK,
+    key:      'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca',
     email:    email,
     amount:   Math.round(total * 100),
     currency: 'NGN',
@@ -3312,10 +3312,10 @@ function processPaystack(mode) {
     metadata: {
       orderId: String(trackId),
       userId: String(CU ? CU.id : ''),
-      items: JSON.stringify(cart),
-      customer: JSON.stringify({ name: name, email: CU ? CU.email : '', phone: wa }),
+      items: cart,
+      customer: { name: name, email: CU ? CU.email : email, phone: wa },
       affCode: refCode || null,
-      shipping: JSON.stringify(shippingAddr || null),
+      shipping: shippingAddr || null,
       mode: 'standard',
       custom_fields: [
         { display_name: 'Customer',    variable_name: 'customer', value: name },
