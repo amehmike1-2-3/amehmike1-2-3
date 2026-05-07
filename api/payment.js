@@ -263,18 +263,37 @@ module.exports = async function handler(req, res) {
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'orders' && req.method === 'GET') {
     try {
-      const userId  = req.query.userId;
-      const isAdmin = req.query.admin === 'true';
+      const userId   = req.query.userId;
+      const sellerId = req.query.sellerId;
+      const isAdmin  = req.query.admin === 'true';
+      const email    = req.query.email;
       let rows;
 
       if (isAdmin) {
         rows = await sql`SELECT * FROM orders ORDER BY created_at DESC LIMIT 500`;
+      } else if (sellerId) {
+        rows = await sql`
+          SELECT * FROM orders
+          WHERE items::text LIKE ${'%"sellerId":"' + String(sellerId) + '"%'}
+             OR items::text LIKE ${'%"sellerId":' + String(sellerId) + '%'}
+          ORDER BY created_at DESC LIMIT 200
+        `;
       } else if (userId) {
+        /* Search by user_id AND by email in customer JSON — catches all cases */
         rows = await sql`
           SELECT * FROM orders
           WHERE user_id = ${String(userId)}
+             OR customer::text ILIKE ${'%' + String(email || '') + '%'}
           ORDER BY created_at DESC
         `;
+        /* If still empty, try ref-based search using email */
+        if (!rows.length && email) {
+          rows = await sql`
+            SELECT * FROM orders
+            WHERE customer::text ILIKE ${'%' + String(email) + '%'}
+            ORDER BY created_at DESC
+          `;
+        }
       } else {
         return jsonErr(res, 400, 'userId is required. Use ?userId=<id> or ?admin=true');
       }
@@ -621,6 +640,7 @@ module.exports = async function handler(req, res) {
       return jsonErr(res, 400, 'reference, orderId and total are required.');
 
     try {
+      /* Skip if already processed */
       const existing = await sql`
         SELECT id, status FROM orders WHERE id = ${String(orderId)} LIMIT 1
       `;
@@ -628,6 +648,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, cached: true, orderId, status: existing[0].status });
       }
 
+      /* Verify payment with Paystack */
       let amount = parseFloat(total);
       if (PSK) {
         const txn = await verifyPaystackPayment(reference);
@@ -636,66 +657,26 @@ module.exports = async function handler(req, res) {
         amount = txn.amount / 100;
       }
 
-      /* ✅ AUTO-SAVE ORDER immediately after payment verification */
+      /* Build item list */
+      const itemList    = Array.isArray(items) ? items : [];
+      const hasPhysical = itemList.some(function(i) { return i.type === 'physical'; });
       const isAllDigital = itemList.length > 0 && itemList.every(function(i) {
         return i.type === 'digital' || i.type === 'course';
       });
 
-      const orderData = {
-        id:              String(orderId),
-        user_id:         String(userId || ''),
-        customer:        JSON.stringify(customer || {}),
-        items:           JSON.stringify(itemList),
-        total:           Math.round(amount),
-        platform_fee:    Math.round(split.platformFee),
-        seller_payout:   Math.round(split.sellerPayout),
-        affiliate_fee:   Math.round(split.affiliateFee),
-        aff_code:        hasValidAff ? String(rawAff) : null,
-        status:          isAllDigital ? 'paid' : 'escrow_held',
-        ref:             String(reference),
-        mode:            String(mode || 'standard'),
-        shipping:        shipping ? JSON.stringify(shipping) : null,
-        date:            new Date().toLocaleDateString()
-      };
-
-      try {
-        await sql`
-          INSERT INTO orders (
-            id, user_id, customer, items, total, platform_fee, seller_payout,
-            affiliate_fee, aff_code, status, ref, mode, shipping, date, created_at
-          ) VALUES (
-            ${orderData.id},
-            ${orderData.user_id},
-            ${orderData.customer},
-            ${orderData.items},
-            ${orderData.total},
-            ${orderData.platform_fee},
-            ${orderData.seller_payout},
-            ${orderData.affiliate_fee},
-            ${orderData.aff_code},
-            ${orderData.status},
-            ${orderData.ref},
-            ${orderData.mode},
-            ${orderData.shipping},
-            ${orderData.date},
-            NOW()
-          )
-          ON CONFLICT (id) DO NOTHING
-        `;
-      } catch (e) {
-        console.warn('[payment/confirm] Order already exists or error:', e.message);
-      }
-
+      /* Compute split */
       const rawAff      = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
       const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
       const split       = computeSplit(amount, hasPhysical, hasValidAff);
 
+      /* Resolve affiliate user */
       let affUserId = null;
       if (hasValidAff && split.affiliateFee > 0) {
         const affRows = await sql`SELECT id FROM users WHERE aff_code = ${rawAff} LIMIT 1`;
         if (affRows.length) affUserId = String(affRows[0].id);
       }
 
+      /* Resolve seller */
       const resolvedSellerId = sellerUserId
         ? String(sellerUserId)
         : (itemList[0] && (itemList[0].sellerId || itemList[0].seller_id))
@@ -705,6 +686,7 @@ module.exports = async function handler(req, res) {
       const deliveryCode = generateDVC(String(orderId));
       const cleanAff     = hasValidAff ? rawAff : null;
 
+      /* Fetch digital file URLs */
       let topFileUrl = null;
       if (isAllDigital && itemList.length > 0) {
         const productIds = itemList.map(function(i) { return Number(i.id); })
@@ -720,6 +702,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      /* Save order to database */
       await sql`
         INSERT INTO orders (
           id, user_id, customer, items, total,
@@ -742,6 +725,7 @@ module.exports = async function handler(req, res) {
           file_url      = COALESCE(EXCLUDED.file_url, orders.file_url)
       `;
 
+      /* Credit platform balance */
       if (split.platformFee > 0) {
         await sql`
           UPDATE users SET admin_balance = COALESCE(admin_balance, 0) + ${split.platformFee}
@@ -749,6 +733,7 @@ module.exports = async function handler(req, res) {
         `;
       }
 
+      /* Credit affiliate balance */
       if (affUserId && split.affiliateFee > 0) {
         await sql`
           UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.affiliateFee}
@@ -764,6 +749,7 @@ module.exports = async function handler(req, res) {
         } catch (e) { console.warn('[payment/confirm] affiliate_commissions (non-fatal):', e.message); }
       }
 
+      /* Credit seller for digital products immediately */
       if (isAllDigital && resolvedSellerId && split.sellerPayout > 0) {
         await sql`
           UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.sellerPayout}
