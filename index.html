@@ -2449,6 +2449,7 @@ window.onType = onType;
 /* ═══ 2a. validateSell ═══ */
 function validateSell() {
   var name  = gv('s-name'), type = gv('s-type'), cat = gv('s-cat');
+  var cond  = gv('s-condition');  /* NEW: check condition is selected */
   var price = parseFloat(gv('s-price')||'0'), comm = parseFloat(gv('s-comm')||'0');
   var desc  = gv('s-desc'), email = gv('s-email');
   var terms = document.getElementById('sell-cb');
@@ -2460,6 +2461,7 @@ function validateSell() {
   if (!name)                             issues.push('Product name required');
   if (!type)                             issues.push('Select a product type');
   if (!cat)                              issues.push('Select a category');
+  if (!cond)                             issues.push('Select product condition (New/Used)');  /* NEW */
   if (!price || price < 100)             issues.push('Price must be at least ₦100');
   if (!comm || comm < 5 || comm > 40)    issues.push('Commission must be 5–40%');
   if (desc.length < 20)                  issues.push('Description too short (min 20 chars)');
@@ -2528,7 +2530,8 @@ function submitProduct() {
     date:           new Date().toLocaleDateString(),
     fileExt:        digitalFileData ? digitalFileData.ext  : null,
     fileName:       digitalFileData ? digitalFileData.name : null,
-    fileUrl:        null   /* filled below if digital upload succeeds */
+    fileUrl:        null,   /* filled below if digital upload succeeds */
+    condition:      gv('s-condition') || null  /* NEW: capture condition (new/used) */
   };
 
   var pType = payload.type;
