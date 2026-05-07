@@ -646,31 +646,27 @@ module.exports = async function handler(req, res) {
       if (!userId || !ref) return res.status(400).json({ error: 'userId and ref required' });
 
       try {
-        /* Verify payment with Paystack before setting is_verified */
+        /* Verify payment with Paystack */
         const paystackRes = await fetch('https://api.paystack.co/transaction/verify/' + String(ref), {
           headers: { Authorization: 'Bearer ' + (process.env.PAYSTACK_SECRET_KEY || '') }
         });
         const paystackData = await paystackRes.json();
 
         if (!paystackData.status || paystackData.data.status !== 'success') {
-          return res.status(403).json({ error: 'Payment verification failed. Please try again.' });
+          return res.status(403).json({ error: 'Payment not verified' });
         }
 
-        if (paystackData.data.amount !== 200000) {
-          return res.status(403).json({ error: 'Payment amount mismatch. Expected ₦2,000.' });
-        }
-
-        /* Payment verified — now set is_verified to true */
+        /* Set badge_verified only after payment confirmed */
         await sql`
           UPDATE users 
-          SET is_verified = true, verification_token = NULL, token_expiry = NULL
+          SET badge_verified = true
           WHERE id = ${String(userId)}
         `;
 
-        return res.status(200).json({ ok: true, message: 'Seller verified successfully' });
+        return res.status(200).json({ ok: true });
       } catch (err) {
         console.error('[verify-seller]', err.message);
-        return res.status(500).json({ error: 'Verification failed', detail: err.message });
+        return res.status(500).json({ error: 'Verification failed' });
       }
     }
 
