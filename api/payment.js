@@ -636,11 +636,55 @@ module.exports = async function handler(req, res) {
         amount = txn.amount / 100;
       }
 
-      const itemList    = Array.isArray(items) ? items : [];
-      const hasPhysical = itemList.some(function(i) { return i.type === 'physical'; });
+      /* ✅ AUTO-SAVE ORDER immediately after payment verification */
       const isAllDigital = itemList.length > 0 && itemList.every(function(i) {
         return i.type === 'digital' || i.type === 'course';
       });
+
+      const orderData = {
+        id:              String(orderId),
+        user_id:         String(userId || ''),
+        customer:        JSON.stringify(customer || {}),
+        items:           JSON.stringify(itemList),
+        total:           Math.round(amount),
+        platform_fee:    Math.round(split.platformFee),
+        seller_payout:   Math.round(split.sellerPayout),
+        affiliate_fee:   Math.round(split.affiliateFee),
+        aff_code:        hasValidAff ? String(rawAff) : null,
+        status:          isAllDigital ? 'paid' : 'escrow_held',
+        ref:             String(reference),
+        mode:            String(mode || 'standard'),
+        shipping:        shipping ? JSON.stringify(shipping) : null,
+        date:            new Date().toLocaleDateString()
+      };
+
+      try {
+        await sql`
+          INSERT INTO orders (
+            id, user_id, customer, items, total, platform_fee, seller_payout,
+            affiliate_fee, aff_code, status, ref, mode, shipping, date, created_at
+          ) VALUES (
+            ${orderData.id},
+            ${orderData.user_id},
+            ${orderData.customer},
+            ${orderData.items},
+            ${orderData.total},
+            ${orderData.platform_fee},
+            ${orderData.seller_payout},
+            ${orderData.affiliate_fee},
+            ${orderData.aff_code},
+            ${orderData.status},
+            ${orderData.ref},
+            ${orderData.mode},
+            ${orderData.shipping},
+            ${orderData.date},
+            NOW()
+          )
+          ON CONFLICT (id) DO NOTHING
+        `;
+      } catch (e) {
+        console.warn('[payment/confirm] Order already exists or error:', e.message);
+      }
 
       const rawAff      = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
       const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
@@ -910,12 +954,43 @@ module.exports = async function handler(req, res) {
       if (!data.status)
         return jsonErr(res, 400, 'Paystack refund failed: ' + (data.message || 'Unknown'));
 
+      /* Get order details before updating */
+      const orderRows = await sql`SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
+      const order = orderRows.length ? orderRows[0] : null;
+
+      /* Update order status to refunded */
       await sql`UPDATE orders SET status = 'refunded', collected = false WHERE id = ${String(orderId)}`;
+
+      /* AUTO-REFUND: Reverse balances from seller and affiliate */
+      if (order) {
+        const sellerPayout = parseFloat(order.seller_payout || 0);
+        const affiliateFee = parseFloat(order.affiliate_fee || 0);
+        const affCode = order.aff_code || null;
+
+        /* Refund seller balance */
+        const itemsData = safeJson(order.items, []);
+        if (itemsData.length > 0) {
+          const firstItem = itemsData[0];
+          const sellerId = firstItem.sellerId;
+          if (sellerId) {
+            await sql`UPDATE users SET seller_balance = seller_balance - ${sellerPayout} WHERE id = ${String(sellerId)}`;
+          }
+        }
+
+        /* Refund affiliate balance if affiliate exists */
+        if (affCode && affiliateFee > 0) {
+          try {
+            await sql`UPDATE users SET affiliate_balance = affiliate_balance - ${affiliateFee} WHERE aff_code = ${String(affCode)}`;
+          } catch (e) {
+            console.warn('[payment/refund] Could not refund affiliate:', e.message);
+          }
+        }
+      }
 
       console.log('[payment/refund]', orderId, 'ref:', reference);
       return res.status(200).json({
         ok: true, orderId,
-        message: 'Refund of ₦' + parseFloat(amount || 0).toLocaleString() + ' initiated.'
+        message: 'Refund of ₦' + parseFloat(amount || 0).toLocaleString() + ' initiated. Balances updated.'
       });
 
     } catch (err) {
@@ -969,9 +1044,45 @@ module.exports = async function handler(req, res) {
   }
 
   /* ══════════════════════════════════════════════════════════════════
+     POST ?action=download-digital
+     Auto-release escrow when buyer downloads digital file
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'download-digital' && req.method === 'POST') {
+    const { orderId } = req.body || {};
+    if (!orderId) return jsonErr(res, 400, 'orderId required');
+
+    try {
+      const orderRows = await sql`SELECT * FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
+      if (!orderRows.length) return jsonErr(res, 404, 'Order not found');
+
+      const order = orderRows[0];
+      const itemsData = safeJson(order.items, []);
+      const sellerPayout = parseFloat(order.seller_payout || 0);
+
+      /* Mark order as collected and release seller payment */
+      await sql`UPDATE orders SET collected = true, collected_at = NOW(), status = 'completed' WHERE id = ${String(orderId)}`;
+
+      /* Add seller payout to seller_balance */
+      if (itemsData.length > 0 && sellerPayout > 0) {
+        const firstItem = itemsData[0];
+        const sellerId = firstItem.sellerId;
+        if (sellerId) {
+          await sql`UPDATE users SET seller_balance = seller_balance + ${sellerPayout} WHERE id = ${String(sellerId)}`;
+        }
+      }
+
+      console.log('[payment/download-digital]', orderId, 'escrow released:', sellerPayout);
+      return res.status(200).json({ ok: true, message: 'Seller payment released' });
+
+    } catch (err) {
+      console.error('[payment/download-digital]', err.message);
+      return jsonErr(res, 500, 'Download failed', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
      POST ?action=webhook
-     Paystack charge.success fallback (primary handler is /api/webhook.js).
-     Sets order to 'escrow_held' on charge.success event.
+     Paystack charge.success fallback - AUTO-SAVE ORDER even if window closes
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'webhook' && req.method === 'POST') {
     if (PSK) {
@@ -988,14 +1099,73 @@ module.exports = async function handler(req, res) {
     const event = req.body || {};
     if (event.event === 'charge.success' || event.event === 'dedicated_virtual_account.success') {
       const ref = event.data && event.data.reference;
-      if (ref) {
+      const metadata = event.data && event.data.metadata;
+      
+      if (ref && metadata) {
         try {
-          await sql`
-            UPDATE orders SET status = 'escrow_held'
-            WHERE ref = ${ref}
-              AND status NOT IN ('paid','escrow_held','completed','refunded')
-          `;
-          console.log('[payment/webhook] charge.success:', ref);
+          /* Extract order data from metadata */
+          const orderId = metadata.orderId;
+          const userId = metadata.userId;
+          const items = metadata.items;
+          const total = event.data.amount / 100;
+          const customer = metadata.customer;
+          const affCode = metadata.affCode || null;
+          const sellerUserId = metadata.sellerUserId;
+          const shipping = metadata.shipping;
+          const mode = metadata.mode || 'standard';
+
+          if (orderId && total) {
+            /* Check if order already exists */
+            const existing = await sql`
+              SELECT id FROM orders WHERE id = ${String(orderId)} LIMIT 1
+            `;
+
+            if (!existing.length) {
+              /* AUTO-SAVE ORDER from webhook */
+              const itemList = Array.isArray(items) ? items : [];
+              const hasPhysical = itemList.some(function(i) { return i.type === 'physical'; });
+              const isAllDigital = itemList.length > 0 && itemList.every(function(i) {
+                return i.type === 'digital' || i.type === 'course';
+              });
+
+              const rawAff = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
+              const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
+              const split = computeSplit(total, hasPhysical, hasValidAff);
+
+              await sql`
+                INSERT INTO orders (
+                  id, user_id, customer, items, total, platform_fee, seller_payout,
+                  affiliate_fee, aff_code, status, ref, mode, shipping, date, created_at
+                ) VALUES (
+                  ${String(orderId)},
+                  ${String(userId || '')},
+                  ${JSON.stringify(customer || {})},
+                  ${JSON.stringify(itemList)},
+                  ${Math.round(total)},
+                  ${Math.round(split.platformFee)},
+                  ${Math.round(split.sellerPayout)},
+                  ${Math.round(split.affiliateFee)},
+                  ${hasValidAff ? String(rawAff) : null},
+                  ${isAllDigital ? 'paid' : 'escrow_held'},
+                  ${String(ref)},
+                  ${String(mode)},
+                  ${shipping ? JSON.stringify(shipping) : null},
+                  ${new Date().toLocaleDateString()},
+                  NOW()
+                )
+              `;
+
+              console.log('[payment/webhook] AUTO-SAVED order:', orderId, 'ref:', ref);
+            } else {
+              /* Order already exists */
+              await sql`
+                UPDATE orders SET status = 'escrow_held'
+                WHERE id = ${String(orderId)}
+                  AND status NOT IN ('paid','escrow_held','completed','refunded')
+              `;
+              console.log('[payment/webhook] Order already exists:', orderId);
+            }
+          }
         } catch (e) {
           console.error('[payment/webhook] DB error:', e.message);
         }
