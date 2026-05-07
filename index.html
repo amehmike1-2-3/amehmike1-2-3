@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 
-<!-- ═══ FAVICON & APP ICONS ═══ -->
-<link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABACoBAAA"/>
-<link rel="shortcut icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABACoBAAA"/>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><circle fill='%23c9922a' cx='90' cy='90' r='90'/><text x='90' y='135' font-size='120' font-weight='900' fill='white' text-anchor='middle' font-family='Arial'>N</text></svg>"/>
-
 <!-- ═══ SEO META TAGS ═══ -->
 <title>NeyoMarket — Nigeria's Secure Digital &amp; Physical Marketplace</title>
 <meta name="description" content="NeyoMarket is Nigeria's most trusted marketplace for digital and physical products. Buy, sell, and earn with escrow-protected payments, verified sellers, and AI-powered support. Zero scam guarantee."/>
@@ -1542,10 +1537,6 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     <div id="panel-orders" class="dash-panel" style="display:none">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">📦 My Orders</h3>
       <div id="ord-list"></div>
-      <div id="seller-orders-section" style="margin-top:24px;display:none">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;border-top:1px solid var(--border);padding-top:16px">🛒 Orders For My Products</h3>
-        <div id="seller-ord-list"></div>
-      </div>
     </div>
 
     <!-- ══ TAB: AFFILIATE ══ -->
@@ -1640,6 +1631,44 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         <button class="bg" style="padding:12px 22px;width:100%;margin-top:4px" id="po-save-btn" onclick="savePayout()">
           💳 Save Bank Details
         </button>
+      </div>
+
+      <!-- Change Password -->
+      <div class="dc" style="margin-top:14px">
+        <h3>🔒 Change Password</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
+          Got a temporary password? Set your own personal password here.
+        </p>
+        <div class="fg">
+          <label>Current Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label>New Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
+            <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          </div>
+          <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
+        </div>
+        <div class="fg">
+          <label>Confirm New Password <span style="color:var(--red)">*</span></label>
+          <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
+        </div>
+        <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+        <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
+          ✅ Password changed successfully! Use your new password next time you sign in.
+        </div>
+        <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
       </div>
 
       <!-- KYC Verification -->
@@ -1813,7 +1842,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     <!-- Affiliate Links for own products -->
     <div class="dc">
       <h3>🔗 Promote Your Products</h3>
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px">Share affiliate links to your own products and earn an extra commission on top of your seller earnings.</p>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px">Share affiliate links to your own products and earn an extra commission on top of your seller earnings.</p>
       <div id="sel-aff-links">
         <p style="color:var(--muted);font-size:.84rem">Your products will appear here once they are approved.</p>
       </div>
@@ -2104,7 +2133,7 @@ function loadAll() {
 
   /* Fetch live orders from Neon — always from DB, never from localStorage */
   if (CU) {
-    fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)) + '&email=' + encodeURIComponent(String(CU.email || '')))
+    fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
       .then(function(r){ return r.json(); })
       .then(function(data) {
         if (data && Array.isArray(data.orders)) {
@@ -2143,7 +2172,7 @@ function syncOrderToAPI(order) {
 }
 
 function syncOrderUpdateToAPI(orderId, update) {
-  fetch('/api/payment/' + String(orderId) + '?action=orders', {
+  fetch('/api/payment?action=orders&id=' + String(orderId), {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(update)
@@ -2172,7 +2201,7 @@ function runAutonomousCOO() {
   var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
 
   /* Fetch live orders from Neon so we don't rely on stale local cache */
-  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)) + '&email=' + encodeURIComponent(String(CU.email || '')))
+  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var orders = data.orders || [];
@@ -3304,19 +3333,12 @@ function processPaystack(mode) {
   }
 
   var cfg = {
-    key:      'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca',
+    key:      PK,
     email:    email,
     amount:   Math.round(total * 100),
     currency: 'NGN',
     ref:      trackId,
     metadata: {
-      orderId: String(trackId),
-      userId: String(CU ? CU.id : ''),
-      items: cart,
-      customer: { name: name, email: CU ? CU.email : email, phone: wa },
-      affCode: refCode || null,
-      shipping: shippingAddr || null,
-      mode: 'standard',
       custom_fields: [
         { display_name: 'Customer',    variable_name: 'customer', value: name },
         { display_name: 'WhatsApp',    variable_name: 'whatsapp', value: wa || 'N/A' },
@@ -3347,6 +3369,7 @@ function processPaystack(mode) {
         orderId:       trackId,
         userId:        CU ? String(CU.id) : '',
         sellerUserId:  sellerUserId || '',
+        /* FIX: include fileUrl + fileName from local prods so server can write it to the order */
         items:         cart.map(function(i) {
           var prod = (window.prods || []).find(function(p){ return Number(p.id) === Number(i.id); });
           return {
@@ -3357,14 +3380,14 @@ function processPaystack(mode) {
             qty:      i.qty || 1,
             emoji:    i.emoji,
             sellerId: i.sellerId || (prod && prod.sellerId) || null,
+            /* The actual downloadable file URL — NOT the product image */
             fileUrl:  (prod && (prod.fileUrl || prod.file_url)) || null,
             fileName: (prod && (prod.fileName || prod.file_name)) || null,
             fileExt:  (prod && (prod.fileExt  || prod.file_ext))  || null
           };
         }),
         total:         total,
-        /* Store real email so order lookup by email works */
-        customer:      { name: name, email: email, whatsapp: wa || '', address: addr || '' },
+        customer:      { name: name, email: maskEmail(email), whatsapp: wa || '', address: addr || '' },
         mode:          mode,
         affCode:       refCode || null,
         shipping:      addr ? { address: addr, whatsapp: wa } : null
@@ -3441,14 +3464,6 @@ function processPaystack(mode) {
         cM('m-cart'); cM('m-pd');
         oM('m-rec');
         toast('✅ Payment confirmed! Order ' + trackId, 'ok');
-
-        /* Refresh orders and seller balance immediately */
-        renderOrders();
-        renderSellerOrders();
-        if (CU && (CU.role === 'seller' || CU.role === 'admin')) {
-          renderSellerDash();
-          loadWalletBalance();
-        }
       })
       .catch(function(err) {
         /* Network error — save locally as fallback */
@@ -3497,7 +3512,7 @@ function renderOrders() {
   list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem">⏳ Loading orders…</div>';
 
   /* Always fetch from DB — survives refresh */
-  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)) + '&email=' + encodeURIComponent(String(CU.email || '')))
+  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var myOrders = data.orders || [];
@@ -3589,20 +3604,21 @@ function renderOrders() {
         } else if (isDone) {
           actionBtn = '<div style="color:var(--green);font-size:.84rem;font-weight:600;margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:6px;text-align:center">✅ Order Complete</div>';
         } else if (isPhys && isPaid) {
-          /* Physical: buyer gets DVC code to show seller; seller enters it to release funds */
+          /* Physical: buyer gets DVC code to show seller; seller enters it to release funds.
+             SELLER DETECTION FIX: check sellerId on items, seller name, OR if the user is
+             viewing in seller dashboard context. Default to buyer view if ambiguous. */
+          var isBuyer  = !CU || (o.userId === String(CU.id))
+                      || (o.customer && o.customer.email && CU.email &&
+                          o.customer.email.toLowerCase() === CU.email.toLowerCase());
           var isSeller = CU && o.items && o.items.some(function(i){
-            return String(i.sellerId || i.seller_id || '') === String(CU.id);
+            return String(i.sellerId || i.seller_id || '') === String(CU.id)
+                || String(i.seller   || '').toLowerCase() === String(CU.name||'').toLowerCase();
           });
-          var isBuyer = !isSeller && CU && (
-            String(o.userId || o.user_id || '') === String(CU.id) ||
-            (o.customer && o.customer.email && CU.email &&
-             o.customer.email.toLowerCase() === CU.email.toLowerCase())
-          );
-
-          if (isSeller) {
+          /* If the logged-in user is neither detected buyer NOR seller (data mismatch),
+             prefer seller view so they can always confirm delivery */
+          if (isSeller || (!isBuyer && CU && CU.role === 'seller')) {
             actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Confirm Delivery — Enter Code</button>';
           } else {
-            /* Default to buyer view */
             actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">🔐 Get Delivery Code</button>';
           }
         } else if (isPaid) {
@@ -3673,71 +3689,6 @@ function renderOrders() {
     });
 }
 
-
-/* ═══ SELLER ORDERS (orders placed by buyers for this seller's products) ═══ */
-function renderSellerOrders() {
-  if (!CU || (CU.role !== 'seller' && CU.role !== 'admin')) return;
-
-  var section = document.getElementById('seller-orders-section');
-  var list    = document.getElementById('seller-ord-list');
-  if (!section || !list) return;
-
-  section.style.display = 'block';
-  list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">⏳ Loading orders…</div>';
-
-  fetch('/api/payment?action=orders&sellerId=' + encodeURIComponent(String(CU.id)))
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var myOrders = (data.orders || []).filter(function(o) {
-        return o.items && o.items.some(function(i) {
-          return String(i.sellerId || i.seller_id || '') === String(CU.id);
-        });
-      });
-
-      if (!myOrders.length) {
-        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.84rem">No orders received yet.</div>';
-        return;
-      }
-
-      list.innerHTML = myOrders.map(function(o) {
-        var total     = parseFloat(o.total || 0);
-        var payout    = parseFloat(o.seller_payout || o.sellerPayout || Math.round(total * 0.9));
-        var isPaid    = ['paid','escrow_held','completed'].includes(o.status);
-        var isDone    = o.collected || o.status === 'completed';
-        var isPhys    = o.items && o.items.some(function(i){ return i.type === 'physical'; });
-        var customer  = o.customer || {};
-        var statusColor = isDone ? '#065f46' : isPaid ? '#1e40af' : '#92400e';
-        var statusBg    = isDone ? '#d1fae5' : isPaid ? '#dbeafe' : '#fef3c7';
-        var statusLabel = isDone ? '✅ Completed' : isPaid ? '🛡️ Escrow Held' : '⏳ Pending';
-
-        var actionBtn = '';
-        if (isPhys && isPaid && !isDone) {
-          actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:12px;border-radius:6px;font-weight:700;font-size:.85rem;cursor:pointer;margin-top:10px">📦 Confirm Delivery — Enter Code</button>';
-        } else if (isDone) {
-          actionBtn = '<div style="color:var(--green);font-size:.82rem;margin-top:8px;padding:8px;background:#d1fae5;border-radius:6px;text-align:center">✅ Payment Released to Wallet</div>';
-        }
-
-        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">'
-          + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
-          + '<div style="font-size:.75rem;color:var(--muted)">Order #' + String(o.id).slice(-6).toUpperCase() + '</div>'
-          + '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700">' + statusLabel + '</span>'
-          + '</div>'
-          + '<div style="font-weight:600;margin-bottom:4px">' + (o.items || []).map(function(i){ return i.name; }).join(', ') + '</div>'
-          + '<div style="font-size:.8rem;color:var(--muted);margin-bottom:4px">Buyer: ' + (customer.name || 'N/A') + ' · ' + (customer.whatsapp ? '<a href="https://wa.me/' + customer.whatsapp.replace(/\D/g,'') + '" target="_blank" style="color:var(--gold)">WhatsApp</a>' : 'No WhatsApp') + '</div>'
-          + (isPhys && customer.address ? '<div style="font-size:.78rem;color:var(--muted);margin-bottom:4px">📍 ' + customer.address + '</div>' : '')
-          + '<div style="display:flex;justify-content:space-between;margin-top:8px">'
-          + '<span style="font-size:.82rem;color:var(--muted)">Total: <strong style="color:var(--text)">₦' + total.toLocaleString() + '</strong></span>'
-          + '<span style="font-size:.82rem;color:var(--green)">Your share: <strong>₦' + payout.toLocaleString() + '</strong></span>'
-          + '</div>'
-          + actionBtn
-          + '</div>';
-      }).join('');
-    })
-    .catch(function() {
-      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:.82rem">Failed to load orders. Refresh and try again.</div>';
-    });
-}
-window.renderSellerOrders = renderSellerOrders;
 
 function markCol(id) {
   var o = ords.find(function (x) { return x.id === id; }); if (!o) return;
@@ -3839,7 +3790,7 @@ function markDLEscrow(id) {
   saveAll();
 
   /* Fire-and-forget escrow release to server — does not block the download */
-  fetch('/api/payment/' + String(id) + '?action=orders', {
+  fetch('/api/payment?action=orders&id=' + String(id), {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
@@ -4424,12 +4375,6 @@ function switchDashTab(name, btn) {
   if (name === 'affiliate') {
     setTimeout(function(){ loadAffiliateDash(); }, 300);
   }
-  if (name === 'orders') {
-    setTimeout(function(){
-      renderOrders();
-      renderSellerOrders();
-    }, 300);
-  }
   /* hide all panels */
   ['seller','orders','affiliate','settings'].forEach(function (t) {
     var p = document.getElementById('panel-' + t);
@@ -4496,11 +4441,8 @@ function renderSellerDash() {
   var pending = myProds.filter(function (p) { return p.status === 'pending'; }).length;
   var totalRevenue = ords.reduce(function (sum, o) {
     var mine = o.items && o.items.some(function (i) { return i.sellerId && prods.find(function(p){ return p.id === i.sellerId && (p.seller === CU.name || p.sellerEmail === maskEmail(CU.email)); }); });
-    return (mine && o.status === 'completed') ? sum + Math.round(o.total * 0.9) : sum;
+    return mine ? sum + Math.round(o.total * 0.9) : sum;
   }, 0);
-  
-  /* Save to localStorage for persistence across page refreshes */
-  localStorage.setItem('seller_total_sales_' + CU.id, totalRevenue);
 
   /* stats row */
   var statsEl = document.getElementById('seller-stats');
@@ -4510,28 +4452,6 @@ function renderSellerDash() {
       '<div class="sm"><div class="sl">Live</div><div class="sv" style="color:var(--green)">' + active + '</div></div>' +
       '<div class="sm"><div class="sl">Pending</div><div class="sv" style="color:var(--orange)">' + pending + '</div></div>' +
       '<div class="sm"><div class="sl">Earnings</div><div class="sv">₦' + totalRevenue.toLocaleString() + '</div></div>';
-  }
-
-  /* Render professional affiliate links */
-  var affDiv = document.getElementById('sel-aff-links');
-  if (affDiv) {
-    if (myProds.length === 0) {
-      affDiv.innerHTML = '<p style="color:var(--muted);font-size:.84rem">Your products will appear here once they are approved.</p>';
-    } else {
-      var html = '<div style="display:grid;gap:12px;max-width:100%">';
-      myProds.forEach(function(p) {
-        var refLink = SITE_BASE + '?ref=' + (CU.affCode || 'USER') + '&p=' + p.id;
-        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">' +
-                  '<div style="flex:1;min-width:0">' +
-                    '<div style="font-weight:600;color:var(--text);font-size:.9rem;word-break:break-word;margin-bottom:4px">' + (p.name || 'Untitled') + '</div>' +
-                    '<input type="text" value="' + refLink + '" readonly style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:.75rem;background:var(--bg);color:var(--muted);font-family:monospace" onclick="this.select()"/>' +
-                  '</div>' +
-                  '<button onclick="navigator.clipboard.writeText(\'' + refLink.replace(/'/g, "\\'") + '\');toast(\'Link copied!\',\'ok\')" style="background:linear-gradient(135deg,#b45309,#c9922a);color:white;border:none;padding:10px 16px;border-radius:7px;font-size:.85rem;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap">📋 Copy</button>' +
-                '</div>';
-      });
-      html += '</div>';
-      affDiv.innerHTML = html;
-    }
   }
 
   /* products list */
@@ -6095,7 +6015,7 @@ window.adminRefund = adminRefund;
 function adminRelease(orderId, userId, sellerAmount) {
   if (!confirm('Release ₦' + parseFloat(sellerAmount).toLocaleString() + ' to the seller? This marks the order complete.')) return;
 
-  fetch('/api/payment/' + String(orderId) + '?action=orders', {
+  fetch('/api/payment?action=orders&id=' + String(orderId), {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ id: orderId, status: 'completed', collected: true })
