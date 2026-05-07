@@ -1633,6 +1633,44 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         </button>
       </div>
 
+      <!-- Change Password -->
+      <div class="dc" style="margin-top:14px">
+        <h3>🔒 Change Password</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
+          Got a temporary password? Set your own personal password here.
+        </p>
+        <div class="fg">
+          <label>Current Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-current" placeholder="Your current or temp password" autocomplete="current-password" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-current',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label>New Password <span style="color:var(--red)">*</span></label>
+          <div style="position:relative">
+            <input class="fi" type="password" id="cp-new" placeholder="Min 8 characters" autocomplete="new-password" oninput="checkPwStrength(this.value)" style="padding-right:42px"/>
+            <button onclick="togglePwVis('cp-new',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px">👁</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:7px" id="pw-bars">
+            <div id="bar1" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar2" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar3" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+            <div id="bar4" style="height:4px;flex:1;border-radius:2px;background:var(--border);transition:.3s"></div>
+          </div>
+          <div id="pw-strength-txt" style="font-size:.73rem;color:var(--muted);margin-top:4px"></div>
+        </div>
+        <div class="fg">
+          <label>Confirm New Password <span style="color:var(--red)">*</span></label>
+          <input class="fi" type="password" id="cp-confirm" placeholder="Type new password again" autocomplete="new-password"/>
+        </div>
+        <div id="cp-err" style="font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+        <div id="cp-ok" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:9px;padding:11px 14px;font-size:.84rem;color:var(--green);margin-bottom:12px">
+          ✅ Password changed successfully! Use your new password next time you sign in.
+        </div>
+        <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
+      </div>
+
       <!-- KYC Verification -->
       <div class="dc" style="margin-top:14px">
         <h3>🪪 Identity Verification (KYC)</h3>
@@ -2260,9 +2298,6 @@ window.go = go;
    PSK is NEVER stored in code — sessionStorage only
    ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
-  /* Load Paystack public key from config or hardcode */
-  window.PK = 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
-  
   var logo = document.getElementById('nav-logo');
   if (!logo) return;
 
@@ -2334,21 +2369,22 @@ var IMGBB_KEY = 'b2c01e6615189dbcad9377d41098676e'; /* free ImgBB key */
 
 function onImgPick(e) {
   var f = e.target.files[0]; if (!f) return;
-  if (f.size > 5 * 1024 * 1024) { toast('Image too large. Maximum size is 5MB.', 'fail'); return; }
+  if (f.size > 5 * 1024 * 1024) { toast('Image too large. Max 5MB.', 'fail'); return; }
   var slot = activeSlot;
   var sl = document.getElementById('sl-' + slot);
 
   var r = new FileReader();
   r.onload = function (ev) {
     var base64 = ev.target.result;
+    uploadedImages[slot] = base64;
     sl.innerHTML = '<img src="' + base64 + '" alt=""/><button class="rx" onclick="rmImg(event,' + slot + ')">✕</button>';
     sl.classList.add('filled');
-    uploadedImages[slot] = base64;
     validateSell();
     toast('Image uploaded ✓', 'ok');
+    document.getElementById('img-inp').value = '';
   };
   r.onerror = function() {
-    toast('Failed to read image. Try again.', 'fail');
+    toast('Could not read image', 'fail');
   };
   r.readAsDataURL(f);
 }
@@ -2454,18 +2490,16 @@ function submitProduct() {
   if (btn && btn.disabled) return;
 
   /* Check images still uploading */
-  var stillUploading = uploadedImages.filter(Boolean).some(function(img){
-    return typeof img === 'string' && img.startsWith('data:');
-  });
+  var stillUploading = false;
   if (stillUploading) {
     toast('Please wait — images still uploading…', 'warn');
     return;
   }
 
-  /* Build clean payload — only plain strings and numbers */
+  /* Build clean payload — include base64 OR http URLs */
   var cleanImgs = [];
   uploadedImages.forEach(function(img) {
-    if (img && typeof img === 'string' && img.indexOf('http') === 0) {
+    if (img && typeof img === 'string') {
       cleanImgs.push(img);
     }
   });
@@ -2639,7 +2673,7 @@ function mkCard(p) {
 
   var verBadge = (p.sellerVerified || p.seller_verified)
     ? '<span class="verified-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Verified</span>' : '';
-  var trustBadge = (p.isVerified || p.is_verified)
+  var trustBadge = (p.badgeVerified || p.badge_verified)
     ? '<span class="trust-badge">&#x2713; Trusted</span>' : '';
   var featuredBadge = (p.is_featured || p.isFeature)
     ? '<span class="featured-badge" style="background:linear-gradient(135deg,#f0c040,#d4af37);color:#fff;padding:3px 8px;border-radius:3px;font-size:.65rem;font-weight:700;text-transform:uppercase;margin-left:6px">⭐ Featured</span>' : '';
@@ -2778,7 +2812,7 @@ function opn(id) {
   
   /* Seller info */
   var verBadge   = (p.sellerVerified||p.seller_verified) ? ' <span style="background:#1d4ed8;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Verified</span>' : '';
-  var trustBadge = (p.isVerified||p.is_verified) ? ' <span style="background:#b45309;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Trusted</span>' : '';
+  var trustBadge = (p.badgeVerified||p.badge_verified) ? ' <span style="background:#b45309;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Trusted</span>' : '';
   var pdQty      = (p.quantity !== undefined && p.quantity !== null) ? parseInt(p.quantity, 10) : null;
   var pdLocation = p.location || p.seller_location || '';
   var pdBio      = p.sellerBio || p.seller_bio || '';
@@ -3927,16 +3961,16 @@ window.disputeOrder = disputeOrder;
 ════════════════════════════════════════════════════════════════ */
 function payVerifFee() {
   if (!CU) { toast('Please sign in first.', 'fail'); return; }
-  if (CU.isVerified || CU.is_verified) {
-    toast('✅ You are already a Trusted Seller!', 'ok'); return;
+  if (CU.badgeVerified) {
+    toast('✅ You already have the Trusted Badge!', 'ok'); return;
   }
 
-  var pubKey = window.PK || PK || window.PAYSTACK_PUBLIC_KEY || window.PAYSTACK_PK || '';
+  var pubKey = window.PK || 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
   if (!pubKey || pubKey.length < 10) {
-    toast('Payment gateway not ready. Please refresh the page and try again.', 'fail'); return;
+    toast('Payment gateway not ready. Please refresh.', 'fail'); return;
   }
   if (typeof PaystackPop === 'undefined') {
-    toast('Paystack did not load. Please check your connection and refresh.', 'fail'); return;
+    toast('Paystack did not load. Check connection and refresh.', 'fail'); return;
   }
 
   var handler = PaystackPop.setup({
@@ -3944,10 +3978,9 @@ function payVerifFee() {
     email:    CU.email,
     amount:   200000,
     currency: 'NGN',
-    ref:      'VERIF-' + CU.id + '-' + Date.now(),
-    metadata: { userId: String(CU.id), type: 'verification_fee' },
+    ref:      'BADGE-' + CU.id + '-' + Date.now(),
+    metadata: { userId: String(CU.id), type: 'badge_fee' },
     callback: function(response) {
-      /* CRITICAL: Only verify seller AFTER payment success */
       fetch('/api/auth?action=verify-seller', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3956,19 +3989,17 @@ function payVerifFee() {
       .then(function(r){ return r.json(); })
       .then(function(data) {
         if (data.ok) {
-          CU.isVerified = true;
-          var idx = usrs.findIndex(function(u){ return String(u.id) === String(CU.id); });
-          if (idx !== -1) usrs[idx].isVerified = true;
-          sv('nm_users', usrs);
-          toast('🎉 Payment confirmed! You are now a ✓ Trusted Seller! Badge is live on all your listings.', 'ok');
+          CU.badgeVerified = true;
+          localStorage.setItem('nm_current_user', JSON.stringify(CU));
+          toast('🎉 Payment confirmed! ✓ Trusted Badge is now on all your listings!', 'ok');
           refreshProf();
         } else {
-          toast('❌ ' + (data.error || 'Verification failed after payment'), 'fail');
+          toast('❌ ' + (data.error || 'Badge verification failed'), 'fail');
         }
       })
       .catch(function(e){ toast('Network error: ' + e.message, 'fail'); });
     },
-    onClose: function() { toast('Verification payment cancelled.', 'warn'); }
+    onClose: function() { toast('Payment cancelled.', 'warn'); }
   });
   handler.openIframe();
 }
@@ -4292,7 +4323,6 @@ function refreshProf() {
         CU.affiliateBalance = parseFloat(u.affiliateBalance || u.affiliate_balance || 0);
         CU.adminBalance     = parseFloat(u.adminBalance     || u.admin_balance     || 0);
         CU.kycStatus        = u.kycStatus || CU.kycStatus;
-        CU.isVerified       = u.is_verified || u.isVerified || false;
         localStorage.setItem('nm_current_user', JSON.stringify(CU));
         /* Update balance displays */
         var selBal  = document.getElementById('seller-earned');
@@ -4320,7 +4350,7 @@ function refreshProf() {
   /* Update Trusted Seller badge UI */
   var verifBtn    = document.getElementById('verif-btn');
   var verifStatus = document.getElementById('verif-status');
-  if (CU.isVerified || CU.is_verified) {
+  if (CU.badgeVerified) {
     if (verifBtn)    { verifBtn.textContent = '✓ Already Trusted'; verifBtn.disabled = true; verifBtn.style.opacity = '.6'; }
     if (verifStatus) verifStatus.textContent = '✓ Your Trusted badge is live on all listings';
   } else {
