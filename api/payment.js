@@ -1,4 +1,4 @@
-// /api/payment.js — NeyoMarket Unified Payment + Orders + Disputes Engine v2
+// /api/payment.js — NeyoMarket Unified Payment + Orders + Disputes Engine
 // Replaces: payment.js + orders.js + disputes.js (merged to stay under Vercel 12-function limit)
 //
 // Route map — all via ?action= query parameter:
@@ -357,14 +357,13 @@ module.exports = async function handler(req, res) {
 
   /* ══════════════════════════════════════════════════════════════════
      ORDERS — PATCH ?action=orders
-     Update any order fields. orderId extracted from URL path or body.
+     Update any order fields. orderId extracted from query parameter.
      All conditionals pre-computed before sql template (Neon ternary rule).
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'orders' && req.method === 'PATCH') {
     try {
-      const parts   = (req.url || '').split('/').filter(Boolean);
-      const orderId = parts[parts.length - 1].split('?')[0];
-      if (!orderId) return jsonErr(res, 400, 'orderId required in URL path.');
+      const orderId = req.query.id;
+      if (!orderId) return jsonErr(res, 400, 'orderId required in query parameter (?id=...).');
 
       const body = req.body || {};
 
