@@ -39,7 +39,7 @@ function toProduct(r) {
     saleEndsAt:     r.sale_ends_at     || null,
     shippingFee:    r.shipping_fee     ? parseFloat(r.shipping_fee) : 0,
     sellerVerified: r.seller_verified  || false,
-    isVerified:     r.is_verified      || false,
+    badgeVerified:  r.badge_verified   || false,
     commission:     parseFloat(r.commission || 0),
     description:    r.description      || '',
     seller:         r.seller           || '',
