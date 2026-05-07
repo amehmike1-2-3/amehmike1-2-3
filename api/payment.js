@@ -279,21 +279,13 @@ module.exports = async function handler(req, res) {
           ORDER BY created_at DESC LIMIT 200
         `;
       } else if (userId) {
-        /* Search by user_id AND by email in customer JSON — catches all cases */
+        /* STRICT: Only return orders where user_id matches the requester */
+        /* DO NOT use OR with email — this leaks orders to other users */
         rows = await sql`
           SELECT * FROM orders
           WHERE user_id = ${String(userId)}
-             OR customer::text ILIKE ${'%' + String(email || '') + '%'}
           ORDER BY created_at DESC
         `;
-        /* If still empty, try ref-based search using email */
-        if (!rows.length && email) {
-          rows = await sql`
-            SELECT * FROM orders
-            WHERE customer::text ILIKE ${'%' + String(email) + '%'}
-            ORDER BY created_at DESC
-          `;
-        }
       } else {
         return jsonErr(res, 400, 'userId is required. Use ?userId=<id> or ?admin=true');
       }
