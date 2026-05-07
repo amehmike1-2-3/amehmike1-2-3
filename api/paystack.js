@@ -4,6 +4,7 @@
 'use strict';
 
 const { neon } = require('@neondatabase/serverless');
+const nodemailer = require('nodemailer');
 
 const sql = neon(process.env.DATABASE_URL);
 const PSK = process.env.PAYSTACK_SECRET_KEY;
@@ -258,8 +259,85 @@ module.exports = async function handler(req, res) {
         reason:    'NeyoMarket seller payout — ' + user.name
       });
 
-      if (!transferRes.status)
+      if (!transferRes.status) {
+        /* CHECK FOR INSUFFICIENT FUNDS ERROR */
+        const errMsg = transferRes.message || '';
+        const isInsufficientFunds = errMsg.toLowerCase().includes('insufficient') || 
+                                    errMsg.toLowerCase().includes('low balance') ||
+                                    errMsg.toLowerCase().includes('balance is low');
+
+        if (isInsufficientFunds) {
+          /* INSUFFICIENT FUNDS: Set withdrawal to 'processing' and notify admin */
+          console.warn('[paystack.js] Insufficient funds on Paystack account for withdrawal:', withdrawalId);
+          
+          await sql`
+            UPDATE withdrawals
+            SET status = ${'processing'}
+            WHERE id = ${String(withdrawalId)}
+          `;
+
+          /* Send admin notification webhook */
+          try {
+            await fetch(process.env.ADMIN_WEBHOOK_URL || 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: '⚠️ Paystack Insufficient Funds',
+                blocks: [
+                  {
+                    type: 'section',
+                    text: {
+                      type: 'mrkdwn',
+                      text: `*Withdrawal Processing Paused*\n*Withdrawal ID:* ${withdrawalId}\n*Seller:* ${user.name}\n*Amount:* ₦${grossAmt.toLocaleString()}\n*Reason:* Insufficient funds on Paystack account\n*Action:* Top up your Paystack balance and retry`
+                    }
+                  }
+                ]
+              })
+            }).catch(err => console.error('[paystack.js] Webhook send failed:', err.message));
+          } catch (webhookErr) {
+            console.error('[paystack.js] Webhook notification error:', webhookErr.message);
+          }
+
+          /* Send admin email notification */
+          try {
+            const nodemailer = require('nodemailer');
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: {
+                user: process.env.GMAIL_USER,
+                pass: process.env.GMAIL_PASS
+              }
+            });
+
+            await transporter.sendMail({
+              from: process.env.GMAIL_USER,
+              to: process.env.ADMIN_EMAIL || 'admin@neyomarket.com',
+              subject: '⚠️ NeyoMarket: Paystack Insufficient Funds',
+              html: `
+                <h2>Withdrawal Processing Paused</h2>
+                <p><strong>Reason:</strong> Insufficient funds on Paystack account</p>
+                <p><strong>Withdrawal ID:</strong> ${withdrawalId}</p>
+                <p><strong>Seller:</strong> ${user.name}</p>
+                <p><strong>Amount:</strong> ₦${grossAmt.toLocaleString()}</p>
+                <p><strong>Action Required:</strong> Top up your Paystack balance and the withdrawal will retry automatically.</p>
+                <p>Withdrawal status has been set to "Processing" — it will resume once funds are available.</p>
+              `
+            }).catch(err => console.error('[paystack.js] Email send failed:', err.message));
+          } catch (emailErr) {
+            console.error('[paystack.js] Email notification error:', emailErr.message);
+          }
+
+          return res.status(202).json({
+            ok: false,
+            status: 'processing',
+            message: 'Insufficient funds on Paystack. Withdrawal set to Processing. Admin will top up and retry.',
+            withdrawalId: withdrawalId
+          });
+        }
+
+        /* OTHER TRANSFER ERRORS */
         return res.status(400).json({ error: 'Transfer failed: ' + (transferRes.message || 'Try again') });
+      }
 
       transferRef = transferRes.data.reference || transferRef;
       transferOk  = true;
