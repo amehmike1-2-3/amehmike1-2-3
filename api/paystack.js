@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
       if (!PSK)
         return res.status(500).json({ error: 'Paystack key not configured. Contact admin.' });
 
-      const users = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
       if (!users.length) return res.status(404).json({ error: 'User not found.' });
       const user = users[0];
 
@@ -120,7 +120,7 @@ module.exports = async function handler(req, res) {
         SET kyc_status = ${kycStatus},
             kyc_type   = ${kycType},
             kyc_number = ${kycNumber}
-        WHERE id = ${userId}
+        WHERE id = ${String(userId)}
       `;
 
       return res.status(200).json({
@@ -137,7 +137,7 @@ module.exports = async function handler(req, res) {
       const userId = req.query.userId;
       if (!userId) return res.status(400).json({ error: 'userId required.' });
 
-      const users = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
       if (!users.length) return res.status(404).json({ error: 'User not found.' });
       const user = users[0];
 
@@ -157,7 +157,7 @@ module.exports = async function handler(req, res) {
       const { userId, amount } = req.body || {};
       if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required.' });
 
-      const users = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
       if (!users.length) return res.status(404).json({ error: 'User not found.' });
       const user = users[0];
 
@@ -297,7 +297,7 @@ module.exports = async function handler(req, res) {
       const { userId, amount } = req.body || {};
       if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required.' });
 
-      const users = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
+      const users = await sql`SELECT * FROM users WHERE id = ${String(userId)} LIMIT 1`;
       if (!users.length) return res.status(404).json({ error: 'User not found.' });
       const user = users[0];
 
