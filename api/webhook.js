@@ -66,50 +66,25 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    /* ── 4. AUTO-SAVE ORDER ON PAYMENT SUCCESS ──
-       If order doesn't exist, create it from webhook metadata.
-       This handles window close before /api/payment?action=confirm.
+    /* ── 4. FIND THE ORDER by reference OR by our tracking ID (NYO-XXXX) ──
+       We store the Paystack reference as `ref` and our tracking ID as `id`.
+       The order may have been inserted before this webhook fires (race-safe).
     ──────────────────────────────────────────────────────────────────────── */
-    let orders = await sql`
+    const orders = await sql`
       SELECT * FROM orders
       WHERE ref = ${reference} OR id = ${reference}
       LIMIT 1
     `;
 
-    let order;
     if (!orders.length) {
-      /* Auto-create order from webhook data */
-      console.warn('[webhook.js] Order not found — auto-creating from webhook');
-      try {
-        const metadata = data.metadata || {};
-        const newOrderId = metadata.orderId || reference;
-        const userId = metadata.userId || '';
-        const items = metadata.items || [];
-        const total = data.amount ? Math.round(data.amount / 100) : 0;
-        
-        await sql`
-          INSERT INTO orders (
-            id, user_id, ref, items, total, status, mode, date, created_at
-          ) VALUES (
-            ${String(newOrderId)}, ${String(userId)}, ${reference},
-            ${JSON.stringify(items)}, ${total}, ${'escrow_held'}, ${'standard'},
-            ${new Date().toLocaleDateString()}, NOW()
-          ) ON CONFLICT (id) DO NOTHING
-        `;
-        
-        console.log('[webhook.js] ✅ Auto-created order:', newOrderId);
-        orders = await sql`SELECT * FROM orders WHERE id = ${String(newOrderId)} LIMIT 1`;
-      } catch (e) {
-        console.error('[webhook.js] Auto-create failed:', e.message);
-      }
+      /* Order not found — could be a delayed insert. Log and return 200
+         so Paystack does not retry. The payment confirm endpoint
+         (/api/payment?action=confirm) will set the correct status anyway. */
+      console.warn('[webhook.js] Order not found for ref:', reference, '— may not have been saved yet.');
+      return res.status(200).json({ received: true, note: 'Order not found — confirm endpoint will handle it' });
     }
 
-    if (!orders.length) {
-      console.warn('[webhook.js] Order not found for ref:', reference);
-      return res.status(200).json({ received: true });
-    }
-
-    order = orders[0];
+    const order = orders[0];
 
     /* ── 5. SKIP IF ALREADY PROCESSED ── */
     if (order.status === 'escrow_held' || order.status === 'completed') {
