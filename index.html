@@ -163,12 +163,10 @@
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 16px rgba(37,211,102,.4);
   z-index:991;                      /* above nav, below modals */
-  cursor:grab;transition:transform .2s;
+  cursor:pointer;transition:transform .2s;
   text-decoration:none;font-size:1.4rem;
-  touch-action:none;
 }
 .wa-fab:hover,.wa-fab:active{transform:scale(1.08);}
-.wa-fab.dragging{cursor:grabbing;opacity:0.9;}
 
 .promote-fab{
   position:fixed;
@@ -180,13 +178,11 @@
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 16px rgba(240,192,64,.5);
   z-index:991;
-  cursor:grab;transition:all .2s;
+  cursor:pointer;transition:all .2s;
   border:none;font-size:1.4rem;
   color:#fff;font-weight:bold;
-  touch-action:none;
 }
 .promote-fab:hover,.promote-fab:active{transform:scale(1.08);box-shadow:0 6px 20px rgba(240,192,64,.6);}
-.promote-fab.dragging{cursor:grabbing;opacity:0.9;}
 
 /* Desktop: push both FABs above bottom nav */
 @media(min-width:769px){
@@ -790,10 +786,9 @@ textarea.fi{resize:vertical;min-height:88px}
 .cfab{position:fixed;bottom:calc(var(--bnav) + 14px);right:14px;z-index:995;
       width:50px;height:50px;border-radius:50%;background:var(--gold);border:none;
       display:flex;align-items:center;justify-content:center;font-size:1.25rem;
-      box-shadow:0 4px 14px rgba(201,146,42,.4);cursor:grab;transition:var(--tr);touch-action:none}
+      box-shadow:0 4px 14px rgba(201,146,42,.4);cursor:pointer;transition:var(--tr)}
 @media(min-width:769px){.cfab{bottom:20px}}
 .cfab:active{transform:scale(.9)}
-.cfab.dragging{cursor:grabbing;opacity:0.9;}
 .cp2{position:fixed;bottom:calc(var(--bnav) + 70px);right:8px;z-index:994;
      width:calc(100vw - 16px);max-width:320px;background:#fff;
      border:1px solid var(--border);border-radius:12px;display:none;
@@ -1399,10 +1394,35 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         </div>
         <div class="fg"><label>Email</label><input class="fi" type="email" id="si-email" placeholder="you@email.com" autocomplete="email"/></div>
         <div class="fg"><label>Password</label><input class="fi" type="password" id="si-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+        <a class="fl" onclick="showForgotPanel()">Forgot password?</a>
         <div class="em" id="si-err"></div>
         <div class="tr2"><input type="checkbox" id="si-cb"/><label for="si-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a></label></div>
         <button class="abtn" onclick="doSignIn()">Sign In Securely 🔐</button>
         <div class="asw">No account? <a onclick="go('signup')">Sign Up Free</a></div>
+      </div>
+
+      <!-- ── FORGOT PASSWORD PANEL (hidden by default) ── -->
+      <div id="forgot-panel" style="display:none">
+        <div class="alo">
+          <div style="font-size:2rem;margin-bottom:8px">🔑</div>
+          <h2>Reset Password</h2>
+          <p>We'll email you a reset link instantly</p>
+        </div>
+        <div class="fg">
+          <label>Your Registered Email</label>
+          <input class="fi" type="email" id="fp-email" placeholder="you@email.com" autocomplete="email"/>
+        </div>
+        <div class="em" id="fp-err" style="min-height:18px"></div>
+        <div id="fp-success" style="display:none;background:rgba(30,216,128,.08);border:1px solid rgba(30,216,128,.22);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px">
+          <div style="font-size:1.6rem;margin-bottom:6px">✅</div>
+          <div style="font-weight:700;color:var(--green);margin-bottom:4px">Reset Email Sent!</div>
+          <div id="fp-sent-to" style="font-size:.8rem;color:var(--muted)"></div>
+          <div style="font-size:.76rem;color:var(--muted);margin-top:6px">Check your inbox and spam folder.</div>
+        </div>
+        <button class="abtn" id="fp-btn" onclick="sendResetEmail()">📧 Send Reset Link</button>
+        <div style="text-align:center;margin-top:14px">
+          <a onclick="hideForgotPanel()" style="color:var(--muted);font-size:.83rem;cursor:pointer">← Back to Sign In</a>
+        </div>
       </div>
 
     </div>
@@ -4198,6 +4218,97 @@ var EJ_TEMPLATE = 'template_d32vaay';
 var EJ_PUBLIC   = 'XhnL8cFJMYqd58xAE';
 
 /* ── Panel toggle helpers ── */
+function showForgotPanel() {
+  var sp = document.getElementById('signin-panel');
+  var fp = document.getElementById('forgot-panel');
+  if (sp) sp.style.display = 'none';
+  if (fp) fp.style.display = 'block';
+  var fe = document.getElementById('fp-err');
+  var fs = document.getElementById('fp-success');
+  var fb = document.getElementById('fp-btn');
+  if (fe) { fe.textContent = ''; fe.style.color = 'var(--red)'; }
+  if (fs) fs.style.display = 'none';
+  if (fb) { fb.disabled = false; fb.textContent = '📧 Send Reset Link'; }
+  var fi = document.getElementById('fp-email');
+  if (fi) { fi.value = ''; setTimeout(function(){ fi.focus(); }, 100); }
+}
+window.showForgotPanel = showForgotPanel;
+
+function hideForgotPanel() {
+  var fp = document.getElementById('forgot-panel');
+  var sp = document.getElementById('signin-panel');
+  if (fp) fp.style.display = 'none';
+  if (sp) sp.style.display = 'block';
+}
+window.hideForgotPanel = hideForgotPanel;
+
+/* ── sendResetEmail — uses Gmail SMTP backend (not EmailJS) ── */
+function sendResetEmail() {
+  var emailEl = document.getElementById('fp-email');
+  var errEl   = document.getElementById('fp-err');
+  var sucEl   = document.getElementById('fp-success');
+  var sentEl  = document.getElementById('fp-sent-to');
+  var btn     = document.getElementById('fp-btn');
+
+  /* reset error display */
+  if (errEl) { errEl.textContent = ''; errEl.style.color = 'var(--red)'; }
+
+  /* validate input */
+  var email = emailEl ? emailEl.value.trim().toLowerCase() : '';
+  if (!email) {
+    if (errEl) errEl.textContent = 'Please enter your email address.';
+    return;
+  }
+  if (!email.includes('@') || !email.includes('.')) {
+    if (errEl) errEl.textContent = 'That doesn\'t look like a valid email address.';
+    return;
+  }
+
+  /* loading state */
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+
+  /* ── NEW: Call backend /api/auth?action=reset-password endpoint ──
+     Backend will:
+     1. Check if email exists
+     2. Generate 32-byte reset token
+     3. Save token to database with 1-hour expiry
+     4. Send email via Gmail SMTP (amehmichael2336@gmail.com)
+     5. Return 200 success (email enumeration protected)
+  */
+  apiCall('/auth?action=reset-password', 'POST', { email: email })
+    .then(function (data) {
+      /* Success — show confirmation message */
+      if (sucEl) {
+        sucEl.style.display = 'block';
+        if (sentEl) sentEl.textContent = 'Sent to: ' + maskEmail(email);
+      }
+      if (btn) { btn.disabled = true; btn.textContent = '✅ Email Sent'; }
+      if (errEl) errEl.textContent = '';
+      toast('Reset link sent! Check your inbox 📧', 'ok');
+      
+      /* Optional: Auto-hide after 5 seconds */
+      setTimeout(function() {
+        hideForgotPanel();
+      }, 5000);
+    })
+    .catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = '📧 Try Again'; }
+      var errMsg = err && err.message ? err.message : String(err);
+      
+      if (errEl) {
+        if (errMsg.includes('network') || errMsg.includes('Network')) {
+          errEl.textContent = 'Network error. Please check your connection and try again.';
+        } else {
+          errEl.textContent = errMsg || 'Failed to send reset email. Please try again.';
+        }
+      }
+    });
+}
+window.sendResetEmail = sendResetEmail;
+
+/* ── Keep old alias for backward compatibility ── */
+function forgotPassword() { showForgotPanel(); }
+window.forgotPassword = forgotPassword;
 
 /* ═══ PROFILE ═══ */
 function refreshProf() {
@@ -7685,116 +7796,4 @@ function copyAffiliateLink() {
     toast('Error copying link', 'err');
   }
 }
-
-// ═══ DRAGGABLE FAB FUNCTIONALITY ═══
-(function() {
-  var isDragging = false;
-  var dragElement = null;
-  var startX, startY, startLeft, startBottom;
-  
-  function makeDraggable(element) {
-    if (!element) return;
-    
-    function onMouseDown(e) {
-      if (e.button !== 0) return;
-      isDragging = true;
-      dragElement = element;
-      startX = e.clientX || e.touches?.[0].clientX;
-      startY = e.clientY || e.touches?.[0].clientY;
-      startLeft = element.offsetLeft;
-      startBottom = window.innerHeight - element.offsetTop - element.offsetHeight;
-      element.classList.add('dragging');
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    }
-    
-    function onTouchStart(e) {
-      isDragging = true;
-      dragElement = element;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startLeft = element.offsetLeft;
-      startBottom = window.innerHeight - element.offsetTop - element.offsetHeight;
-      element.classList.add('dragging');
-      document.addEventListener('touchmove', onTouchMove, { passive: false });
-      document.addEventListener('touchend', onTouchEnd);
-    }
-    
-    function onMouseMove(e) {
-      if (!isDragging || !dragElement) return;
-      var deltaX = e.clientX - startX;
-      var deltaY = e.clientY - startY;
-      var newLeft = startLeft + deltaX;
-      var newBottom = startBottom - deltaY;
-      
-      var minLeft = 0;
-      var maxLeft = window.innerWidth - dragElement.offsetWidth;
-      var minBottom = 64;
-      var maxBottom = window.innerHeight - dragElement.offsetHeight;
-      
-      newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-      newBottom = Math.max(minBottom, Math.min(newBottom, maxBottom));
-      
-      dragElement.style.left = newLeft + 'px';
-      dragElement.style.right = 'auto';
-      dragElement.style.bottom = newBottom + 'px';
-    }
-    
-    function onTouchMove(e) {
-      if (!isDragging || !dragElement) return;
-      e.preventDefault();
-      var touch = e.touches[0];
-      var deltaX = touch.clientX - startX;
-      var deltaY = touch.clientY - startY;
-      var newLeft = startLeft + deltaX;
-      var newBottom = startBottom - deltaY;
-      
-      var minLeft = 0;
-      var maxLeft = window.innerWidth - dragElement.offsetWidth;
-      var minBottom = 64;
-      var maxBottom = window.innerHeight - dragElement.offsetHeight;
-      
-      newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-      newBottom = Math.max(minBottom, Math.min(newBottom, maxBottom));
-      
-      dragElement.style.left = newLeft + 'px';
-      dragElement.style.right = 'auto';
-      dragElement.style.bottom = newBottom + 'px';
-    }
-    
-    function onMouseUp() {
-      isDragging = false;
-      if (dragElement) dragElement.classList.remove('dragging');
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
-    
-    function onTouchEnd() {
-      isDragging = false;
-      if (dragElement) dragElement.classList.remove('dragging');
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-    }
-    
-    element.addEventListener('mousedown', onMouseDown);
-    element.addEventListener('touchstart', onTouchStart);
-  }
-  
-  // Initialize draggable FABs when DOM is ready
-  function initDraggableFABs() {
-    var chatFab = document.querySelector('.cfab');
-    var waFab = document.querySelector('.wa-fab');
-    var promoteFab = document.querySelector('.promote-fab');
-    
-    if (chatFab) makeDraggable(chatFab);
-    if (waFab) makeDraggable(waFab);
-    if (promoteFab) makeDraggable(promoteFab);
-  }
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDraggableFABs);
-  } else {
-    initDraggableFABs();
-  }
-})();
 </script>
