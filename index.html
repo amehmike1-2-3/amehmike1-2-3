@@ -247,8 +247,9 @@
 ══════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html{transition:background .2s,color .2s}
 body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);
-     overflow-x:hidden;min-height:100vh;font-size:1rem;line-height:1.5}
+     overflow-x:hidden;min-height:100vh;font-size:1rem;line-height:1.5;transition:background .2s,color .2s}
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;font-family:inherit;border:none;background:none;touch-action:manipulation}
 input,textarea,select{font-family:inherit;-webkit-appearance:none;appearance:none}
@@ -270,7 +271,7 @@ img{display:block;max-width:100%}
 ══════════════════════════════════════ */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:500;height:var(--nh);
-  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);
+  background:rgba(255,255,255,.97);backdrop-filter:blur(20px);transition:background .2s,color .2s;
   border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;
   padding:0 16px;gap:8px;
@@ -952,6 +953,65 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 }
 .dispute-row.unresolved{border-left:3px solid var(--red)}
 .dispute-row.resolved{border-left:3px solid var(--green)}
+
+/* ══════════════════════════════════════
+   DARK MODE OVERRIDES — hardcoded whites
+══════════════════════════════════════ */
+[data-theme="dark"] nav {
+  background: rgba(15,17,23,.97) !important;
+  border-bottom-color: var(--border) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4) !important;
+}
+[data-theme="dark"] .bottom-nav {
+  background: #0f1117 !important;
+  border-top-color: var(--border) !important;
+}
+[data-theme="dark"] .bnb {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .bnb.on {
+  color: var(--gold) !important;
+}
+[data-theme="dark"] .acard,
+[data-theme="dark"] .aw .acard {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .fi {
+  background: var(--bg3) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .fi::placeholder { color: var(--muted2) !important; }
+[data-theme="dark"] .modal-box,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .mod-box {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .pcard,
+[data-theme="dark"] .sec,
+[data-theme="dark"] .dw {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .ham-drawer {
+  background: var(--bg) !important;
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .nbrand,
+[data-theme="dark"] .nb {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .nb.on { color: var(--gold) !important; }
+
 </style>
 </head>
 <body>
@@ -997,10 +1057,55 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     <button class="nb"    id="nb-rules"  onclick="go('rules')">Rules</button>
     <button class="nb" id="nb-seller" style="display:none;color:var(--gold)" onclick="go('seller')">Dashboard</button>
   </div>
-  <div class="nav-r" id="nav-r" style="display:flex;align-items:center;gap:8px">
+  <!-- updNav only touches nav-r (cart + user chip) -->
+  <div class="nav-r" id="nav-r" style="display:flex;align-items:center;gap:6px"></div>
+  <!-- nav-static: NEVER wiped by updNav -->
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
     <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <button id="ham-btn" onclick="openHamMenu()" aria-label="Menu" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:38px;height:38px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;padding:7px;flex-shrink:0">
+      <span style="display:block;width:18px;height:2px;background:var(--text);border-radius:2px"></span>
+      <span style="display:block;width:18px;height:2px;background:var(--text);border-radius:2px"></span>
+      <span style="display:block;width:18px;height:2px;background:var(--text);border-radius:2px"></span>
+    </button>
   </div>
 </nav>
+
+<div id="ham-overlay" onclick="closeHamMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:800;backdrop-filter:blur(3px)"></div>
+
+<div id="ham-drawer" style="position:fixed;top:0;right:0;bottom:0;width:min(300px,88vw);background:var(--bg);z-index:900;transform:translateX(110%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-6px 0 32px rgba(0,0,0,.15);display:flex;flex-direction:column;overflow-y:auto">
+
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);min-height:60px;flex-shrink:0">
+    <img src="https://neyomarket.com.ng/neyomarket-logo.webp" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:contain">
+    <span style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:1.1rem;color:var(--text)">NeyoMarket</span>
+    <button onclick="closeHamMenu()" style="margin-left:auto;background:none;border:none;font-size:1.1rem;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+    <span style="font-size:.82rem;color:var(--muted);font-weight:500">Theme</span>
+    <button onclick="toggleTheme()" style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--text);cursor:pointer">
+      <span id="ham-theme-icon">🌙</span><span id="ham-theme-label">Dark Mode</span>
+    </button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;padding:8px;gap:2px">
+    <button onclick="hamGo('home')"   style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">🏠 Home</button>
+    <button onclick="hamGo('market')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">🛒 Market</button>
+    <button onclick="hamGo('sell')"   style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">➕ Sell</button>
+    <button onclick="hamGo('aff')"    style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">💸 Affiliate</button>
+    <button onclick="hamGo('rules')"  style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">📋 Rules</button>
+    <button id="ham-dash" onclick="hamGo('seller')" style="display:none;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--gold);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;text-align:left;width:100%">📊 Dashboard</button>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:4px 12px"></div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px 28px;margin-top:auto">
+    <button id="ham-profile" onclick="hamGo('profile')" style="display:none;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">👤 My Profile</button>
+    <button id="ham-signin"  onclick="closeHamMenu();go('signin')"  style="width:100%;padding:13px;border-radius:8px;border:1.5px solid var(--gold);background:transparent;color:var(--gold);font-family:inherit;font-size:.88rem;font-weight:600;cursor:pointer">🔑 Sign In</button>
+    <button id="ham-signup"  onclick="closeHamMenu();go('signup')"  style="width:100%;padding:13px;border-radius:8px;border:none;background:var(--gold);color:#fff;font-family:inherit;font-size:.88rem;font-weight:600;cursor:pointer">✨ Create Account</button>
+    <button id="ham-signout" onclick="doSignOut();closeHamMenu()" style="display:none;width:100%;padding:13px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer">🚪 Sign Out</button>
+  </div>
+
+</div>
 
 <a class="wa-fab" id="wa-fab"
    href="https://wa.me/2349072212496?text=Hi%20NeyoMarket%20Support"
@@ -5323,9 +5428,7 @@ function updNav() {
   } else {
     isAdmin = false;  /* Clear global flag when logged out */
     nr.innerHTML =
-      '<button class="bo" onclick="go(\'signin\')">Sign In</button>'
-      + '<button class="bg" onclick="go(\'signup\')">Sign Up</button>'
-      + '<button class="ci" onclick="openCart()">🛒<span class="cib" id="cart-badge">0</span></button>';
+      '<button class="ci" onclick="openCart()">🛒<span class="cib" id="cart-badge">0</span></button>';
   }
   updBadge();
   /* Update bottom nav */
@@ -6247,21 +6350,86 @@ window.adminApprovePayout = adminApprovePayout;
 ════════════════════════════════════════════════════════ */
 function toggleTheme() {
   var html    = document.documentElement;
-  var current = html.getAttribute('data-theme') || 'dark';
+  var current = html.getAttribute('data-theme') || 'light';
   var next    = current === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
+  document.body.setAttribute('data-theme', next);
   localStorage.setItem('nm_theme', next);
   var btn = document.getElementById('theme-btn');
   if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+  var _i=document.getElementById('ham-theme-icon');  if(_i)  _i.textContent  = next==='dark'?'☀️':'🌙';
+  var _l=document.getElementById('ham-theme-label'); if(_l)  _l.textContent  = next==='dark'?'Light Mode':'Dark Mode';
 }
 window.toggleTheme = toggleTheme;
+
+/* ════ HAMBURGER ════ */
+(function() {
+  // show ham-btn on mobile
+  function showHam() {
+    var btn = document.getElementById('ham-btn');
+    if (btn) btn.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+  }
+  showHam();
+  window.addEventListener('resize', showHam);
+})();
+
+function openHamMenu() {
+  var d = document.getElementById('ham-drawer');
+  var o = document.getElementById('ham-overlay');
+  d.style.transform = 'translateX(0)';
+  o.style.display   = 'block';
+  document.body.style.overflow = 'hidden';
+  var cu = window.CU;
+  var el = function(id){ return document.getElementById(id); };
+  if (cu) {
+    if(el('ham-signin'))  el('ham-signin').style.display  = 'none';
+    if(el('ham-signup'))  el('ham-signup').style.display  = 'none';
+    if(el('ham-signout')) el('ham-signout').style.display = 'block';
+    if(el('ham-profile')) el('ham-profile').style.display = 'flex';
+    if(el('ham-dash'))    el('ham-dash').style.display    = (cu.role==='seller'||cu.role==='admin') ? 'flex' : 'none';
+  } else {
+    if(el('ham-signin'))  el('ham-signin').style.display  = 'block';
+    if(el('ham-signup'))  el('ham-signup').style.display  = 'block';
+    if(el('ham-signout')) el('ham-signout').style.display = 'none';
+    if(el('ham-profile')) el('ham-profile').style.display = 'none';
+    if(el('ham-dash'))    el('ham-dash').style.display    = 'none';
+  }
+  var theme = document.documentElement.getAttribute('data-theme') || 'light';
+  var icon  = el('ham-theme-icon');
+  var label = el('ham-theme-label');
+  if(icon)  icon.textContent  = theme==='dark' ? '☀️' : '🌙';
+  if(label) label.textContent = theme==='dark' ? 'Light Mode' : 'Dark Mode';
+}
+
+function closeHamMenu() {
+  var d = document.getElementById('ham-drawer');
+  var o = document.getElementById('ham-overlay');
+  if(d) d.style.transform = 'translateX(110%)';
+  if(o) o.style.display   = 'none';
+  document.body.style.overflow = '';
+}
+
+function hamGo(pageId) {
+  closeHamMenu();
+  setTimeout(function(){ go(pageId); }, 200);
+}
+
+window.openHamMenu  = openHamMenu;
+window.closeHamMenu = closeHamMenu;
+window.hamGo        = hamGo;
+
 
 /* Apply saved theme immediately on every page load */
 (function applyTheme() {
   var saved = localStorage.getItem('nm_theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
-  var btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+  // Update button immediately AND after DOM ready
+  function syncBtn() {
+    var btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+  }
+  syncBtn();
+  document.addEventListener('DOMContentLoaded', syncBtn);
 })();
 
 /* ════════════════════════════════════════════════════════
