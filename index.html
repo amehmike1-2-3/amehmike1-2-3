@@ -294,7 +294,7 @@ nav{
     font-size:.76rem;font-weight:600;transition:var(--tr);white-space:nowrap;
     letter-spacing:.4px;text-transform:uppercase;box-shadow:var(--shadow)}
 .bg:active{opacity:.88;transform:scale(.98)}
-.bo{background:#fff;border:1px solid var(--border2);color:var(--text);padding:8px 14px;
+.bo{background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:8px 14px;
     border-radius:6px;font-size:.76rem;font-weight:500;transition:var(--tr);white-space:nowrap}
 .bo:active{border-color:var(--gold);color:var(--gold)}
 .ci{position:relative;background:var(--bg3);border:1px solid var(--border);
@@ -377,7 +377,7 @@ nav{
    CATEGORY PILLS
 ══════════════════════════════════════ */
 .cats{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:24px}
-.cp{background:#fff;border:1px solid var(--border2);color:var(--muted);
+.cp{background:var(--bg2);border:1px solid var(--border2);color:var(--muted);
     padding:8px 16px;border-radius:50px;font-size:.72rem;cursor:pointer;
     transition:var(--tr);font-weight:400;white-space:nowrap;
     box-shadow:var(--shadow)}
@@ -395,7 +395,7 @@ nav{
   to { transform: translateY(0); opacity: 1; }
 }
 
-.pcard{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.pcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
        overflow:hidden;cursor:pointer;transition:var(--tr);box-shadow:var(--shadow);position:relative}
 .pcard:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .pcard:active{opacity:.9;transform:scale(.99)}
@@ -404,7 +404,7 @@ nav{
                  font-size:1rem;cursor:pointer;z-index:10;transition:all .2s;opacity:0}
 .pcard:hover .admin-delete-btn{opacity:1}
 .admin-delete-btn:hover{background:rgba(220,38,38,1);transform:scale(1.1)}
-.pci{height:200px;position:relative;overflow:hidden;background:#ffffff;
+.pci{height:200px;position:relative;overflow:hidden;background:var(--bg2);
      border-bottom:1px solid var(--border);
      display:flex;align-items:center;justify-content:center}
 @media(max-width:480px){.pci{height:170px}}
@@ -435,7 +435,7 @@ nav{
    FORMS
 ══════════════════════════════════════ */
 .cw{max-width:580px;margin:0 auto;padding:0 14px 60px}
-.fc{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.fc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
     padding:24px 20px;box-shadow:var(--shadow)}
 .fc h2{font-family:'Cormorant Garamond',serif;font-size:1.7rem;margin-bottom:5px;
        font-weight:600;color:var(--text)}
@@ -444,10 +444,10 @@ nav{
 .fg label{display:block;font-size:.68rem;font-weight:600;color:var(--muted);
           margin-bottom:5px;text-transform:uppercase;letter-spacing:.7px}
 .rq{color:var(--red)}
-.fi{width:100%;background:#fff;border:1.5px solid var(--border2);color:var(--text);
+.fi{width:100%;background:var(--bg2);border:1.5px solid var(--border2);color:var(--text);
     padding:12px 13px;border-radius:6px;font-size:.9rem;transition:var(--tr);outline:none}
 .fi:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,42,.1)}
-.fi option{background:#fff;color:var(--text)}
+.fi option{background:var(--bg2);color:var(--text)}
 textarea.fi{resize:vertical;min-height:88px}
 .tr2{display:flex;align-items:flex-start;gap:10px;background:var(--bg3);
      border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px}
@@ -494,7 +494,7 @@ textarea.fi{resize:vertical;min-height:88px}
 ══════════════════════════════════════ */
 .aw{display:flex;align-items:center;justify-content:center;
     min-height:calc(100vh - var(--nh));padding:16px;background:var(--bg)}
-.acard{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.acard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
        padding:32px 24px;width:100%;max-width:400px;box-shadow:var(--shadow-md)}
 .alo{text-align:center;margin-bottom:24px}
 .alo .lm{width:44px;height:44px;border-radius:8px;margin:0 auto 12px;font-size:22px}
@@ -526,7 +526,7 @@ textarea.fi{resize:vertical;min-height:88px}
    RECEIPT
 ══════════════════════════════════════ */
 .recw{max-width:420px;margin:0 auto;padding:0 14px 60px}
-.rec{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.rec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:22px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
 .rec h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;
         margin-bottom:4px;color:var(--text)}
@@ -553,7 +553,7 @@ textarea.fi{resize:vertical;min-height:88px}
    DASHBOARD TABS
 ══════════════════════════════════════ */
 .dash-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;
-           border-bottom:1px solid var(--border);margin-bottom:18px;background:#fff}
+           border-bottom:1px solid var(--border);margin-bottom:18px;background:var(--bg2)}
 .dash-tabs::-webkit-scrollbar{display:none}
 .dash-tab{padding:13px 16px;font-size:.7rem;font-weight:500;color:var(--muted);cursor:pointer;
           border-bottom:2px solid transparent;transition:var(--tr);white-space:nowrap;
@@ -562,7 +562,7 @@ textarea.fi{resize:vertical;min-height:88px}
 .dash-tab.on{color:var(--gold);border-bottom-color:var(--gold)}
 
 /* Dashboard card */
-.dc{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.dc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
     padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
 .dc h3{font-size:.8rem;font-weight:600;margin-bottom:12px;color:var(--muted);
        text-transform:uppercase;letter-spacing:.5px}
@@ -571,7 +571,7 @@ textarea.fi{resize:vertical;min-height:88px}
 .smini{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);
        border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
 @media(min-width:480px){.smini{grid-template-columns:repeat(4,1fr)}}
-.sm{background:#fff;padding:14px 12px}
+.sm{background:var(--bg2);padding:14px 12px}
 .sl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .sv{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;color:var(--text)}
 
@@ -580,7 +580,7 @@ textarea.fi{resize:vertical;min-height:88px}
 ══════════════════════════════════════ */
 .rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 @media(max-width:480px){.rg{grid-template-columns:1fr}}
-.rc{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.rc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
     padding:20px;transition:var(--tr);box-shadow:var(--shadow)}
 .rc:hover{box-shadow:var(--shadow-md)}
 .ri{font-size:1.4rem;margin-bottom:8px}
@@ -590,15 +590,15 @@ textarea.fi{resize:vertical;min-height:88px}
 /* ══════════════════════════════════════
    AFFILIATE
 ══════════════════════════════════════ */
-.ah2{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.ah2{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:22px 18px;margin-bottom:20px;box-shadow:var(--shadow)}
 .afs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
      margin-bottom:20px;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
-.afc{background:#fff;padding:14px;text-align:center}
+.afc{background:var(--bg2);padding:14px;text-align:center}
 .afc .afn{font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:var(--gold);font-weight:600}
 .afc .afl{font-size:.64rem;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
 .ar{display:flex;gap:0;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
-.ai{flex:1;background:#fff;border:none;color:var(--text);padding:11px 12px;font-size:.82rem;outline:none}
+.ai{flex:1;background:var(--bg2);border:none;color:var(--text);padding:11px 12px;font-size:.82rem;outline:none}
 .ac2{background:var(--gold);color:#fff;border:none;padding:11px 16px;font-size:.78rem;font-weight:600;cursor:pointer;flex-shrink:0}
 
 /* ══════════════════════════════════════
@@ -606,7 +606,7 @@ textarea.fi{resize:vertical;min-height:88px}
 ══════════════════════════════════════ */
 .apg{max-width:1100px;margin:0 auto;padding:0 14px 60px}
 .asbs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;
-      border-bottom:1px solid var(--border);margin-bottom:20px;background:#fff}
+      border-bottom:1px solid var(--border);margin-bottom:20px;background:var(--bg2)}
 .asbs::-webkit-scrollbar{display:none}
 .asb{padding:12px 14px;font-size:.68rem;font-weight:500;color:var(--muted);cursor:pointer;
      border-bottom:2px solid transparent;transition:var(--tr);white-space:nowrap;
@@ -677,12 +677,12 @@ textarea.fi{resize:vertical;min-height:88px}
 .ah p{color:var(--muted);font-size:.8rem;margin-top:4px;font-weight:300}
 .sr{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
 @media(min-width:600px){.sr{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
-.sc2{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.sc2{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:16px;box-shadow:var(--shadow)}
 .sc2 .lb{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
 .sc2 .vl{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:600;color:var(--text)}
 .sc2 .ch{font-size:.65rem;color:var(--muted);margin-top:3px}
-.act{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.act{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
 .act h3{font-size:.78rem;font-weight:600;margin-bottom:12px;color:var(--muted);
         text-transform:uppercase;letter-spacing:.6px}
@@ -712,26 +712,26 @@ textarea.fi{resize:vertical;min-height:88px}
 .ov.open{display:flex;animation:fdin .2s ease}
 @keyframes fdin{from{opacity:0}to{opacity:1}}
 /* Product detail modal — image at top, content scrolls below */
-.ms{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;
+.ms{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:560px;
     max-height:94vh;display:flex;flex-direction:column;overflow:hidden;
     box-shadow:0 -4px 24px rgba(0,0,0,.18)}
-.mh{padding:12px 16px;border-bottom:1px solid #f1f5f9;
-    display:flex;justify-content:space-between;align-items:center;background:#fff;
+.mh{background:var(--bg2);padding:12px 16px;border-bottom:1px solid #f1f5f9;
+    display:flex;justify-content:space-between;align-items:center;background:var(--bg2);
     flex-shrink:0;z-index:10}
-.mh h3{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:#111827;
+.mh h3{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:var(--text);
        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80%}
-.mx{color:#6b7280;font-size:1.3rem;cursor:pointer;background:none;border:none;
+.mx{color:var(--muted);font-size:1.3rem;cursor:pointer;background:none;border:none;
     padding:4px 10px;flex-shrink:0}
 /* mb: scrollable body — image is FIRST child so it appears at top immediately on open */
 .mb{padding:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;scroll-behavior:auto}
 /* Product image — fills full width, white bg, never cropped, flex-shrink:0 so it never collapses */
-.pdmi{width:100%;height:220px;object-fit:contain;background:#fff;
+.pdmi{width:100%;height:220px;object-fit:contain;background:var(--bg2);
       display:block;border-bottom:1px solid #f1f5f9;flex-shrink:0}
 @media(max-width:400px){.pdmi{height:180px}}
 .pdg{display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding:8px 14px;
-     background:#fff;border-bottom:1px solid #f1f5f9;flex-shrink:0}
+     background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
 .pdg img{width:54px;height:54px;border-radius:4px;object-fit:contain;cursor:pointer;
-         background:#fff;border:2px solid #e5e7eb;flex-shrink:0}
+         background:var(--bg2);border:2px solid var(--border);flex-shrink:0}
          opacity:.5;transition:var(--tr);flex-shrink:0;border:2px solid transparent}
 .pdg img.on{opacity:1;border-color:var(--gold)}
 .pdmeta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
@@ -739,7 +739,7 @@ textarea.fi{resize:vertical;min-height:88px}
      padding:3px 9px;border-radius:4px;font-size:.66rem;font-weight:500;color:var(--muted)}
 .pdprice{font-family:'Cormorant Garamond',serif;font-size:1.9rem;
          font-weight:600;color:var(--gold);margin-bottom:10px}
-.pddesc{font-size:1rem;color:#000;line-height:1.75;margin-bottom:12px;font-weight:400;background:#fff;padding:10px 12px;border-radius:6px;border:1px solid var(--border)}
+.pddesc{font-size:1rem;color:#000;line-height:1.75;margin-bottom:12px;font-weight:400;background:var(--bg2);padding:10px 12px;border-radius:6px;border:1px solid var(--border)}
 .prot{background:var(--green-bg);border:1px solid rgba(5,150,105,.2);
       border-radius:6px;padding:10px 12px;font-size:.76rem;color:var(--green);margin-bottom:12px;line-height:1.6}
 .pdbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -765,7 +765,7 @@ textarea.fi{resize:vertical;min-height:88px}
 /* ══════════════════════════════════════
    ORDERS
 ══════════════════════════════════════ */
-.ord{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.ord{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
 .ordh{display:flex;justify-content:space-between;align-items:flex-start;
       margin-bottom:8px;flex-wrap:wrap;gap:6px}
@@ -776,7 +776,7 @@ textarea.fi{resize:vertical;min-height:88px}
    SELLER DASHBOARD
 ══════════════════════════════════════ */
 .dw{max-width:960px;margin:0 auto;padding:0 14px 60px}
-.sdp{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+.sdp{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
      padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
 .sdp h3{font-size:.8rem;font-weight:600;margin-bottom:12px;color:var(--muted);
         text-transform:uppercase;letter-spacing:.5px}
@@ -791,7 +791,7 @@ textarea.fi{resize:vertical;min-height:88px}
 @media(min-width:769px){.cfab{bottom:20px}}
 .cfab:active{transform:scale(.9)}
 .cp2{position:fixed;bottom:calc(var(--bnav) + 70px);right:8px;z-index:994;
-     width:calc(100vw - 16px);max-width:320px;background:#fff;
+     width:calc(100vw - 16px);max-width:320px;background:var(--bg2);
      border:1px solid var(--border);border-radius:12px;display:none;
      flex-direction:column;box-shadow:var(--shadow-md);overflow:hidden;max-height:420px}
 @media(min-width:769px){.cp2{bottom:78px}}
@@ -807,7 +807,7 @@ textarea.fi{resize:vertical;min-height:88px}
 .bub{max-width:86%;padding:9px 12px;border-radius:10px;font-size:.8rem;line-height:1.55}
 .bub.bot{background:var(--bg3);border:1px solid var(--border);border-bottom-left-radius:2px;align-self:flex-start;color:var(--text)}
 .bub.user{background:var(--gold);color:#fff;font-weight:500;border-bottom-right-radius:2px;align-self:flex-end}
-.cir{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:#fff}
+.cir{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2)}
 .cin{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
      padding:9px 10px;border-radius:6px;font-size:.8rem;outline:none}
 .cin:focus{border-color:var(--gold)}
@@ -925,14 +925,14 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 .dvc-code{
   font-family:'Cormorant Garamond',serif;
   font-size:2.8rem;font-weight:700;letter-spacing:12px;
-  color:var(--text);background:#fff;
+  color:var(--text);background:var(--bg2);
   border:2px dashed #22c55e;border-radius:8px;
   padding:10px 20px;margin:10px 0;display:inline-block
 }
 .dvc-input{
   width:100%;text-align:center;font-size:1.8rem;font-weight:700;
   letter-spacing:8px;border:2px solid var(--border);border-radius:8px;
-  padding:12px;background:#fff;outline:none;font-family:'Cormorant Garamond',serif
+  padding:12px;background:var(--bg2);outline:none;font-family:'Cormorant Garamond',serif
 }
 .dvc-input:focus{border-color:var(--green)}
 
@@ -948,69 +948,201 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 
 /* ── DISPUTE REFUND ROW ── */
 .dispute-row{
-  background:#fff;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
   padding:14px;margin-bottom:10px;
 }
 .dispute-row.unresolved{border-left:3px solid var(--red)}
 .dispute-row.resolved{border-left:3px solid var(--green)}
 
-/* ══════════════════════════════════════
-   DARK MODE OVERRIDES — hardcoded whites
-══════════════════════════════════════ */
-[data-theme="dark"] nav {
+
+/* ════════════════════════════════════════
+   COMPLETE DARK MODE — ALL ELEMENTS
+════════════════════════════════════════ */
+
+/* Core backgrounds */
+[data-theme="dark"] nav:not(.bottom-nav) {
   background: rgba(15,17,23,.97) !important;
   border-bottom-color: var(--border) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,.4) !important;
 }
 [data-theme="dark"] .bottom-nav {
   background: #0f1117 !important;
   border-top-color: var(--border) !important;
 }
-[data-theme="dark"] .bnb {
-  color: var(--muted) !important;
-}
-[data-theme="dark"] .bnb.on {
-  color: var(--gold) !important;
-}
+
+/* Cards, sections, panels */
 [data-theme="dark"] .acard,
-[data-theme="dark"] .aw .acard {
+[data-theme="dark"] .fc,
+[data-theme="dark"] .dc,
+[data-theme="dark"] .rc,
+[data-theme="dark"] .sec,
+[data-theme="dark"] .dw,
+[data-theme="dark"] .cw,
+[data-theme="dark"] .act,
+[data-theme="dark"] .aw,
+[data-theme="dark"] .sc2,
+[data-theme="dark"] .sm,
+[data-theme="dark"] .smini,
+[data-theme="dark"] .pb4,
+[data-theme="dark"] .fz {
   background: var(--bg2) !important;
   border-color: var(--border) !important;
+  color: var(--text) !important;
 }
+
+/* Inputs / selects / textareas */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
 [data-theme="dark"] .fi {
   background: var(--bg3) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--muted2) !important; }
+
+/* Modals */
+[data-theme="dark"] .ov .mo,
+[data-theme="dark"] .mod-box,
+[data-theme="dark"] .mo {
+  background: var(--bg2) !important;
   border-color: var(--border) !important;
   color: var(--text) !important;
 }
-[data-theme="dark"] .fi::placeholder { color: var(--muted2) !important; }
-[data-theme="dark"] .modal-box,
-[data-theme="dark"] .modal-content,
-[data-theme="dark"] .mod-box {
+[data-theme="dark"] .mh {
   background: var(--bg2) !important;
+  border-bottom-color: var(--border) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .mb {
+  background: var(--bg2) !important;
+  color: var(--text) !important;
+}
+
+/* Product detail modal — hardcoded white override */
+[data-theme="dark"] #m-pd .mo,
+[data-theme="dark"] #m-pd .mh,
+[data-theme="dark"] #m-pd .mb,
+[data-theme="dark"] #pd-body {
+  background: var(--bg2) !important;
+  color: var(--text) !important;
   border-color: var(--border) !important;
 }
-[data-theme="dark"] .card,
-[data-theme="dark"] .pcard,
-[data-theme="dark"] .sec,
-[data-theme="dark"] .dw {
-  background: var(--bg2) !important;
+[data-theme="dark"] #pd-body * {
   border-color: var(--border) !important;
 }
-[data-theme="dark"] .ham-drawer {
-  background: var(--bg) !important;
+/* Price text and product labels inside modal */
+[data-theme="dark"] #pd-body span[style*="#111827"],
+[data-theme="dark"] #pd-body span[style*="#374151"],
+[data-theme="dark"] #pd-body p[style*="#374151"] {
+  color: var(--text) !important;
 }
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
+[data-theme="dark"] #pd-body span[style*="#f3f4f6"],
+[data-theme="dark"] #pd-body div[style*="#f3f4f6"],
+[data-theme="dark"] #pd-body div[style*="background:#f9fafb"],
+[data-theme="dark"] #pd-body div[style*="background:#f0fdf4"] {
   background: var(--bg3) !important;
-  color: var(--text) !important;
   border-color: var(--border) !important;
 }
-[data-theme="dark"] .nbrand,
-[data-theme="dark"] .nb {
+
+/* Tabs */
+[data-theme="dark"] .dash-tabs,
+[data-theme="dark"] .asbs {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .dash-tab,
+[data-theme="dark"] .asb {
+  color: var(--muted) !important;
+  background: transparent !important;
+}
+[data-theme="dark"] .dash-tab.on,
+[data-theme="dark"] .asb.on {
+  color: var(--gold) !important;
+  border-bottom-color: var(--gold) !important;
+}
+
+/* Product cards */
+[data-theme="dark"] .pcard,
+[data-theme="dark"] .card {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+/* Hero / home sections */
+[data-theme="dark"] .hero { background: var(--bg) !important; }
+[data-theme="dark"] .hpill {
+  background: rgba(201,146,42,.12) !important;
+  border-color: rgba(201,146,42,.3) !important;
+  color: var(--gold) !important;
+}
+[data-theme="dark"] .pb4 { background: var(--bg2) !important; }
+
+/* Isl (image upload slots) */
+[data-theme="dark"] .isl {
+  background: var(--bg3) !important;
+  border-color: var(--border) !important;
   color: var(--muted) !important;
 }
+
+/* Chat widget */
+[data-theme="dark"] .chat-box,
+[data-theme="dark"] .cin {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .cin input {
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+}
+
+/* Footer */
+[data-theme="dark"] footer { background: #0a0c10 !important; }
+
+/* Admin sidebar */
+[data-theme="dark"] .adl { background: var(--bg) !important; }
+[data-theme="dark"] .ads {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+
+/* Wallet card — keep dark gradient */
+[data-theme="dark"] #wallet-card {
+  background: linear-gradient(135deg,#1a1a2e,#16213e) !important;
+}
+
+/* Accordion */
+[data-theme="dark"] .accordion-section,
+[data-theme="dark"] .accordion-header,
+[data-theme="dark"] .accordion-content,
+[data-theme="dark"] .accordion-body {
+  background: var(--bg2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Tags / badges inside product cards */
+[data-theme="dark"] .pcard span[style*="background:#f3f4f6"],
+[data-theme="dark"] .pcard span[style*="background:#fef3c7"],
+[data-theme="dark"] .pcard span[style*="background:#d1fae5"] {
+  background: var(--bg3) !important;
+}
+
+/* Nav text */
+[data-theme="dark"] .nbrand { color: var(--text) !important; }
+[data-theme="dark"] .nb { color: var(--muted) !important; }
 [data-theme="dark"] .nb.on { color: var(--gold) !important; }
+[data-theme="dark"] .bnb { color: var(--muted) !important; }
+[data-theme="dark"] .bnb.on { color: var(--gold) !important; }
+
+/* General text overrides */
+[data-theme="dark"] h1,[data-theme="dark"] h2,
+[data-theme="dark"] h3,[data-theme="dark"] h4,
+[data-theme="dark"] p,[data-theme="dark"] label,
+[data-theme="dark"] span:not(.gld):not(.bni) {
+  color: var(--text);
+}
+[data-theme="dark"] .gld { color: var(--gold) !important; }
 
 </style>
 </head>
@@ -1452,9 +1584,9 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="sh-cb" onchange="vShip()"/><label for="sh-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="sh-err"></div>
       <button class="pb3" id="sh-pay" disabled onclick="processPaystack('physical')">🔐 Pay Securely with Paystack</button>
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
-  <span style="font-size:.72rem;color:#065f46;font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
+  <span style="font-size:.72rem;color:var(--green);font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
 </div>
     </div>
   </div>
@@ -1476,9 +1608,9 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="co-cb" onchange="vCo()"/><label for="co-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="co-err"></div>
       <button class="pb3" id="co-pay" disabled onclick="processPaystack('digital')">🔐 Pay Securely with Paystack</button>
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
-  <span style="font-size:.72rem;color:#065f46;font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
+  <span style="font-size:.72rem;color:var(--green);font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
 </div>
     </div>
   </div>
@@ -2060,12 +2192,12 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 
 <!-- Product Detail -->
 <div class="ov" id="m-pd">
-  <div class="mo" style="background:#ffffff;color:#111827;">
-    <div class="mh" style="background:#ffffff;border-bottom:1px solid #e5e7eb;">
+  <div class="mo" style="background:var(--bg2);color:var(--text);">
+    <div class="mh" style="background:var(--bg2);border-bottom:1px solid var(--border);">
       <h3 id="pd-title" style="color:#111827;">Product</h3>
-      <button class="mx" onclick="cM('m-pd')" style="color:#6b7280;">✕</button>
+      <button class="mx" onclick="cM('m-pd')" style="color:var(--muted);">✕</button>
     </div>
-    <div class="mb" id="pd-body" style="background:#ffffff;"></div>
+    <div class="mb" id="pd-body" style="background:var(--bg2);"></div>
   </div>
 </div>
 
@@ -2668,7 +2800,7 @@ function submitProduct() {
         if (typeof Swal !== 'undefined') {
           Swal.fire({
             icon: 'success', title: 'Product Listed!',
-            html: '<p style="color:#374151;line-height:1.7">Submitted for admin review.<br/><strong>Goes live within 24 hours.</strong></p>',
+            html: '<p style="color:var(--text);line-height:1.7">Submitted for admin review.<br/><strong>Goes live within 24 hours.</strong></p>',
             confirmButtonText: 'View My Listings', confirmButtonColor: '#c9922a', allowOutsideClick: false
           }).then(function() { go(CU && CU.role === 'admin' ? 'admin' : 'seller'); });
         } else {
@@ -2928,8 +3060,8 @@ function opn(id) {
     ? (pdQty <= 0
       ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700">OUT OF STOCK</span>'
       : pdQty <= 5
-        ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700">⚡ Only ' + pdQty + ' left</span>'
-        : '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700">' + pdQty + ' in stock</span>')
+        ? '<span style="background:rgba(201,146,42,.15);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700">⚡ Only ' + pdQty + ' left</span>'
+        : '<span style="background:#d1fae5;color:var(--green);padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:700">' + pdQty + ' in stock</span>')
     : '';
   
   /* WhatsApp button */
@@ -2960,8 +3092,8 @@ function opn(id) {
     + (saving > 0 ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700">Save &#x20a6;' + saving.toLocaleString() + '</span>' : '')
     + '</div>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'
-    + '<span style="background:#f3f4f6;color:#374151;padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">' + (p.type==='digital'?'⚡ Digital':p.type==='course'?'🎓 Course':'📦 Physical') + '</span>'
-    + (p.reviews > 0 ? '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">⭐ ' + p.rating + '</span>' : '<span style="background:#f3f4f6;color:#6b7280;padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">New</span>')
+    + '<span style="background:#f3f4f6;color:var(--text);padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">' + (p.type==='digital'?'⚡ Digital':p.type==='course'?'🎓 Course':'📦 Physical') + '</span>'
+    + (p.reviews > 0 ? '<span style="background:rgba(201,146,42,.15);color:var(--gold);padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">⭐ ' + p.rating + '</span>' : '<span style="background:#f3f4f6;color:var(--muted);padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">New</span>')
     + '</div>'
     + '</div>'
     
@@ -2971,24 +3103,24 @@ function opn(id) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     + (CU && waLink
       ? '<a href="' + waLink + '" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;background:#25d366;color:#fff;padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;text-decoration:none;cursor:pointer">💬 WhatsApp</a>'
-      : '<button onclick="toast(\'Sign in to contact seller\',\'warn\')" style="background:#f3f4f6;color:#6b7280;padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;border:1px solid #e5e7eb;cursor:pointer">💬 Message</button>')
-    + '<button onclick="shareProduct(' + p.id + ')" style="background:#fff;border:1.5px solid #25d366;color:#25d366;padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;cursor:pointer">📤 Share</button>'
+      : '<button onclick="toast(\'Sign in to contact seller\',\'warn\')" style="background:#f3f4f6;color:var(--muted);padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;border:1px solid #e5e7eb;cursor:pointer">💬 Message</button>')
+    + '<button onclick="shareProduct(' + p.id + ')" style="background:var(--bg2);border:1.5px solid #25d366;color:#25d366;padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;cursor:pointer">📤 Share</button>'
     + '</div>'
-    + '<button onclick="cpyAffProd(' + p.id + ')" style="width:100%;background:#fff;border:1.5px solid #c9922a;color:#c9922a;padding:9px;border-radius:8px;font-weight:600;font-size:.78rem;cursor:pointer;margin-top:8px;transition:all .2s" onmouseover="this.style.background=\'#fff3cd\'" onmouseout="this.style.background=\'#fff\'">🔗 Copy Affiliate Link</button>'
+    + '<button onclick="cpyAffProd(' + p.id + ')" style="width:100%;background:var(--bg2);border:1.5px solid #c9922a;color:#c9922a;padding:9px;border-radius:8px;font-weight:600;font-size:.78rem;cursor:pointer;margin-top:8px;transition:all .2s" onmouseover="this.style.background=\'#fff3cd\'" onmouseout="this.style.background=\'#fff\'">🔗 Copy Affiliate Link</button>'
     + '</div>'
     
     /* ════ ESCROW NOTE ════ */
     + '<div style="padding:0 14px 14px;">'
-    + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#065f46;line-height:1.5">'
+    + '<div style="background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--green);line-height:1.5">'
     + '🛡️ <strong>Buyer Protected:</strong> Escrow-held payment. Full refund if not as described.'
     + '</div>'
     + '</div>'
     
     /* ════ SELLER INFO ════ */
     + '<div style="padding:0 14px 14px;">'
-    + '<p style="font-size:.78rem;color:#6b7280;margin-bottom:8px"><strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + (pdLocation ? ' &nbsp;📍 ' + pdLocation : '') + '</p>'
+    + '<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px"><strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + (pdLocation ? ' &nbsp;📍 ' + pdLocation : '') + '</p>'
     + (pdStock ? '<div style="margin-bottom:8px">' + pdStock + '</div>' : '')
-    + (pdBio ? '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#374151;line-height:1.5">'
+    + (pdBio ? '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--text);line-height:1.5">'
       + '<strong style="color:#111827;display:block;margin-bottom:4px">About Seller</strong>'
       + pdBio
       + '</div>' : '')
@@ -3002,7 +3134,7 @@ function opn(id) {
     + '</div>'
     + '<div class="accordion-content">'
     + '<div class="accordion-body">'
-    + '<p style="font-size:.85rem;color:#374151;line-height:1.7;white-space:pre-wrap;margin:0">' + (p.description||p.desc||'No description provided.') + '</p>'
+    + '<p style="font-size:.85rem;color:var(--text);line-height:1.7;white-space:pre-wrap;margin:0">' + (p.description||p.desc||'No description provided.') + '</p>'
     + '</div>'
     + '</div>'
     + '</div>'
@@ -3015,15 +3147,15 @@ function opn(id) {
     + '</div>'
     + '<div class="accordion-content">'
     + '<div class="accordion-body">'
-    + '<div id="reviews-list-' + p.id + '"><p style="color:#6b7280;font-size:.82rem">Loading reviews...</p></div>'
+    + '<div id="reviews-list-' + p.id + '"><p style="color:var(--muted);font-size:.82rem">Loading reviews...</p></div>'
     + (CU ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb">'
       + '<p style="font-size:.82rem;font-weight:600;margin-bottom:8px;color:#111827">Your Review</p>'
       + '<div style="display:flex;gap:4px;margin-bottom:8px" id="star-pick-' + p.id + '">'
       + [1,2,3,4,5].map(function(n){ return '<span onclick="pickStar(' + p.id + ',' + n + ')" style="font-size:1.3rem;cursor:pointer;color:#d1d5db" id="star-' + p.id + '-' + n + '">★</span>'; }).join('')
       + '</div>'
-      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience..." style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;color:#111827;padding:8px;border-radius:6px;font-size:.82rem;resize:none;height:64px;outline:none;font-family:inherit"></textarea>'
+      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience..." style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;color:var(--text);padding:8px;border-radius:6px;font-size:.82rem;resize:none;height:64px;outline:none;font-family:inherit"></textarea>'
       + '<button onclick="submitReview(' + p.id + ')" style="margin-top:8px;width:100%;background:#c9922a;color:#fff;border:none;padding:8px;border-radius:6px;font-weight:700;font-size:.8rem;cursor:pointer">Submit Review</button>'
-      + '</div>' : '<p style="font-size:.79rem;color:#6b7280;margin:0"><a onclick="go(\'signin\')" style="color:#c9922a;cursor:pointer">Sign in</a> to leave a review</p>')
+      + '</div>' : '<p style="font-size:.79rem;color:var(--muted);margin:0"><a onclick="go(\'signin\')" style="color:#c9922a;cursor:pointer">Sign in</a> to leave a review</p>')
     + '</div>'
     + '</div>'
     + '</div>'
@@ -3775,13 +3907,13 @@ function renderOrders() {
           }
         }
 
-        return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+        return '<div style="background:var(--bg2);border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
           + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px">'
           + '<div><div style="font-size:.7rem;color:var(--muted)">Order</div>'
           + '<div style="font-weight:700;font-size:.88rem">' + o.id + '</div></div>'
           + '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:3px 10px;border-radius:50px;font-size:.65rem;font-weight:700">' + statusLabel + '</span>'
           + '</div>'
-          + '<div style="font-size:.82rem;color:#374151;margin-bottom:4px">' + o.items.map(function(i){ return i.emoji+' '+i.name.substring(0,28); }).join(', ') + '</div>'
+          + '<div style="font-size:.82rem;color:var(--text);margin-bottom:4px">' + o.items.map(function(i){ return i.emoji+' '+i.name.substring(0,28); }).join(', ') + '</div>'
           + addrRow
           + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px">'
           + '<span style="font-family:serif;font-size:1.1rem;font-weight:700;color:var(--gold)">₦' + o.total.toLocaleString() + '</span>'
@@ -4014,8 +4146,8 @@ function disputeOrder(orderId) {
   Swal.fire({
     icon:              'warning',
     title:             '⚖️ Raise a Dispute?',
-    html:              '<p style="color:#374151;font-size:.9rem">Only raise a dispute if there is a genuine problem with your order — e.g. item not received, not as described, or seller is unresponsive.</p>'
-                     + '<p style="color:#6b7280;font-size:.82rem;margin-top:8px">Admin will review within 24 hours. If the seller is at fault, you will receive a <strong>full refund</strong>.</p>',
+    html:              '<p style="color:var(--text);font-size:.9rem">Only raise a dispute if there is a genuine problem with your order — e.g. item not received, not as described, or seller is unresponsive.</p>'
+                     + '<p style="color:var(--muted);font-size:.82rem;margin-top:8px">Admin will review within 24 hours. If the seller is at fault, you will receive a <strong>full refund</strong>.</p>',
     input:             'textarea',
     inputPlaceholder:  'Describe the problem (required)…',
     inputAttributes:   { rows: 3, style: 'font-size:.85rem;padding:8px' },
@@ -4176,7 +4308,7 @@ function doSignIn() {
         verMsg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
         
         var verContent = document.createElement('div');
-        verContent.style.cssText = 'background:#fff;border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
+        verContent.style.cssText = 'background:var(--bg2);border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
         
         var icon = document.createElement('div');
         icon.textContent = '⏳';
@@ -4239,7 +4371,7 @@ function doSignUp() {
         verMsg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .3s ease-out';
         
         var verContent = document.createElement('div');
-        verContent.style.cssText = 'background:#fff;border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
+        verContent.style.cssText = 'background:var(--bg2);border-radius:16px;padding:40px 32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.15)';
         
         var icon = document.createElement('div');
         icon.textContent = '📧';
@@ -4714,7 +4846,7 @@ function renderSellerPage() {
           + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
           + (CU && p.sellerId && String(p.sellerId) === String(CU.id) ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.08);border:1px solid rgba(255,58,92,.22);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
           + '</div>'
-          + '<div id="raw-data-' + p.id + '" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-top:8px;font-size:.72rem;width:100%;font-family:monospace;white-space:pre-wrap;word-break:break-all;color:#374151;max-height:200px;overflow-y:auto"></div>'
+          + '<div id="raw-data-' + p.id + '" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-top:8px;font-size:.72rem;width:100%;font-family:monospace;white-space:pre-wrap;word-break:break-all;color:var(--text);max-height:200px;overflow-y:auto"></div>'
           + '</div>';
       }).join('');
     }
@@ -4819,7 +4951,7 @@ function renderSellerPage() {
               + (isPhys && !o.collected ? '<div style="margin-top:10px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">'
                 + '<div style="font-size:.78rem;font-weight:700;color:#92400e;margin-bottom:8px">📦 Enter Buyer\'s 6-Digit Delivery Code to Claim Funds</div>'
                 + '<div style="display:flex;gap:8px;align-items:center">'
-                + '<input id="dvc-claim-' + o.id + '" type="text" inputmode="numeric" maxlength="6" placeholder="● ● ● ● ● ●" style="flex:1;padding:10px;border:2px solid #fde68a;border-radius:6px;font-size:1.1rem;letter-spacing:8px;text-align:center;background:#fff;outline:none;font-weight:700" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"/>'
+                + '<input id="dvc-claim-' + o.id + '" type="text" inputmode="numeric" maxlength="6" placeholder="● ● ● ● ● ●" style="flex:1;padding:10px;border:2px solid #fde68a;border-radius:6px;font-size:1.1rem;letter-spacing:8px;text-align:center;background:var(--bg2);outline:none;font-weight:700" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"/>'
                 + '<button onclick="sellerClaimFunds(\'' + o.id + '\')" style="background:#c9922a;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap">✅ Claim</button>'
                 + '</div>'
                 + '<div id="dvc-claim-err-' + o.id + '" style="font-size:.75rem;color:#dc2626;margin-top:5px;min-height:14px"></div>'
@@ -6172,7 +6304,7 @@ function viewRawData(productId) {
                     : typeof kv[1] === 'object' ? '<span style="color:#6b7280">' + JSON.stringify(kv[1]).slice(0,60) + '</span>'
                     : '<span style="color:#111827">' + String(kv[1]).slice(0,80) + '</span>';
             return '<tr style="border-bottom:1px solid #f1f5f9">'
-              + '<td style="padding:3px 6px;color:#6b7280;white-space:nowrap;vertical-align:top">' + kv[0] + '</td>'
+              + '<td style="padding:3px 6px;color:var(--muted);white-space:nowrap;vertical-align:top">' + kv[0] + '</td>'
               + '<td style="padding:3px 6px">' + val + '</td>'
               + '</tr>';
           }).join('')
@@ -6236,7 +6368,7 @@ function adminApprovePayout(withdrawalId, userId, amount) {
       icon:  'error',
       title: '🔑 Master Key Required',
       html:  '<p style="color:#374151">You must inject your Paystack Secret Key before approving payouts.</p>'
-           + '<p style="color:#6b7280;font-size:.85rem;margin-top:8px">Double-tap the NeyoMarket logo, or go to Payouts → Inject Key.</p>',
+           + '<p style="color:var(--muted);font-size:.85rem;margin-top:8px">Double-tap the NeyoMarket logo, or go to Payouts → Inject Key.</p>',
       confirmButtonColor: '#c9922a',
       confirmButtonText: 'Inject Key Now'
     }).then(function(r) { if (r.isConfirmed) injectKeyNow(); });
@@ -6589,7 +6721,7 @@ function showShareMenu(p) {
   shareModal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:9999;animation:slideUp .3s ease-out';
   
   var menuContent = document.createElement('div');
-  menuContent.style.cssText = 'background:#fff;width:100%;border-radius:16px 16px 0 0;padding:24px 16px 32px;box-shadow:0 -4px 12px rgba(0,0,0,.15);position:relative';
+  menuContent.style.cssText = 'background:var(--bg2);width:100%;border-radius:16px 16px 0 0;padding:24px 16px 32px;box-shadow:0 -4px 12px rgba(0,0,0,.15);position:relative';
   
   // Close button
   var closeBtn = document.createElement('button');
@@ -6601,13 +6733,13 @@ function showShareMenu(p) {
   // Title
   var titleEl = document.createElement('h3');
   titleEl.textContent = 'Share ' + p.name;
-  titleEl.style.cssText = 'font-size:1.1rem;font-weight:700;color:#111827;margin:0 0 16px;padding-right:32px';
+  titleEl.style.cssText = 'font-size:1.1rem;font-weight:700;color:var(--text);margin:0 0 16px;padding-right:32px';
   menuContent.appendChild(titleEl);
   
   // Button container
   var buttonsDiv = document.createElement('div');
   
-  var buttonStyle = 'display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;text-decoration:none;color:inherit;border:none';
+  var buttonStyle = 'display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;border:1px solid #e5e7eb;border-radius:10px;background:var(--bg2);font-weight:600;font-size:.95rem;cursor:pointer;transition:all .2s;text-decoration:none;color:inherit;border:none';
   
   // WhatsApp
   var waMsg = 'Check out: ' + p.name + ' - ₦' + price.toLocaleString() + '\n\n' + shareUrl;
@@ -7299,7 +7431,7 @@ function submitKYC() {
             Swal.fire({
               icon:              'success',
               title:             'Verification Submitted!',
-              html:              '<p style="color:#374151;font-size:.95rem;line-height:1.6">'
+              html:              '<p style="color:var(--text);font-size:.95rem;line-height:1.6">'
                                 + 'Our team will review your <strong>' + type.toUpperCase() + '</strong> details shortly.<br/><br/>'
                                 + 'You will be notified once your account is approved.</p>',
               confirmButtonText: 'OK, Got it',
@@ -7349,7 +7481,7 @@ function submitKYC() {
           icon:  'warning',
           title: 'Network Issue',
           html:  '<p style="color:#374151">' + msg + '</p>'
-               + '<p style="color:#6b7280;font-size:.85rem;margin-top:8px">Your submission may have saved. Check your status below or try again.</p>',
+               + '<p style="color:var(--muted);font-size:.85rem;margin-top:8px">Your submission may have saved. Check your status below or try again.</p>',
           confirmButtonColor: '#c9922a'
         }).then(function(){ renderKYCStatus(); });
       } else {
@@ -7818,7 +7950,7 @@ validateSell();
 
       <!-- BUYER: shows their code to give to seller -->
       <div id="dvc-buyer-section" style="display:none">
-        <div style="background:var(--green-bg);border:1px solid rgba(5,150,105,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.82rem;color:#065f46;line-height:1.5">
+        <div style="background:var(--green-bg);border:1px solid rgba(5,150,105,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.82rem;color:var(--green);line-height:1.5">
           ✅ Your item is on its way. When you <strong>physically receive it</strong>, show this code to the seller to release their payment from escrow.
         </div>
         <div class="dvc-wrap">
