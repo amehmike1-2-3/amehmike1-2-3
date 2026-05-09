@@ -1144,7 +1144,29 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 }
 [data-theme="dark"] .gld { color: var(--gold) !important; }
 
+
+/* ════ ANALYTICS PAGE ════ */
+.an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:18px}
+.an-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 14px;transition:var(--tr)}
+.an-card:hover{border-color:var(--gold)}
+.an-icon{font-size:1.4rem;margin-bottom:6px}
+.an-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.an-value{font-family:'Cormorant Garamond',serif;font-size:1.55rem;font-weight:700;color:var(--text);line-height:1.1;margin:2px 0}
+.an-sub{font-size:.7rem;color:var(--muted)}
+.an-chart-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.an-chart-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:12px}
+.an-chart-wrap{position:relative;height:190px}
+.an-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.an-table th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:600;font-size:.68rem;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.an-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.an-table tr:last-child td{border-bottom:none}
+.an-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:4px}
+.an-tab{flex:1;padding:9px;border:none;background:none;border-radius:8px;font-family:inherit;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;transition:var(--tr)}
+.an-tab.on{background:var(--gold);color:#fff}
+.an-loading{text-align:center;padding:48px 20px;color:var(--muted);font-size:.85rem}
+
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1225,6 +1247,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     <button onclick="hamGo('sell')"   style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">➕ Sell</button>
     <button onclick="hamGo('aff')"    style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">💸 Affiliate</button>
     <button onclick="hamGo('rules')"  style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--text);font-family:inherit;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;width:100%">📋 Rules</button>
+    <button id="ham-analytics" onclick="hamGo('analytics')" style="display:none;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--gold);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;text-align:left;width:100%">📊 Analytics</button>
     <button id="ham-dash" onclick="hamGo('seller')" style="display:none;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;border:none;background:none;color:var(--gold);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;text-align:left;width:100%">📊 Dashboard</button>
   </div>
 
@@ -2179,6 +2202,29 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════
+     ANALYTICS PAGE
+═══════════════════════════════════════ -->
+<div class="page" id="page-analytics">
+  <div class="sec">
+    <div class="shd">
+      <h2>📊 <span class="gld">Analytics</span></h2>
+      <p id="an-subtitle">Platform performance at a glance</p>
+    </div>
+
+    <!-- Admin/Seller tabs -->
+    <div class="an-tabs" id="an-tabs" style="display:none">
+      <button class="an-tab on" onclick="anTab('admin')">🏢 Platform</button>
+      <button class="an-tab"    onclick="anTab('seller')">🏪 My Store</button>
+    </div>
+
+    <div id="an-body">
+      <div class="an-loading">⏳ Loading analytics…</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════
      MODALS
 ═══════════════════════════════════════ -->
@@ -2515,6 +2561,11 @@ function go(pageId) {
   if (pageId === 'sell')     { if (!CU) { toast('Sign in to list a product', 'fail'); go('signin'); return; } resetSell(); }
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
   if (pageId === 'aff')      { setTimeout(function() { if (typeof loadAffiliateLB === 'function') loadAffiliateLB(); }, 300); }
+  if (pageId === 'analytics') {
+    if (!CU) { toast('Sign in to view analytics', 'fail'); go('signin'); return; }
+    if (CU.role !== 'admin' && CU.role !== 'seller') { toast('Sellers and admins only', 'fail'); return; }
+    setTimeout(loadAnalytics, 200);
+  }
   if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.ads .asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
     if (!CU) { toast('Please sign in first', 'fail'); go('signin'); return; }
@@ -6514,17 +6565,19 @@ function openHamMenu() {
   var cu = window.CU;
   var el = function(id){ return document.getElementById(id); };
   if (cu) {
-    if(el('ham-signin'))  el('ham-signin').style.display  = 'none';
-    if(el('ham-signup'))  el('ham-signup').style.display  = 'none';
-    if(el('ham-signout')) el('ham-signout').style.display = 'block';
-    if(el('ham-profile')) el('ham-profile').style.display = 'flex';
-    if(el('ham-dash'))    el('ham-dash').style.display    = (cu.role==='seller'||cu.role==='admin') ? 'flex' : 'none';
+    if(el('ham-signin'))     el('ham-signin').style.display     = 'none';
+    if(el('ham-signup'))     el('ham-signup').style.display     = 'none';
+    if(el('ham-signout'))    el('ham-signout').style.display    = 'block';
+    if(el('ham-profile'))    el('ham-profile').style.display    = 'flex';
+    if(el('ham-dash'))       el('ham-dash').style.display       = (cu.role==='seller'||cu.role==='admin') ? 'flex' : 'none';
+    if(el('ham-analytics'))  el('ham-analytics').style.display  = (cu.role==='seller'||cu.role==='admin') ? 'flex' : 'none';
   } else {
-    if(el('ham-signin'))  el('ham-signin').style.display  = 'block';
-    if(el('ham-signup'))  el('ham-signup').style.display  = 'block';
-    if(el('ham-signout')) el('ham-signout').style.display = 'none';
-    if(el('ham-profile')) el('ham-profile').style.display = 'none';
-    if(el('ham-dash'))    el('ham-dash').style.display    = 'none';
+    if(el('ham-signin'))     el('ham-signin').style.display     = 'block';
+    if(el('ham-signup'))     el('ham-signup').style.display     = 'block';
+    if(el('ham-signout'))    el('ham-signout').style.display    = 'none';
+    if(el('ham-profile'))    el('ham-profile').style.display    = 'none';
+    if(el('ham-dash'))       el('ham-dash').style.display       = 'none';
+    if(el('ham-analytics'))  el('ham-analytics').style.display  = 'none';
   }
   var theme = document.documentElement.getAttribute('data-theme') || 'light';
   var icon  = el('ham-theme-icon');
@@ -8096,4 +8149,267 @@ function copyAffiliateLink() {
     toast('Error copying link', 'err');
   }
 }
+
+/* ════════════════════════════════════════
+   ANALYTICS — graphs + stats
+════════════════════════════════════════ */
+var anCharts = {};
+var anCurrentTab = 'admin';
+
+function anTab(tab) {
+  anCurrentTab = tab;
+  document.querySelectorAll('.an-tab').forEach(function(b) { b.classList.remove('on'); });
+  var active = document.querySelector('.an-tab[onclick*="' + tab + '"]');
+  if (active) active.classList.add('on');
+  loadAnalytics();
+}
+
+function loadAnalytics() {
+  if (!window.CU) return;
+  var body   = document.getElementById('an-body');
+  var tabs   = document.getElementById('an-tabs');
+  var subttl = document.getElementById('an-subtitle');
+  if (!body) return;
+
+  // Destroy old charts
+  Object.values(anCharts).forEach(function(c) { if (c && c.destroy) c.destroy(); });
+  anCharts = {};
+
+  body.innerHTML = '<div class="an-loading">⏳ Loading analytics…</div>';
+
+  // Show tab toggle only for admin
+  if (tabs) tabs.style.display = CU.role === 'admin' ? 'flex' : 'none';
+
+  var isAdminView = CU.role === 'admin' && anCurrentTab === 'admin';
+
+  if (isAdminView) {
+    if (subttl) subttl.textContent = 'Full platform overview';
+    fetch('/api/affiliate?action=analytics-admin&role=admin')
+      .then(function(r) { return r.json(); })
+      .then(function(d) { renderAdminAnalytics(d); })
+      .catch(function() { body.innerHTML = '<div class="an-loading">❌ Failed to load analytics.</div>'; });
+  } else {
+    if (subttl) subttl.textContent = 'Your store performance';
+    fetch('/api/affiliate?action=analytics-seller&userId=' + encodeURIComponent(CU.id))
+      .then(function(r) { return r.json(); })
+      .then(function(d) { renderSellerAnalytics(d); })
+      .catch(function() { body.innerHTML = '<div class="an-loading">❌ Failed to load analytics.</div>'; });
+  }
+}
+
+function fmt(n) { return '₦' + Number(n || 0).toLocaleString(); }
+
+function renderAdminAnalytics(d) {
+  var body = document.getElementById('an-body');
+  if (!body) return;
+
+  body.innerHTML =
+    '<div class="an-grid">' +
+      anCard('👥', 'Total Users',     d.totalUsers,                    d.newUsersMonth + ' new this month') +
+      anCard('📦', 'Products',        d.totalProducts,                 'Active listings') +
+      anCard('🛒', 'Total Orders',    d.totalOrders,                   'All time') +
+      anCard('💰', 'Total Revenue',   fmt(d.totalRevenue),             'Completed orders') +
+      anCard('🏦', 'Platform Cut',    fmt(d.platformRevenue),          '10% commission') +
+      anCard('💸', 'Aff. Paid',       fmt(d.totalAffPaid),             'Affiliate payouts') +
+      anCard('⏳', 'Aff. Pending',    fmt(d.totalAffPending),          'Awaiting payout') +
+    '</div>' +
+
+    // Revenue chart
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">📈 Revenue — Last 30 Days</div>' +
+      '<div class="an-chart-wrap"><canvas id="an-revenue-chart"></canvas></div>' +
+    '</div>' +
+
+    // Orders chart
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">🛒 Orders — Last 30 Days</div>' +
+      '<div class="an-chart-wrap"><canvas id="an-orders-chart"></canvas></div>' +
+    '</div>' +
+
+    // Orders by status donut
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">📊 Orders by Status</div>' +
+      '<div class="an-chart-wrap"><canvas id="an-status-chart"></canvas></div>' +
+    '</div>' +
+
+    // Top products table
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">🏆 Top Products</div>' +
+      '<div style="overflow-x:auto"><table class="an-table">' +
+        '<thead><tr><th>#</th><th>Product</th><th>Sales</th><th>Revenue</th></tr></thead>' +
+        '<tbody>' + (d.topProducts || []).map(function(p, i) {
+          return '<tr><td><span class="an-badge gold">' + (i+1) + '</span></td>' +
+                 '<td>' + (p.name || '—') + '</td>' +
+                 '<td>' + (p.sales || 0) + '</td>' +
+                 '<td>' + fmt(p.revenue) + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+    '</div>' +
+
+    // Top affiliates table
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">💸 Top Affiliates</div>' +
+      '<div style="overflow-x:auto"><table class="an-table">' +
+        '<thead><tr><th>Code</th><th>Referrals</th><th>Earned</th></tr></thead>' +
+        '<tbody>' + (d.topAffiliates || []).map(function(a) {
+          return '<tr><td><span class="an-badge gold">' + a.aff_code + '</span></td>' +
+                 '<td>' + a.referrals + '</td>' +
+                 '<td>' + fmt(a.earned) + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+    '</div>';
+
+  // Draw charts after DOM update
+  setTimeout(function() {
+    var daily    = d.dailyOrders || [];
+    var labels   = daily.map(function(r) { return r.day; });
+    var revenues = daily.map(function(r) { return parseFloat(r.revenue || 0); });
+    var orders   = daily.map(function(r) { return parseInt(r.orders || 0); });
+
+    anCharts.revenue = anLineChart('an-revenue-chart', labels, revenues, 'Revenue (₦)', '#c9922a');
+    anCharts.orders  = anBarChart('an-orders-chart',   labels, orders,   'Orders',      '#388bfd');
+
+    var statuses = d.ordersByStatus || [];
+    anCharts.status = anDonutChart(
+      'an-status-chart',
+      statuses.map(function(s) { return s.status; }),
+      statuses.map(function(s) { return parseInt(s.count); })
+    );
+  }, 100);
+}
+
+function renderSellerAnalytics(d) {
+  var body = document.getElementById('an-body');
+  if (!body) return;
+
+  body.innerHTML =
+    '<div class="an-grid">' +
+      anCard('📦', 'My Products',   d.totalProducts,        'Active listings') +
+      anCard('🛒', 'Total Orders',  d.totalOrders,           'All orders') +
+      anCard('⏳', 'Pending',       d.pendingOrders,         'Awaiting action') +
+      anCard('💰', 'My Revenue',    fmt(d.totalRevenue),     '90% of completed') +
+      anCard('💸', 'Aff. Earned',   fmt(d.affEarned),        'Paid commissions') +
+      anCard('⏳', 'Aff. Pending',  fmt(d.affPending),       'Pending commissions') +
+      anCard('👥', 'Referrals',     d.affReferrals,          'Via affiliate link') +
+    '</div>' +
+
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">📈 My Revenue — Last 30 Days</div>' +
+      '<div class="an-chart-wrap"><canvas id="an-revenue-chart"></canvas></div>' +
+    '</div>' +
+
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">🛒 My Orders — Last 30 Days</div>' +
+      '<div class="an-chart-wrap"><canvas id="an-orders-chart"></canvas></div>' +
+    '</div>' +
+
+    '<div class="an-chart-box">' +
+      '<div class="an-chart-title">🏆 My Top Products</div>' +
+      '<div style="overflow-x:auto"><table class="an-table">' +
+        '<thead><tr><th>#</th><th>Product</th><th>Sales</th><th>Revenue</th></tr></thead>' +
+        '<tbody>' + (d.topProducts || []).map(function(p, i) {
+          return '<tr><td><span class="an-badge gold">' + (i+1) + '</span></td>' +
+                 '<td>' + (p.name || '—') + '</td>' +
+                 '<td>' + (p.sales || 0) + '</td>' +
+                 '<td>' + fmt(p.revenue) + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+    '</div>';
+
+  setTimeout(function() {
+    var daily    = d.dailyOrders || [];
+    var labels   = daily.map(function(r) { return r.day; });
+    var revenues = daily.map(function(r) { return parseFloat(r.revenue || 0); });
+    var orders   = daily.map(function(r) { return parseInt(r.orders || 0); });
+    anCharts.revenue = anLineChart('an-revenue-chart', labels, revenues, 'Revenue (₦)', '#c9922a');
+    anCharts.orders  = anBarChart('an-orders-chart',   labels, orders,   'Orders',      '#388bfd');
+  }, 100);
+}
+
+function anCard(icon, label, value, sub) {
+  return '<div class="an-card">' +
+    '<div class="an-icon">' + icon + '</div>' +
+    '<div class="an-label">' + label + '</div>' +
+    '<div class="an-value">' + value + '</div>' +
+    '<div class="an-sub">' + sub + '</div>' +
+  '</div>';
+}
+
+function anColors() {
+  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    grid:  dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)',
+    text:  dark ? '#8b949e' : '#6b7280',
+    bg:    dark ? '#1c2333' : '#ffffff'
+  };
+}
+
+function anLineChart(id, labels, data, label, color) {
+  var c = document.getElementById(id);
+  if (!c) return null;
+  var col = anColors();
+  return new Chart(c, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{ label: label, data: data, borderColor: color,
+        backgroundColor: color + '22', fill: true, tension: 0.4,
+        pointRadius: 3, pointBackgroundColor: color }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: col.grid }, ticks: { color: col.text, maxTicksLimit: 7, font: { size: 10 } } },
+        y: { grid: { color: col.grid }, ticks: { color: col.text, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function anBarChart(id, labels, data, label, color) {
+  var c = document.getElementById(id);
+  if (!c) return null;
+  var col = anColors();
+  return new Chart(c, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{ label: label, data: data, backgroundColor: color + 'bb',
+        borderColor: color, borderWidth: 1, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: col.grid }, ticks: { color: col.text, maxTicksLimit: 7, font: { size: 10 } } },
+        y: { grid: { color: col.grid }, ticks: { color: col.text, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function anDonutChart(id, labels, data) {
+  var c = document.getElementById(id);
+  if (!c) return null;
+  var col = anColors();
+  var colors = ['#c9922a','#388bfd','#2ea043','#f85149','#e3b341','#8b949e'];
+  return new Chart(c, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{ data: data, backgroundColor: colors, borderWidth: 2, borderColor: col.bg }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: col.text, font: { size: 10 }, padding: 10 } }
+      }
+    }
+  });
+}
+
+window.loadAnalytics   = loadAnalytics;
+window.anTab           = anTab;
+
 </script>
