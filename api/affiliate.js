@@ -84,7 +84,6 @@ module.exports = async function handler(req, res) {
       const [ordersRow]   = await sql`SELECT COUNT(*) AS count FROM orders`;
       const [revenueRow]  = await sql`
         SELECT COALESCE(SUM(amount),0) AS total FROM orders
-        WHERE status IN ('completed','delivered','released','paid')
       `;
       // Wrap in try/catch — created_at may not exist on users table
       let newUsersRow = { count: 0 };
@@ -113,7 +112,6 @@ module.exports = async function handler(req, res) {
                COALESCE(SUM(o.amount),0) AS revenue
         FROM orders o
         JOIN products p ON o.product_id::text = p.id::text
-        WHERE o.status IN ('completed','delivered','released','paid')
         GROUP BY p.id, p.name, p.price
         ORDER BY sales DESC LIMIT 5
       `;
@@ -188,10 +186,12 @@ module.exports = async function handler(req, res) {
       const [myOrders] = await sql`
         SELECT COUNT(*) AS count FROM orders
         WHERE seller_id::text = ${String(userId)}
+           OR seller_id = ${userId}
       `;
       const [myPending] = await sql`
         SELECT COUNT(*) AS count FROM orders
-        WHERE seller_id::text = ${String(userId)} AND status = 'pending'
+        WHERE (seller_id::text = ${String(userId)} OR seller_id = ${userId})
+        AND LOWER(status) LIKE '%pending%'
       `;
       // Use seller_payout column directly — already stores the 90% cut
       const [myRevenue] = await sql`
@@ -217,7 +217,6 @@ module.exports = async function handler(req, res) {
         FROM orders o
         JOIN products p ON o.product_id::text = p.id::text
         WHERE o.seller_id::text = ${String(userId)}
-        AND o.status IN ('completed','delivered','released','paid')
         GROUP BY p.id, p.name, p.price
         ORDER BY sales DESC LIMIT 5
       `;
@@ -247,7 +246,7 @@ module.exports = async function handler(req, res) {
         totalProducts:  parseInt(myProds.count || 0),
         totalOrders:    parseInt(myOrders.count || 0),
         pendingOrders:  parseInt(myPending.count || 0),
-        totalRevenue:   walletBalance > 0 ? Math.round(walletBalance) : Math.round(parseFloat(myRevenue.total || 0)),
+        totalRevenue:   Math.round(walletBalance),
         walletPending:  Math.round(walletPending),
         affEarned:      Math.round(affEarned),
         affPending:     Math.round(affPending),
