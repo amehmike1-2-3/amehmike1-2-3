@@ -2570,8 +2570,20 @@ function go(pageId) {
   if (pageId === 'aff')      { setTimeout(function() { if (typeof loadAffiliateLB === 'function') loadAffiliateLB(); }, 300); }
   if (pageId === 'analytics') {
     if (!CU) { toast('Sign in to view analytics', 'fail'); go('signin'); return; }
-    if (CU.role !== 'admin' && CU.role !== 'seller') { toast('Sellers and admins only', 'fail'); return; }
-    setTimeout(loadAnalytics, 200);
+    if (CU.role !== 'admin' && CU.role !== 'seller' && CU.role !== 'affiliate') {
+      toast('Sellers and admins only', 'fail'); return;
+    }
+    // Wait for updNav to finish setting window.CU before loading
+    var anTries = 0;
+    function tryLoadAnalytics() {
+      if (window.CU) { loadAnalytics(); }
+      else if (anTries++ < 10) { setTimeout(tryLoadAnalytics, 200); }
+      else {
+        var b = document.getElementById('an-body');
+        if (b) b.innerHTML = '<div class="an-loading">❌ Session expired. Please sign in again.</div>';
+      }
+    }
+    setTimeout(tryLoadAnalytics, 200);
   }
   if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.ads .asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
@@ -6574,14 +6586,7 @@ function openHamMenu() {
   d.style.transform = 'translateX(0)';
   o.style.display   = 'block';
   document.body.style.overflow = 'hidden';
-  // Always get fresh user — fallback to localStorage if CU not set yet
   var cu = window.CU;
-  if (!cu) {
-    try {
-      var stored = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
-      if (stored) cu = JSON.parse(stored);
-    } catch(e) {}
-  }
   var el = function(id){ return document.getElementById(id); };
   // user identity row
   var urow = el('ham-user-row');
@@ -8194,7 +8199,12 @@ function anTab(tab) {
 }
 
 function loadAnalytics() {
-  if(!window.CU) return;
+  var CU = window.CU;
+  if (!CU) {
+    var body = document.getElementById('an-body');
+    if (body) body.innerHTML = '<div class="an-loading">❌ Please sign in to view analytics.</div>';
+    return;
+  }
   var body = document.getElementById('an-body');
   var tabs = document.getElementById('an-tabs');
   var sub  = document.getElementById('an-subtitle');
