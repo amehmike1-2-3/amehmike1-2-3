@@ -86,10 +86,15 @@ module.exports = async function handler(req, res) {
         SELECT COALESCE(SUM(amount),0) AS total FROM orders
         WHERE status IN ('completed','delivered','released','paid')
       `;
-      const [newUsersRow] = await sql`
-        SELECT COUNT(*) AS count FROM users
-        WHERE created_at >= NOW() - INTERVAL '30 days'
-      `;
+      // Wrap in try/catch — created_at may not exist on users table
+      let newUsersRow = { count: 0 };
+      try {
+        const [r] = await sql`
+          SELECT COUNT(*) AS count FROM users
+          WHERE created_at >= NOW() - INTERVAL '30 days'
+        `;
+        newUsersRow = r;
+      } catch(e) { /* created_at column absent — skip */ }
       const [affPaidRow]  = await sql`
         SELECT COALESCE(SUM(commission),0) AS total FROM affiliate_commissions WHERE status = 'paid'
       `;
@@ -107,21 +112,21 @@ module.exports = async function handler(req, res) {
         SELECT p.name, p.price, COUNT(o.id) AS sales,
                COALESCE(SUM(o.amount),0) AS revenue
         FROM orders o
-        JOIN products p ON o.product_id = p.id
+        JOIN products p ON o.product_id::text = p.id::text
         WHERE o.status IN ('completed','delivered','released','paid')
         GROUP BY p.id, p.name, p.price
         ORDER BY sales DESC LIMIT 5
       `;
 
-      // Daily orders + revenue last 30 days — using 'date' column
+      // Daily orders + revenue last 30 days
       const dailyOrders = await sql`
-        SELECT TO_CHAR(DATE(date),'Mon DD') AS day,
+        SELECT TO_CHAR(DATE(COALESCE(created_at, date)),'Mon DD') AS day,
                COUNT(*) AS orders,
                COALESCE(SUM(amount),0) AS revenue
         FROM orders
-        WHERE date >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE(date), day
-        ORDER BY DATE(date) ASC
+        WHERE COALESCE(created_at, date) >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(COALESCE(created_at, date)), day
+        ORDER BY DATE(COALESCE(created_at, date)) ASC
       `;
 
       // Top 5 affiliates
@@ -217,16 +222,16 @@ module.exports = async function handler(req, res) {
         ORDER BY sales DESC LIMIT 5
       `;
 
-      // Daily last 30 days — using 'date' column
+      // Daily last 30 days
       const myDailyOrders = await sql`
-        SELECT TO_CHAR(DATE(date),'Mon DD') AS day,
+        SELECT TO_CHAR(DATE(COALESCE(created_at, date)),'Mon DD') AS day,
                COUNT(*) AS orders,
                COALESCE(SUM(seller_payout),0) AS revenue
         FROM orders
         WHERE seller_id::text = ${String(userId)}
-        AND date >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE(date), day
-        ORDER BY DATE(date) ASC
+        AND COALESCE(created_at, date) >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(COALESCE(created_at, date)), day
+        ORDER BY DATE(COALESCE(created_at, date)) ASC
       `;
 
       // Affiliate commissions earned by this seller as an affiliate
@@ -329,7 +334,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Unknown action: ' + action });
 
   } catch (err) {
-    console.error('[affiliate.js]', err);
-    return res.status(500).json({ error: err.message || 'Server error.' });
+    console.error('[affiliate.js] action=' + action, err.message, err.stack);
+    return res.status(500).json({ error: err.message || 'Server error.', action: action });
   }
 };
