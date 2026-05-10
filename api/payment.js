@@ -312,8 +312,8 @@ module.exports = async function handler(req, res) {
 
       await sql`
         INSERT INTO orders (
-          id, user_id, customer, items, total, platform_fee, seller_payout,
-          affiliate_fee, aff_code, status, collected, mode, ref,
+          id, user_id, customer, items, total, amount, platform_fee, seller_payout,
+          affiliate_fee, aff_code, seller_id, status, collected, mode, ref,
           shipping, delivery_code, file_url, date, created_at
         ) VALUES (
           ${String(o.id)},
@@ -321,10 +321,12 @@ module.exports = async function handler(req, res) {
           ${JSON.stringify(o.customer || {})},
           ${JSON.stringify(o.items    || [])},
           ${parseFloat(o.total)},
+          ${parseFloat(o.total)},
           ${parseFloat(o.platformFee  || 0)},
           ${parseFloat(o.sellerPayout || 0)},
           ${parseFloat(o.affiliateFee || 0)},
           ${affCode},
+          ${o.sellerId ? parseInt(o.sellerId) : null},
           ${o.status || 'paid'},
           ${false},
           ${o.mode   || 'standard'},
@@ -694,17 +696,20 @@ module.exports = async function handler(req, res) {
       }
 
       /* Save order to database */
+      const resolvedSellerIdInt = resolvedSellerId ? parseInt(resolvedSellerId) : null;
       await sql`
         INSERT INTO orders (
-          id, user_id, customer, items, total,
+          id, user_id, customer, items, total, amount,
           platform_fee, seller_payout, affiliate_fee, aff_code,
-          status, collected, mode, ref, shipping,
+          seller_id, status, collected, mode, ref, shipping,
           delivery_code, file_url, date, created_at
         ) VALUES (
           ${String(orderId)}, ${String(userId || '')},
           ${JSON.stringify(customer || {})}, ${JSON.stringify(itemList)},
-          ${amount}, ${split.platformFee}, ${split.sellerPayout},
-          ${split.affiliateFee}, ${cleanAff}, ${orderStatus},
+          ${amount}, ${amount},
+          ${split.platformFee}, ${split.sellerPayout},
+          ${split.affiliateFee}, ${cleanAff},
+          ${resolvedSellerIdInt}, ${orderStatus},
           ${false}, ${mode || 'standard'}, ${reference},
           ${JSON.stringify(shipping || null)}, ${deliveryCode}, ${topFileUrl},
           ${new Date().toLocaleDateString()}, NOW()
@@ -712,6 +717,8 @@ module.exports = async function handler(req, res) {
         ON CONFLICT (id) DO UPDATE SET
           status        = EXCLUDED.status,
           ref           = EXCLUDED.ref,
+          seller_id     = COALESCE(EXCLUDED.seller_id, orders.seller_id),
+          amount        = COALESCE(EXCLUDED.amount, orders.amount),
           delivery_code = EXCLUDED.delivery_code,
           file_url      = COALESCE(EXCLUDED.file_url, orders.file_url)
       `;
@@ -745,6 +752,14 @@ module.exports = async function handler(req, res) {
         await sql`
           UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.sellerPayout}
           WHERE id = ${resolvedSellerId}
+        `;
+        /* Also upsert into wallets table so analytics can read it */
+        await sql`
+          INSERT INTO wallets (user_id, balance, pending_balance, referral_earnings, updated_at)
+          VALUES (${String(resolvedSellerId)}, ${split.sellerPayout}, 0, 0, NOW())
+          ON CONFLICT (user_id) DO UPDATE SET
+            balance = wallets.balance + ${split.sellerPayout},
+            updated_at = NOW()
         `;
       }
 
@@ -1109,20 +1124,24 @@ module.exports = async function handler(req, res) {
               const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
               const split = computeSplit(total, hasPhysical, hasValidAff);
 
+              const webhookSellerId = (itemList[0] && (itemList[0].sellerId || itemList[0].seller_id))
+                ? parseInt(itemList[0].sellerId || itemList[0].seller_id) : null;
               await sql`
                 INSERT INTO orders (
-                  id, user_id, customer, items, total, platform_fee, seller_payout,
-                  affiliate_fee, aff_code, status, ref, mode, shipping, date, created_at
+                  id, user_id, customer, items, total, amount, platform_fee, seller_payout,
+                  affiliate_fee, aff_code, seller_id, status, ref, mode, shipping, date, created_at
                 ) VALUES (
                   ${String(orderId)},
                   ${String(userId || '')},
                   ${JSON.stringify(customer || {})},
                   ${JSON.stringify(itemList)},
                   ${Math.round(total)},
+                  ${Math.round(total)},
                   ${Math.round(split.platformFee)},
                   ${Math.round(split.sellerPayout)},
                   ${Math.round(split.affiliateFee)},
                   ${hasValidAff ? String(rawAff) : null},
+                  ${webhookSellerId},
                   ${isAllDigital ? 'paid' : 'escrow_held'},
                   ${String(ref)},
                   ${String(mode)},
