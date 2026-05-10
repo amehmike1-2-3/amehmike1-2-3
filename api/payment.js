@@ -731,12 +731,8 @@ module.exports = async function handler(req, res) {
         `;
       }
 
-      /* Credit affiliate balance */
+      /* Record affiliate commission as PENDING — wallet credited only when order completes */
       if (affUserId && split.affiliateFee > 0) {
-        await sql`
-          UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${split.affiliateFee}
-          WHERE id = ${affUserId}
-        `;
         try {
           await sql`
             INSERT INTO affiliate_commissions
@@ -881,13 +877,22 @@ module.exports = async function handler(req, res) {
         `;
       }
 
+      /* Credit affiliate wallet and mark commission as paid — only on order completion */
       const affCode = order.aff_code ? String(order.aff_code).trim() : '';
       if (affCode.length > 2 && affiliateFee > 0) {
         try {
-          await sql`
-            UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
-            WHERE aff_code = ${affCode}
-          `;
+          const affUserRows = await sql`SELECT id FROM users WHERE aff_code = ${affCode} LIMIT 1`;
+          if (affUserRows.length) {
+            const affId = String(affUserRows[0].id);
+            await sql`
+              UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${affiliateFee}
+              WHERE id = ${affId}
+            `;
+            await sql`
+              UPDATE affiliate_commissions SET status = 'paid'
+              WHERE order_id = ${String(orderId)} AND aff_user_id = ${affId} AND status = 'pending'
+            `;
+          }
         } catch (e) { console.error('[payment/dvc-release] affiliate (non-fatal):', e.message); }
       }
 
@@ -1061,6 +1066,26 @@ module.exports = async function handler(req, res) {
         if (sellerId) {
           await sql`UPDATE users SET seller_balance = seller_balance + ${sellerPayout} WHERE id = ${String(sellerId)}`;
         }
+      }
+
+      /* Credit affiliate wallet and mark commission paid on digital download */
+      const dlAffCode    = order.aff_code ? String(order.aff_code).trim() : '';
+      const dlAffFee     = parseFloat(order.affiliate_fee || 0);
+      if (dlAffCode.length > 2 && dlAffFee > 0) {
+        try {
+          const affUserRows = await sql`SELECT id FROM users WHERE aff_code = ${dlAffCode} LIMIT 1`;
+          if (affUserRows.length) {
+            const affId = String(affUserRows[0].id);
+            await sql`
+              UPDATE users SET seller_balance = COALESCE(seller_balance, 0) + ${dlAffFee}
+              WHERE id = ${affId}
+            `;
+            await sql`
+              UPDATE affiliate_commissions SET status = 'paid'
+              WHERE order_id = ${String(orderId)} AND aff_user_id = ${affId} AND status = 'pending'
+            `;
+          }
+        } catch (e) { console.warn('[payment/download-digital] affiliate (non-fatal):', e.message); }
       }
 
       console.log('[payment/download-digital]', orderId, 'escrow released:', sellerPayout);
