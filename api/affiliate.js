@@ -133,14 +133,36 @@ module.exports = async function handler(req, res) {
         ORDER BY earned DESC LIMIT 5
       `;
 
-      const totalRevenue = parseFloat(revenueRow.total || 0);
+      // Fetch admin wallet balances directly from wallets table
+      const adminWalletRows = await sql`
+        SELECT COALESCE(SUM(balance),0) AS total_balance,
+               COALESCE(SUM(pending_balance),0) AS total_pending
+        FROM wallets
+        WHERE user_id = 'master_admin_001'
+      `;
+      const adminWallet = adminWalletRows[0] || {};
+
+      // Fallback: if wallets table has no admin row, derive from orders
+      const totalRevenueFromOrders = parseFloat(revenueRow.total || 0);
+      const adminBalance  = parseFloat(adminWallet.total_balance  || 0);
+      const adminPending  = parseFloat(adminWallet.total_pending  || 0);
+
+      // Use wallet balance if non-zero, else fall back to 10% of order revenue
+      const platformRevenue = adminBalance > 0
+        ? Math.round(adminBalance)
+        : Math.round(totalRevenueFromOrders * 0.10);
+
+      const platformPending = adminPending > 0
+        ? Math.round(adminPending)
+        : 0;
 
       return res.status(200).json({
         totalUsers:       parseInt(usersRow.count || 0),
         totalProducts:    parseInt(prodsRow.count || 0),
         totalOrders:      parseInt(ordersRow.count || 0),
-        totalRevenue:     Math.round(totalRevenue),
-        platformRevenue:  Math.round(totalRevenue * 0.10),
+        totalRevenue:     Math.round(totalRevenueFromOrders),
+        platformRevenue,
+        platformPending,
         totalAffPaid:     Math.round(parseFloat(affPaidRow.total || 0)),
         totalAffPending:  Math.round(parseFloat(affPendRow.total || 0)),
         newUsersMonth:    parseInt(newUsersRow.count || 0),
@@ -216,6 +238,78 @@ module.exports = async function handler(req, res) {
         affReferrals:   affRows.length,
         topProducts:    myTopProds,
         dailyOrders:    myDailyOrders
+      });
+    }
+
+    /* ══════════════════════════════════════════════════
+       ANALYTICS — AFFILIATE (own commission stats)
+    ══════════════════════════════════════════════════ */
+    if (action === 'analytics-affiliate') {
+      const userId = req.query.userId || '';
+      if (!userId) return res.status(400).json({ error: 'userId required.' });
+
+      // Get affiliate_id column or aff_user_id — orders table uses affiliate_id
+      const [myOrdersRow] = await sql`
+        SELECT COUNT(*) AS count FROM orders WHERE affiliate_id = ${userId}
+      `;
+      const [myPendingRow] = await sql`
+        SELECT COUNT(*) AS count FROM orders WHERE affiliate_id = ${userId} AND status = 'pending'
+      `;
+
+      // Commission rows for this affiliate user
+      const commRows = await sql`
+        SELECT * FROM affiliate_commissions
+        WHERE aff_user_id = ${userId}
+        ORDER BY created_at DESC
+      `;
+      const totalEarned  = commRows.filter(r => r.status === 'paid').reduce((s,r) => s + parseFloat(r.commission||0), 0);
+      const pendingComm  = commRows.filter(r => r.status === 'pending').reduce((s,r) => s + parseFloat(r.commission||0), 0);
+
+      // Fetch wallet referral_earnings and pending_balance for this user
+      const walletRows = await sql`
+        SELECT COALESCE(referral_earnings, 0) AS referral_earnings,
+               COALESCE(pending_balance, 0)   AS pending_balance,
+               COALESCE(balance, 0)            AS balance
+        FROM wallets WHERE user_id = ${userId} LIMIT 1
+      `;
+      const wallet = walletRows[0] || {};
+      const walletEarned  = parseFloat(wallet.referral_earnings || 0);
+      const walletPending = parseFloat(wallet.pending_balance   || 0);
+      const walletBalance = parseFloat(wallet.balance           || 0);
+
+      // Use wallet values when available, fall back to commission table totals
+      const displayEarned  = walletEarned  > 0 ? Math.round(walletEarned)  : Math.round(totalEarned);
+      const displayPending = walletPending > 0 ? Math.round(walletPending) : Math.round(pendingComm);
+      const displayBalance = walletBalance > 0 ? Math.round(walletBalance) : Math.round(totalEarned - pendingComm);
+
+      // Daily commission history — last 30 days
+      const dailyComm = await sql`
+        SELECT TO_CHAR(DATE(created_at),'Mon DD') AS day,
+               COUNT(*) AS orders,
+               COALESCE(SUM(commission),0) AS revenue
+        FROM affiliate_commissions
+        WHERE aff_user_id = ${userId}
+        AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(created_at), day
+        ORDER BY DATE(created_at) ASC
+      `;
+
+      // Commission breakdown by status (for donut chart)
+      const commByStatus = [
+        { status: 'paid',    count: commRows.filter(r=>r.status==='paid').length },
+        { status: 'pending', count: commRows.filter(r=>r.status==='pending').length }
+      ].filter(r => r.count > 0);
+
+      return res.status(200).json({
+        totalOrders:    parseInt(myOrdersRow.count || 0),
+        pendingOrders:  parseInt(myPendingRow.count || 0),
+        totalReferrals: commRows.length,
+        totalEarned:    displayEarned,
+        pendingComm:    displayPending,
+        walletBalance:  displayBalance,
+        commissions:    commRows,
+        dailyOrders:    dailyComm,
+        commByStatus
       });
     }
 
