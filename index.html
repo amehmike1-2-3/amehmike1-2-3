@@ -8224,12 +8224,19 @@ function loadAnalytics() {
   anCharts = {};
   body.innerHTML = '<div class="an-loading">⏳ Loading analytics…</div>';
   if(tabs) tabs.style.display = CU.role==='admin' ? 'flex' : 'none';
-  var isAdmin = CU.role==='admin' && anCurrentTab==='admin';
+  var isAdmin     = CU.role==='admin' && anCurrentTab==='admin';
+  var isAffiliate = CU.role==='affiliate';
   if(isAdmin) {
     if(sub) sub.textContent = 'Full platform overview';
     fetch('/api/affiliate?action=analytics-admin&role=admin')
       .then(function(r){ return r.json(); })
       .then(function(d){ renderAdminAnalytics(d); })
+      .catch(function(){ body.innerHTML='<div class="an-loading">❌ Failed to load.</div>'; });
+  } else if(isAffiliate) {
+    if(sub) sub.textContent = 'Your affiliate performance';
+    fetch('/api/affiliate?action=analytics-affiliate&userId='+encodeURIComponent(CU.id))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderAffiliateAnalytics(d); })
       .catch(function(){ body.innerHTML='<div class="an-loading">❌ Failed to load.</div>'; });
   } else {
     if(sub) sub.textContent = 'Your store performance';
@@ -8281,7 +8288,8 @@ function renderAdminAnalytics(d){
       anCard('📦','Products',d.totalProducts,'Active listings')+
       anCard('🛒','Total Orders',d.totalOrders,'All time')+
       anCard('💰','Revenue',fmt(d.totalRevenue),'Completed orders')+
-      anCard('🏦','Platform Cut',fmt(d.platformRevenue),'10% commission')+
+      anCard('🏦','Platform Cut',fmt(d.platformRevenue),'Wallet balance')+
+      anCard('⏳','Pending Cut',fmt(d.platformPending),'Pending release')+
       anCard('💸','Aff. Paid',fmt(d.totalAffPaid),'Paid out')+
       anCard('⏳','Aff. Pending',fmt(d.totalAffPending),'Awaiting payout')+
     '</div>'+
@@ -8318,6 +8326,31 @@ function renderSellerAnalytics(d){
     var daily=d.dailyOrders||[];
     anCharts.rev=anLine('an-rev',daily.map(function(r){return r.day;}),daily.map(function(r){return parseFloat(r.revenue||0);}), 'Revenue','#c9922a');
     anCharts.ord=anBar('an-ord',daily.map(function(r){return r.day;}),daily.map(function(r){return parseInt(r.orders||0);}), 'Orders','#388bfd');
+  },100);
+}
+
+
+function renderAffiliateAnalytics(d){
+  var body=document.getElementById('an-body'); if(!body) return;
+  body.innerHTML =
+    '<div class="an-grid">'+
+      anCard('🛒','Referred Orders',d.totalOrders,'All time')+
+      anCard('⏳','Pending Orders',d.pendingOrders,'Awaiting')+
+      anCard('👥','Total Referrals',d.totalReferrals,'Via your link')+
+      anCard('💰','Total Earned',fmt(d.totalEarned),'Paid commissions')+
+      anCard('⏳','Pending Comm.',fmt(d.pendingComm),'Awaiting payout')+
+      anCard('💳','Wallet Balance',fmt(d.walletBalance),'Available')+
+    '</div>'+
+    '<div class="an-chart-box"><div class="an-chart-title">📈 My Commissions — Last 30 Days</div><div class="an-chart-wrap"><canvas id="an-rev"></canvas></div></div>'+
+    '<div class="an-chart-box"><div class="an-chart-title">🛒 Referred Orders — Last 30 Days</div><div class="an-chart-wrap"><canvas id="an-ord"></canvas></div></div>'+
+    '<div class="an-chart-box"><div class="an-chart-title">📊 Commissions by Status</div><div class="an-chart-wrap"><canvas id="an-sta"></canvas></div></div>'+
+    '<div class="an-chart-box"><div class="an-chart-title">💸 Recent Commissions</div><div style="overflow-x:auto"><table class="an-table"><thead><tr><th>Date</th><th>Order</th><th>Amount</th><th>Comm.</th><th>Status</th></tr></thead><tbody>'+(d.commissions||[]).slice(0,10).map(function(c){ return '<tr><td>'+(c.created_at?c.created_at.toString().slice(0,10):'—')+'</td><td>'+(c.order_id||'—')+'</td><td>'+fmt(c.order_amount)+'</td><td>'+fmt(c.commission)+'</td><td>'+(c.status||'—')+'</td></tr>'; }).join('')+'</tbody></table></div></div>';
+  setTimeout(function(){
+    var daily=d.dailyOrders||[];
+    anCharts.rev=anLine('an-rev',daily.map(function(r){return r.day;}),daily.map(function(r){return parseFloat(r.revenue||0);}), 'Commission','#c9922a');
+    anCharts.ord=anBar('an-ord',daily.map(function(r){return r.day;}),daily.map(function(r){return parseInt(r.orders||0);}), 'Orders','#388bfd');
+    var st=d.commByStatus||[];
+    if(st.length>0) anCharts.sta=anDonut('an-sta',st.map(function(s){return s.status;}),st.map(function(s){return parseInt(s.count);}));
   },100);
 }
 
