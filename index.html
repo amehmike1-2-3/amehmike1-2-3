@@ -6574,7 +6574,14 @@ function openHamMenu() {
   d.style.transform = 'translateX(0)';
   o.style.display   = 'block';
   document.body.style.overflow = 'hidden';
+  // Always get fresh user — fallback to localStorage if CU not set yet
   var cu = window.CU;
+  if (!cu) {
+    try {
+      var stored = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
+      if (stored) cu = JSON.parse(stored);
+    } catch(e) {}
+  }
   var el = function(id){ return document.getElementById(id); };
   // user identity row
   var urow = el('ham-user-row');
@@ -6587,11 +6594,11 @@ function openHamMenu() {
     if(el('ham-signin'))           el('ham-signin').style.display           = 'none';
     if(el('ham-signup'))           el('ham-signup').style.display           = 'none';
     if(el('ham-signout'))          el('ham-signout').style.display          = 'block';
-    if(el('ham-profile'))          el('ham-profile').style.display          = 'flex';
-    if(el('ham-dash'))             el('ham-dash').style.display             = (cu.role==='seller'||cu.role==='admin') ? 'flex' : 'none';
-    if(el('ham-analytics-admin'))  el('ham-analytics-admin').style.display  = cu.role==='admin'    ? 'flex' : 'none';
-    if(el('ham-analytics-seller')) el('ham-analytics-seller').style.display = cu.role==='seller'   ? 'flex' : 'none';
-    if(el('ham-analytics-aff'))    el('ham-analytics-aff').style.display    = cu.role==='affiliate'? 'flex' : 'none';
+    if(el('ham-profile'))          el('ham-profile').style.display          = 'block';
+    if(el('ham-dash'))             el('ham-dash').style.display             = (cu.role==='seller'||cu.role==='admin') ? 'block' : 'none';
+    if(el('ham-analytics-admin'))  el('ham-analytics-admin').style.display  = cu.role==='admin'    ? 'block' : 'none';
+    if(el('ham-analytics-seller')) el('ham-analytics-seller').style.display = cu.role==='seller'   ? 'block' : 'none';
+    if(el('ham-analytics-aff'))    el('ham-analytics-aff').style.display    = cu.role==='affiliate'? 'block' : 'none';
   } else {
     if(urow)  urow.style.display  = 'none';
     if(el('ham-signin'))           el('ham-signin').style.display           = 'block';
