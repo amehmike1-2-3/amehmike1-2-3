@@ -2569,21 +2569,18 @@ function go(pageId) {
   if (pageId === 'profile')  { if (!CU) { go('signin'); return; } refreshProf(); }
   if (pageId === 'aff')      { setTimeout(function() { if (typeof loadAffiliateLB === 'function') loadAffiliateLB(); }, 300); }
   if (pageId === 'analytics') {
-    if (!CU) { toast('Sign in to view analytics', 'fail'); go('signin'); return; }
-    if (CU.role !== 'admin' && CU.role !== 'seller' && CU.role !== 'affiliate') {
+    var anUser = CU;
+    if (!anUser) {
+      try {
+        var _s = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
+        if (_s) anUser = JSON.parse(_s);
+      } catch(e) {}
+    }
+    if (!anUser) { toast('Sign in to view analytics', 'fail'); go('signin'); return; }
+    if (anUser.role !== 'admin' && anUser.role !== 'seller' && anUser.role !== 'affiliate') {
       toast('Sellers and admins only', 'fail'); return;
     }
-    // Wait for updNav to finish setting window.CU before loading
-    var anTries = 0;
-    function tryLoadAnalytics() {
-      if (window.CU) { loadAnalytics(); }
-      else if (anTries++ < 10) { setTimeout(tryLoadAnalytics, 200); }
-      else {
-        var b = document.getElementById('an-body');
-        if (b) b.innerHTML = '<div class="an-loading">❌ Session expired. Please sign in again.</div>';
-      }
-    }
-    setTimeout(tryLoadAnalytics, 200);
+    setTimeout(loadAnalytics, 200);
   }
   if (pageId === 'admin')    { if (!CU || CU.role !== 'admin') { toast('Admin access required', 'fail'); return; } aTab('ov', document.querySelector('.ads .asb')); setTimeout(loadAdminKYCPending, 800); }
   if (pageId === 'seller')   {
@@ -6586,7 +6583,14 @@ function openHamMenu() {
   d.style.transform = 'translateX(0)';
   o.style.display   = 'block';
   document.body.style.overflow = 'hidden';
+  // Always get fresh user — fallback to localStorage if CU not set yet
   var cu = window.CU;
+  if (!cu) {
+    try {
+      var stored = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
+      if (stored) cu = JSON.parse(stored);
+    } catch(e) {}
+  }
   var el = function(id){ return document.getElementById(id); };
   // user identity row
   var urow = el('ham-user-row');
@@ -8199,7 +8203,14 @@ function anTab(tab) {
 }
 
 function loadAnalytics() {
+  // Get user from window.CU or fallback to localStorage
   var CU = window.CU;
+  if (!CU) {
+    try {
+      var s = localStorage.getItem('nm_current_user') || sessionStorage.getItem('nm_session');
+      if (s) CU = JSON.parse(s);
+    } catch(e) {}
+  }
   if (!CU) {
     var body = document.getElementById('an-body');
     if (body) body.innerHTML = '<div class="an-loading">❌ Please sign in to view analytics.</div>';
