@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
       const [prodsRow]    = await sql`SELECT COUNT(*) AS count FROM products WHERE status = 'active'`;
       const [ordersRow]   = await sql`SELECT COUNT(*) AS count FROM orders`;
       const [revenueRow]  = await sql`
-        SELECT COALESCE(SUM(amount),0) AS total FROM orders
+        SELECT COALESCE(SUM(total),0) AS total FROM orders
       `;
       // Wrap in try/catch — created_at may not exist on users table
       let newUsersRow = { count: 0 };
@@ -109,7 +109,7 @@ module.exports = async function handler(req, res) {
       // Top 5 products by sales
       const topProducts = await sql`
         SELECT p.name, p.price, COUNT(o.id) AS sales,
-               COALESCE(SUM(o.amount),0) AS revenue
+               COALESCE(SUM(o.total),0) AS revenue
         FROM orders o
         JOIN products p ON o.product_id::text = p.id::text
         GROUP BY p.id, p.name, p.price
@@ -120,7 +120,7 @@ module.exports = async function handler(req, res) {
       const dailyOrders = await sql`
         SELECT TO_CHAR(date::date,'Mon DD') AS day,
                COUNT(*) AS orders,
-               COALESCE(SUM(amount),0) AS revenue
+               COALESCE(SUM(total),0) AS revenue
         FROM orders
         WHERE date::date >= (NOW() - INTERVAL '30 days')::date
         GROUP BY date::date, day
@@ -183,21 +183,22 @@ module.exports = async function handler(req, res) {
         SELECT COUNT(*) AS count FROM products
         WHERE seller_id::text = ${String(userId)} AND status = 'active'
       `;
+      // seller_id is null in orders — use product_id JOIN to find seller's orders
       const [myOrders] = await sql`
-        SELECT COUNT(*) AS count FROM orders
-        WHERE seller_id::text = ${String(userId)}
-           OR seller_id = ${userId}
+        SELECT COUNT(*) AS count FROM orders o
+        JOIN products p ON o.product_id::text = p.id::text
+        WHERE p.seller_id::text = ${String(userId)}
       `;
       const [myPending] = await sql`
-        SELECT COUNT(*) AS count FROM orders
-        WHERE (seller_id::text = ${String(userId)} OR seller_id = ${userId})
-        AND LOWER(status) LIKE '%pending%'
+        SELECT COUNT(*) AS count FROM orders o
+        JOIN products p ON o.product_id::text = p.id::text
+        WHERE p.seller_id::text = ${String(userId)}
+        AND LOWER(o.status) LIKE '%pending%'
       `;
-      // Use seller_payout column directly — already stores the 90% cut
       const [myRevenue] = await sql`
-        SELECT COALESCE(SUM(seller_payout),0) AS total FROM orders
-        WHERE seller_id::text = ${String(userId)}
-        AND status IN ('completed','delivered','released','paid')
+        SELECT COALESCE(SUM(o.total * 0.9),0) AS total FROM orders o
+        JOIN products p ON o.product_id::text = p.id::text
+        WHERE p.seller_id::text = ${String(userId)}
       `;
 
       // Also fetch wallet balance for this seller
@@ -213,24 +214,25 @@ module.exports = async function handler(req, res) {
       // Top 5 products
       const myTopProds = await sql`
         SELECT p.name, p.price, COUNT(o.id) AS sales,
-               COALESCE(SUM(o.seller_payout),0) AS revenue
+               COALESCE(SUM(o.total * 0.9),0) AS revenue
         FROM orders o
         JOIN products p ON o.product_id::text = p.id::text
-        WHERE o.seller_id::text = ${String(userId)}
+        WHERE p.seller_id::text = ${String(userId)}
         GROUP BY p.id, p.name, p.price
         ORDER BY sales DESC LIMIT 5
       `;
 
       // Daily last 30 days
       const myDailyOrders = await sql`
-        SELECT TO_CHAR(date::date,'Mon DD') AS day,
+        SELECT TO_CHAR(o.date::date,'Mon DD') AS day,
                COUNT(*) AS orders,
-               COALESCE(SUM(seller_payout),0) AS revenue
-        FROM orders
-        WHERE seller_id::text = ${String(userId)}
-        AND date::date >= (NOW() - INTERVAL '30 days')::date
-        GROUP BY date::date, day
-        ORDER BY date::date ASC
+               COALESCE(SUM(o.total * 0.9),0) AS revenue
+        FROM orders o
+        JOIN products p ON o.product_id::text = p.id::text
+        WHERE p.seller_id::text = ${String(userId)}
+        AND o.date::date >= (NOW() - INTERVAL '30 days')::date
+        GROUP BY o.date::date, day
+        ORDER BY o.date::date ASC
       `;
 
       // Affiliate commissions earned by this seller as an affiliate
@@ -246,7 +248,7 @@ module.exports = async function handler(req, res) {
         totalProducts:  parseInt(myProds.count || 0),
         totalOrders:    parseInt(myOrders.count || 0),
         pendingOrders:  parseInt(myPending.count || 0),
-        totalRevenue:   Math.round(walletBalance),
+        totalRevenue:   Math.round(parseFloat(myRevenue.total || 0)),
         walletPending:  Math.round(walletPending),
         affEarned:      Math.round(affEarned),
         affPending:     Math.round(affPending),
