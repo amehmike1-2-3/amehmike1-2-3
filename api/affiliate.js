@@ -120,13 +120,13 @@ module.exports = async function handler(req, res) {
 
       // Daily orders + revenue last 30 days
       const dailyOrders = await sql`
-        SELECT TO_CHAR(DATE(COALESCE(created_at, date)),'Mon DD') AS day,
+        SELECT TO_CHAR(DATE(date),'Mon DD') AS day,
                COUNT(*) AS orders,
                COALESCE(SUM(amount),0) AS revenue
         FROM orders
-        WHERE COALESCE(created_at, date) >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE(COALESCE(created_at, date)), day
-        ORDER BY DATE(COALESCE(created_at, date)) ASC
+        WHERE date >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(date), day
+        ORDER BY DATE(date) ASC
       `;
 
       // Top 5 affiliates
@@ -224,14 +224,14 @@ module.exports = async function handler(req, res) {
 
       // Daily last 30 days
       const myDailyOrders = await sql`
-        SELECT TO_CHAR(DATE(COALESCE(created_at, date)),'Mon DD') AS day,
+        SELECT TO_CHAR(DATE(date),'Mon DD') AS day,
                COUNT(*) AS orders,
                COALESCE(SUM(seller_payout),0) AS revenue
         FROM orders
         WHERE seller_id::text = ${String(userId)}
-        AND COALESCE(created_at, date) >= NOW() - INTERVAL '30 days'
-        GROUP BY DATE(COALESCE(created_at, date)), day
-        ORDER BY DATE(COALESCE(created_at, date)) ASC
+        AND date >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(date), day
+        ORDER BY DATE(date) ASC
       `;
 
       // Affiliate commissions earned by this seller as an affiliate
