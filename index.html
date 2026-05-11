@@ -553,27 +553,94 @@ textarea.fi{resize:vertical;min-height:88px}
    DASHBOARD TABS
 ══════════════════════════════════════ */
 .dash-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;
-           border-bottom:1px solid var(--border);margin-bottom:18px;background:var(--bg2)}
+           border-bottom:2px solid var(--border);margin-bottom:22px;background:var(--bg2)}
 .dash-tabs::-webkit-scrollbar{display:none}
-.dash-tab{padding:13px 16px;font-size:.7rem;font-weight:500;color:var(--muted);cursor:pointer;
-          border-bottom:2px solid transparent;transition:var(--tr);white-space:nowrap;
-          letter-spacing:.4px;text-transform:uppercase;background:none;
+.dash-tab{padding:14px 18px;font-size:.72rem;font-weight:600;color:var(--muted);cursor:pointer;
+          border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--tr);white-space:nowrap;
+          letter-spacing:.5px;text-transform:uppercase;background:none;
           border-left:none;border-right:none;border-top:none;touch-action:manipulation}
-.dash-tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+.dash-tab:hover{color:var(--text);background:var(--bg3)}
+.dash-tab.on{color:var(--gold);border-bottom-color:var(--gold);background:rgba(201,146,42,.04)}
 
 /* Dashboard card */
-.dc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
-    padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
-.dc h3{font-size:.8rem;font-weight:600;margin-bottom:12px;color:var(--muted);
-       text-transform:uppercase;letter-spacing:.5px}
+.dc{background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+    padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.dc+.dc{margin-top:0}
+.dc h3{font-size:.72rem;font-weight:700;margin-bottom:16px;color:var(--muted);
+       text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:7px}
+.dc h3::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Section divider label */
+.settings-section-label{font-size:.62rem;font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:1px;padding:6px 0 8px;margin-top:8px;
+  border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.settings-section-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* Mini stats */
 .smini{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);
-       border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+       border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
 @media(min-width:480px){.smini{grid-template-columns:repeat(4,1fr)}}
-.sm{background:var(--bg2);padding:14px 12px}
-.sl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.sv{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;color:var(--text)}
+.sm{background:var(--bg2);padding:16px 14px;transition:background .15s}
+.sm:hover{background:var(--bg3)}
+.sl{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:500}
+.sv{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:600;color:var(--text)}
+
+/* Membership tier cards */
+.tier-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px}
+@media(min-width:560px){.tier-grid{grid-template-columns:repeat(4,1fr)}}
+.tier-card{border:2px solid var(--border);border-radius:12px;padding:14px 12px;
+           text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3);position:relative;overflow:hidden}
+.tier-card:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(201,146,42,.15);transform:translateY(-2px)}
+.tier-card.active-tier{border-color:var(--gold);background:rgba(201,146,42,.06);box-shadow:0 4px 16px rgba(201,146,42,.2)}
+.tier-card.active-tier::before{content:'CURRENT';position:absolute;top:8px;right:-14px;
+  background:var(--gold);color:#fff;font-size:.5rem;font-weight:800;letter-spacing:.8px;
+  padding:2px 20px;transform:rotate(35deg);transform-origin:center}
+.tier-name{font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;color:var(--text)}
+.tier-price{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:700;color:var(--gold);margin-bottom:2px}
+.tier-price span{font-size:.65rem;font-weight:400;color:var(--muted)}
+.tier-commission{font-size:.68rem;color:var(--muted);margin-bottom:10px;font-weight:400}
+.tier-perks{font-size:.65rem;color:var(--text);line-height:1.8;text-align:left;list-style:none;padding:0;margin:0}
+.tier-perks li{display:flex;align-items:flex-start;gap:5px;margin-bottom:2px}
+.tier-perks li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.tier-btn{width:100%;margin-top:10px;padding:9px;border-radius:8px;font-size:.72rem;
+          font-weight:700;border:none;cursor:pointer;transition:all .2s;letter-spacing:.4px;text-transform:uppercase}
+.tier-btn-free{background:var(--bg3);border:1.5px solid var(--border2);color:var(--muted)}
+.tier-btn-paid{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff}
+.tier-btn-paid:hover{opacity:.9;transform:scale(.98)}
+
+/* Loyalty points widget */
+.points-banner{background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;
+  padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden}
+.points-banner::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;
+  border-radius:50%;background:rgba(201,146,42,.15)}
+.points-total{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:700;color:var(--gold);line-height:1}
+.points-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-top:3px}
+.points-progress-wrap{background:rgba(255,255,255,.1);border-radius:50px;height:6px;margin:12px 0 6px;overflow:hidden}
+.points-progress-bar{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--gold),#f5e6c8);transition:width .6s ease}
+.points-next{font-size:.72rem;color:rgba(255,255,255,.5)}
+.points-how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.points-how-item{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 8px;text-align:center}
+.points-how-icon{font-size:1.2rem;margin-bottom:4px}
+.points-how-label{font-size:.62rem;color:rgba(255,255,255,.6);line-height:1.4}
+.points-how-val{font-size:.78rem;font-weight:700;color:var(--gold);margin-top:2px}
+
+/* Promoted products badge */
+.promo-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#7c3aed,#a855f7);
+  color:#fff;font-size:.58rem;font-weight:800;padding:2px 8px;border-radius:4px;letter-spacing:.4px;text-transform:uppercase}
+
+/* Settings icon cards */
+.settings-icon-card{display:flex;align-items:flex-start;gap:14px}
+.settings-icon-card .sic-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:1.3rem;flex-shrink:0}
+.settings-icon-card .sic-body{flex:1;min-width:0}
+.settings-icon-card .sic-title{font-weight:700;font-size:.88rem;color:var(--text);margin-bottom:3px}
+.settings-icon-card .sic-desc{font-size:.76rem;color:var(--muted);line-height:1.55;font-weight:300}
+
+/* Promoted products section */
+.promote-slot{border:2px dashed var(--border2);border-radius:12px;padding:16px;text-align:center;
+  transition:all .2s;cursor:pointer;background:var(--bg3)}
+.promote-slot:hover{border-color:var(--gold);background:rgba(201,146,42,.04)}
+.promote-slot.active-promo{border-style:solid;border-color:#a855f7;background:rgba(168,85,247,.04)}
 
 /* ══════════════════════════════════════
    HOW IT WORKS
@@ -1752,10 +1819,11 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
     </div>
 
     <!-- ── DASHBOARD TABS ── -->
-    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;scrollbar-width:none">
-      <button class="dash-tab on" id="tab-seller"   onclick="switchDashTab('seller',this)">🏪 Seller</button>
-      <button class="dash-tab"    id="tab-orders"   onclick="switchDashTab('orders',this)">📦 My Orders</button>
+    <div class="dash-tabs">
+      <button class="dash-tab on" id="tab-seller"    onclick="switchDashTab('seller',this)">🏪 Seller</button>
+      <button class="dash-tab"    id="tab-orders"    onclick="switchDashTab('orders',this)">📦 Orders</button>
       <button class="dash-tab"    id="tab-affiliate" onclick="switchDashTab('affiliate',this)">💸 Affiliate</button>
+      <button class="dash-tab"    id="tab-rewards"   onclick="switchDashTab('rewards',this)">⭐ Rewards</button>
       <button class="dash-tab"    id="tab-settings"  onclick="switchDashTab('settings',this)">⚙️ Settings</button>
     </div>
 
@@ -1790,11 +1858,18 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           </button>
         </div>
         <!-- Wallet Balance card -->
-        <div id="wallet-card" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;padding:20px;margin-bottom:16px;color:#fff">
-          <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:6px">Available Balance</div>
-          <div id="wallet-balance" style="font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:700;color:var(--gold);margin-bottom:4px">⏳</div>
-          <div id="wallet-status" style="font-size:.74rem;color:rgba(255,255,255,.5)">Loading…</div>
-          <button onclick="openWithdrawModal()" id="wallet-withdraw-btn" style="margin-top:14px;background:var(--gold);color:#000;border:none;padding:10px 22px;border-radius:6px;font-weight:700;font-size:.82rem;cursor:pointer;opacity:.4" disabled>💸 Withdraw Funds</button>
+        <div class="wallet-card-pro" id="wallet-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+            <div>
+              <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:6px">💰 Available Balance</div>
+              <div id="wallet-balance" style="font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:700;color:var(--gold);line-height:1">⏳</div>
+              <div id="wallet-status" style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:5px">Loading…</div>
+            </div>
+            <div style="text-align:right">
+              <div id="tier-badge-display" style="font-size:.6rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:4px 10px;border-radius:20px;border:1px solid rgba(201,146,42,.4);color:var(--gold);background:rgba(201,146,42,.1)">FREE</div>
+            </div>
+          </div>
+          <button onclick="openWithdrawModal()" id="wallet-withdraw-btn" style="background:var(--gold);color:#000;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;opacity:.4;transition:all .2s" disabled>💸 Withdraw Funds</button>
         </div>
         <!-- Stats row -->
         <div id="seller-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-bottom:18px"></div>
@@ -1843,17 +1918,155 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       </div>
     </div>
 
+    <!-- ══ TAB: REWARDS ══ -->
+    <div id="panel-rewards" class="dash-panel" style="display:none">
+
+      <!-- Points Banner -->
+      <div class="points-banner">
+        <div style="position:relative;z-index:1">
+          <div class="points-label">⭐ Neyo Points</div>
+          <div class="points-total" id="loyalty-points-total">0</div>
+          <div class="points-label" style="margin-top:3px">Total Points Earned</div>
+          <div class="points-progress-wrap">
+            <div class="points-progress-bar" id="loyalty-progress-bar" style="width:0%"></div>
+          </div>
+          <div class="points-next" id="loyalty-points-next">Earn more points to unlock rewards</div>
+        </div>
+        <div class="points-how">
+          <div class="points-how-item">
+            <div class="points-how-icon">🛒</div>
+            <div class="points-how-label">Every Purchase</div>
+            <div class="points-how-val">+10 pts</div>
+          </div>
+          <div class="points-how-item">
+            <div class="points-how-icon">📦</div>
+            <div class="points-how-label">Every Sale</div>
+            <div class="points-how-val">+20 pts</div>
+          </div>
+          <div class="points-how-item">
+            <div class="points-how-icon">💸</div>
+            <div class="points-how-label">Referral</div>
+            <div class="points-how-val">+50 pts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rewards Tiers -->
+      <div class="dc">
+        <h3>🏆 Reward Tiers</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div id="reward-tier-bronze" class="reward-tier-row" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border);transition:.2s">
+            <div style="font-size:1.6rem;flex-shrink:0">🥉</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:.88rem;color:var(--text)">Bronze</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:2px">0 – 499 points • 0% discount on commission</div>
+            </div>
+            <div id="reward-badge-bronze" style="font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;border:1px solid rgba(180,83,9,.2)">0–499</div>
+          </div>
+          <div id="reward-tier-silver" class="reward-tier-row" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border);transition:.2s">
+            <div style="font-size:1.6rem;flex-shrink:0">🥈</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:.88rem;color:var(--text)">Silver</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:2px">500 – 1,999 points • 0.5% commission discount</div>
+            </div>
+            <div style="font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2)">500–1999</div>
+          </div>
+          <div id="reward-tier-gold" class="reward-tier-row" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border);transition:.2s">
+            <div style="font-size:1.6rem;flex-shrink:0">🥇</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:.88rem;color:var(--text)">Gold</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:2px">2,000 – 4,999 points • 1% commission discount + priority listing</div>
+            </div>
+            <div style="font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(201,146,42,.1);color:var(--gold);border:1px solid rgba(201,146,42,.25)">2000–4999</div>
+          </div>
+          <div id="reward-tier-diamond" class="reward-tier-row" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border);transition:.2s">
+            <div style="font-size:1.6rem;flex-shrink:0">💎</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:.88rem;color:var(--text)">Diamond</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:2px">5,000+ points • 2% commission discount + featured badge + early access</div>
+            </div>
+            <div style="font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(56,139,253,.1);color:var(--blue);border:1px solid rgba(56,139,253,.2)">5000+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Points History -->
+      <div class="dc">
+        <h3>📋 Points History</h3>
+        <div id="loyalty-history">
+          <p style="color:var(--muted);font-size:.82rem;text-align:center;padding:16px 0">Complete purchases or sales to earn points.</p>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ══ TAB: SETTINGS ══ -->
     <div id="panel-settings" class="dash-panel" style="display:none">
-      <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">⚙️ Account Settings</h3>
+
+      <!-- Profile Summary Card -->
+      <div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px">
+        <div id="pav" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:#fff;flex-shrink:0">?</div>
+        <div style="flex:1;min-width:0">
+          <div id="p-name" style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:2px">—</div>
+          <div id="p-email" style="font-size:.76rem;color:var(--muted);margin-bottom:4px">—</div>
+          <div id="p-role" style="font-size:.68rem;color:var(--muted2)">—</div>
+        </div>
+        <div id="tier-badge-settings" style="font-size:.6rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:5px 12px;border-radius:20px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.3);color:var(--gold);white-space:nowrap">FREE</div>
+      </div>
+
+      <!-- ── SECTION: MONETISE ── -->
+      <div class="settings-section-label">💎 Membership & Monetisation</div>
+
+      <!-- Membership Tiers -->
+      <div class="dc">
+        <h3>💎 Membership Plan</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.6">Upgrade your plan to get lower commission rates, more listings, and priority placement.</p>
+        <div class="tier-grid" id="tier-grid-container">
+          <!-- Rendered by JS -->
+        </div>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:10px;text-align:center">Subscriptions renew monthly via Paystack. Cancel anytime.</p>
+      </div>
+
+      <!-- Promoted Products -->
+      <div class="dc">
+        <h3>📢 Promoted Products</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.6">Boost a product to appear at the top of search results with a <span class="promo-badge">⚡ Sponsored</span> badge. Pay once, run for your chosen duration.</p>
+        <div id="promote-products-list">
+          <p style="color:var(--muted);font-size:.82rem;text-align:center;padding:12px 0">Sign in and list a product to promote it.</p>
+        </div>
+      </div>
+
+      <!-- Trusted Seller Badge -->
+      <div class="dc" style="background:linear-gradient(135deg,rgba(180,83,9,.04),rgba(201,146,42,.06));border-color:rgba(201,146,42,.2)">
+        <h3 style="color:var(--gold)">✓ Trusted Seller Badge</h3>
+        <div class="settings-icon-card">
+          <div class="sic-icon" style="background:rgba(201,146,42,.1)">✓</div>
+          <div class="sic-body">
+            <div class="sic-title">Get the Gold Trusted Badge</div>
+            <div class="sic-desc">Appears on all your listings — increases buyer confidence and conversion rates. One-time fee of <strong>₦2,000</strong>.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px">
+          <button onclick="payVerifFee()" id="verif-btn" class="bg" style="padding:10px 22px;background:linear-gradient(135deg,#b45309,#c9922a)">
+            ✓ Get Trusted Badge — ₦2,000
+          </button>
+          <span id="verif-status" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- ── SECTION: PAYOUTS ── -->
+      <div class="settings-section-label">🏦 Payouts & Withdrawals</div>
 
       <!-- Payout Settings -->
       <div class="dc">
         <h3>🏦 Payout Settings</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.6">
-          Add your bank details to receive your earnings. Minimum withdrawal is <strong>₦2,000</strong>. 
-          Your account name must exactly match your bank records.
-        </p>
+        <div class="settings-icon-card" style="margin-bottom:16px">
+          <div class="sic-icon" style="background:var(--green-bg)">🏦</div>
+          <div class="sic-body">
+            <div class="sic-title">Bank Account for Earnings</div>
+            <div class="sic-desc">Add your bank details to receive earnings. Min withdrawal ₦2,000. Account name must match bank records exactly.</div>
+          </div>
+        </div>
         <div id="po-status" style="margin-bottom:12px"></div>
         <div class="fg">
           <label>Bank <span class="rq">*</span></label>
@@ -1903,12 +2116,72 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         </button>
       </div>
 
+      <!-- Withdrawal Panel -->
+      <div class="dc" id="withdraw-panel">
+        <h3>💸 Request Payout</h3>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Available Balance</div>
+            <div id="withdraw-balance" style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;color:var(--gold)">₦0</div>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);text-align:right">
+            <div>Min: ₦2,000</div>
+            <div>KYC required</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Amount to Withdraw (₦)</label>
+          <input class="fi" type="number" id="withdraw-amount" placeholder="Enter amount e.g. 5000" min="2000"/>
+        </div>
+        <button id="withdraw-btn" class="bg" style="padding:10px 22px;width:100%;opacity:.4;cursor:not-allowed" onclick="requestWithdraw()" disabled>💸 Request Payout</button>
+        <div style="margin-top:20px">
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Withdrawal History</div>
+          <div id="withdrawal-history"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: SECURITY ── -->
+      <div class="settings-section-label">🔐 Security & Identity</div>
+
+      <!-- KYC Verification -->
+      <div class="dc">
+        <h3>🪪 Identity Verification (KYC)</h3>
+        <div class="settings-icon-card" style="margin-bottom:16px">
+          <div class="sic-icon" style="background:var(--blue-bg)">🪪</div>
+          <div class="sic-body">
+            <div class="sic-title">Verify with NIN or BVN</div>
+            <div class="sic-desc">Required for all sellers to list products. Your data is encrypted and used only for identity verification.</div>
+          </div>
+        </div>
+        <div id="kyc-status-banner"></div>
+        <div id="kyc-form">
+          <div class="fg">
+            <label>Verification Type</label>
+            <select class="fi" id="kyc-type">
+              <option value="">— Select Type —</option>
+              <option value="nin">NIN (National Identity Number)</option>
+              <option value="bvn">BVN (Bank Verification Number)</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Enter Number <span style="color:var(--red)">*</span></label>
+            <input class="fi" type="text" id="kyc-number" placeholder="Enter your NIN or BVN" maxlength="11"/>
+          </div>
+          <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
+          <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
+        </div>
+      </div>
+
       <!-- Change Password -->
-      <div class="dc" style="margin-top:14px">
+      <div class="dc">
         <h3>🔒 Change Password</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:16px;line-height:1.55">
-          Got a temporary password? Set your own personal password here.
-        </p>
+        <div class="settings-icon-card" style="margin-bottom:16px">
+          <div class="sic-icon" style="background:var(--orange-bg)">🔒</div>
+          <div class="sic-body">
+            <div class="sic-title">Update Your Password</div>
+            <div class="sic-desc">Got a temporary password? Set your own secure password here.</div>
+          </div>
+        </div>
         <div class="fg">
           <label>Current Password <span style="color:var(--red)">*</span></label>
           <div style="position:relative">
@@ -1941,75 +2214,8 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
         <button class="bg" style="padding:10px 22px;width:100%" onclick="changePassword()">🔒 Update Password</button>
       </div>
 
-      <!-- KYC Verification -->
-      <div class="dc" style="margin-top:14px">
-        <h3>🪪 Identity Verification (KYC)</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.55">
-          Verify your identity with NIN or BVN to unlock product listing. Required for all sellers.
-        </p>
-        <div id="kyc-status-banner"></div>
-        <div id="kyc-form">
-          <div class="fg">
-            <label>Verification Type</label>
-            <select class="fi" id="kyc-type">
-              <option value="">— Select Type —</option>
-              <option value="nin">NIN (National Identity Number)</option>
-              <option value="bvn">BVN (Bank Verification Number)</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>Enter Number <span style="color:var(--red)">*</span></label>
-            <input class="fi" type="text" id="kyc-number" placeholder="Enter your NIN or BVN" maxlength="11"/>
-            <p class="hint">Your data is encrypted and used only for identity verification.</p>
-          </div>
-          <div id="kyc-err" style="font-size:.8rem;color:var(--red);margin-bottom:8px;min-height:15px"></div>
-          <button id="kyc-btn" class="bg" style="padding:10px 22px;width:100%" onclick="submitKYC()">🔐 Submit for Verification</button>
-        </div>
-      </div>
-
-      <!-- Trusted Seller Badge Section -->
-      <div class="dc" style="margin-top:14px;background:linear-gradient(135deg,rgba(180,83,9,.05),rgba(201,146,42,.08));border:1px solid rgba(201,146,42,.25)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <span style="font-size:1.4rem">✓</span>
-          <div>
-            <h3 style="margin:0;color:var(--gold)">Trusted Seller Badge</h3>
-            <p style="margin:0;font-size:.78rem;color:var(--muted)">Show buyers you are verified and trustworthy</p>
-          </div>
-        </div>
-        <p style="font-size:.82rem;color:var(--text);line-height:1.6;margin-bottom:12px">
-          The gold <strong>✓ Trusted</strong> badge appears on <em>all your product listings</em>, increasing buyer confidence and conversion rates. One-time fee of <strong>₦2,000</strong>.
-        </p>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button onclick="payVerifFee()" id="verif-btn" class="bg" style="padding:10px 22px;background:linear-gradient(135deg,#b45309,#c9922a)">
-            ✓ Get Trusted Badge — ₦2,000
-          </button>
-          <span id="verif-status" style="font-size:.78rem;color:var(--muted)"></span>
-        </div>
-      </div>
-
-      <!-- Withdrawal Section -->
-      <div class="dc" style="margin-top:14px" id="withdraw-panel">
-        <h3>💸 Request Payout</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.55">
-          Withdraw your earnings to your bank account. Minimum ₦2,000. KYC required.
-        </p>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">
-          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Available Balance</div>
-          <div id="withdraw-balance" style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;color:var(--gold)">₦0</div>
-        </div>
-        <div class="fg">
-          <label>Amount to Withdraw (₦)</label>
-          <input class="fi" type="number" id="withdraw-amount" placeholder="Min ₦2,000" min="2000"/>
-        </div>
-        <button id="withdraw-btn" class="bg" style="padding:10px 22px;width:100%;opacity:.4;cursor:not-allowed" onclick="requestWithdraw()" disabled>💸 Request Payout</button>
-        <div style="margin-top:20px">
-          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Withdrawal History</div>
-          <div id="withdrawal-history"><p style="color:var(--muted);font-size:.8rem">Loading…</p></div>
-        </div>
-      </div>
-
       <!-- Sign out -->
-      <button class="so-btn" onclick="doSignOut()" style="margin-top:6px">Sign Out</button>
+      <button class="so-btn" onclick="doSignOut()" style="margin-top:6px;width:100%;border-radius:10px">Sign Out</button>
     </div>
 
   </div>
@@ -2984,6 +3190,8 @@ function mkCard(p) {
     ? '<span class="trust-badge">&#x2713; Trusted</span>' : '';
   var featuredBadge = (p.is_featured || p.isFeature)
     ? '<span class="featured-badge" style="background:linear-gradient(135deg,#f0c040,#d4af37);color:#fff;padding:3px 8px;border-radius:3px;font-size:.65rem;font-weight:700;text-transform:uppercase;margin-left:6px">⭐ Featured</span>' : '';
+  var promoBadge = (p.promoted && p.promotedUntil && new Date(p.promotedUntil) > new Date())
+    ? '<span style="display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:.55rem;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:.3px;text-transform:uppercase;margin-left:5px">⚡ Sponsored</span>' : '';
 
   var qty        = (p.quantity !== undefined && p.quantity !== null) ? parseInt(p.quantity, 10) : null;
   var location   = p.location || p.seller_location || '';
@@ -2997,7 +3205,7 @@ function mkCard(p) {
     + (outOfStock ? '<span class="sale-badge" style="background:#6b7280">OUT OF STOCK</span>' : saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
     + '<span class="pb2 ' + tc + '">' + tl + '</span>'
     + '<span class="el">\uD83D\uDEE1 Escrow</span></div>'
-    + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + featuredBadge + '</h4>'
+    + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + featuredBadge + promoBadge + '</h4>'
     + '<div class="pcs">by ' + p.seller + (location ? ' \u00b7 \uD83D\uDCCD' + location : '') + (p.reviews > 0 ? ' \u00b7 \u2B50' + p.rating : '') + '</div>'
     + (lowStock ? '<div style="font-size:.7rem;color:var(--orange);font-weight:700;margin-bottom:3px">\u26a1 Only ' + qty + ' left!</div>' : '')
     + (saleActive && saving > 0 ? '<div class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
@@ -3771,6 +3979,8 @@ function processPaystack(mode) {
         cM('m-cart'); cM('m-pd');
         oM('m-rec');
         toast('✅ Payment confirmed! Order ' + trackId, 'ok');
+        /* Award loyalty points for purchase */
+        if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Purchase: ' + trackId);
       })
       .catch(function(err) {
         /* Network error — save locally as fallback */
@@ -4059,6 +4269,8 @@ function markCol(id) {
   toast('✅ Escrow released! Platform fee: ' + pct + '% (₦' + platformFee.toLocaleString() + ')'
     + (validAff ? ' · Affiliate ₦' + affiliateFee.toLocaleString() : '')
     + '. Seller receives ₦' + sellerPayout.toLocaleString() + ' 🎉', 'ok');
+  /* Award loyalty points for sale confirmation */
+  if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(20, 'Sale confirmed: ' + id);
   renderOrders();
 }
 window.markCol = markCol;
@@ -4668,13 +4880,15 @@ function refreshProf() {
   switchDashTab('seller', document.getElementById('tab-seller'));
   renderSellerDash();
   renderOrders();
+  /* Render tier badge */
+  if (typeof renderTierGrid === 'function') renderTierGrid();
 }
 
 /* ═══ PROFILE DASHBOARD TABS ═══ */
 
 function switchDashTab(name, btn) {
   if (name === 'settings') {
-    setTimeout(function(){ loadWithdrawBalance(); loadWithdrawalHistory(); }, 300);
+    setTimeout(function(){ loadWithdrawBalance(); loadWithdrawalHistory(); renderTierGrid(); renderPromoteProducts(); }, 300);
   }
   if (name === 'seller') {
     setTimeout(function(){ loadWalletBalance(); }, 400);
@@ -4682,8 +4896,11 @@ function switchDashTab(name, btn) {
   if (name === 'affiliate') {
     setTimeout(function(){ loadAffiliateDash(); }, 300);
   }
+  if (name === 'rewards') {
+    setTimeout(function(){ renderLoyaltyTab(); }, 300);
+  }
   /* hide all panels */
-  ['seller','orders','affiliate','settings'].forEach(function (t) {
+  ['seller','orders','affiliate','rewards','settings'].forEach(function (t) {
     var p = document.getElementById('panel-' + t);
     if (p) p.style.display = 'none';
   });
@@ -4695,6 +4912,266 @@ function switchDashTab(name, btn) {
   if (btn) btn.classList.add('on');
 }
 window.switchDashTab = switchDashTab;
+
+/* ═══════════════════════════════════════════════════════
+   MEMBERSHIP TIERS
+═══════════════════════════════════════════════════════ */
+var TIERS = [
+  {
+    id: 'free', name: 'Free', price: 0, commission: '10% digital / 5% physical',
+    perks: ['Up to 10 listings', 'Standard placement', 'Basic support'],
+    color: '#6b7280'
+  },
+  {
+    id: 'starter', name: 'Starter', price: 1500, commission: '8% digital / 4% physical',
+    perks: ['Up to 30 listings', 'Better placement', 'Email support'],
+    color: '#2563eb'
+  },
+  {
+    id: 'pro', name: 'Pro', price: 5000, commission: '6% digital / 3% physical',
+    perks: ['Unlimited listings', 'Priority placement', 'Pro badge', 'Fast support'],
+    color: '#c9922a'
+  },
+  {
+    id: 'business', name: 'Business', price: 15000, commission: '4% digital / 2% physical',
+    perks: ['Unlimited listings', 'Top placement', 'Business badge', 'Dedicated support', 'Analytics'],
+    color: '#7c3aed'
+  }
+];
+
+function renderTierGrid() {
+  var container = document.getElementById('tier-grid-container');
+  if (!container) return;
+  var currentTier = (CU && CU.membershipTier) || 'free';
+
+  /* update tier badges */
+  var tierLabel = TIERS.find(function(t){ return t.id === currentTier; });
+  var label = tierLabel ? tierLabel.name.toUpperCase() : 'FREE';
+  ['tier-badge-display','tier-badge-settings'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.textContent = label;
+  });
+
+  container.innerHTML = TIERS.map(function(tier) {
+    var isActive = currentTier === tier.id;
+    var isFree   = tier.price === 0;
+    return '<div class="tier-card' + (isActive ? ' active-tier' : '') + '">' +
+      '<div class="tier-name" style="color:' + tier.color + '">' + tier.name + '</div>' +
+      '<div class="tier-price">' + (isFree ? 'Free' : '₦' + tier.price.toLocaleString()) + (isFree ? '' : '<span>/mo</span>') + '</div>' +
+      '<div class="tier-commission">' + tier.commission + '</div>' +
+      '<ul class="tier-perks">' + tier.perks.map(function(p){ return '<li>' + p + '</li>'; }).join('') + '</ul>' +
+      '<button class="tier-btn ' + (isFree ? 'tier-btn-free' : 'tier-btn-paid') + '" ' +
+        (isActive ? 'disabled style="opacity:.5;cursor:not-allowed"' : 'onclick="buyTier(\'' + tier.id + '\',' + tier.price + ')"') + '>' +
+        (isActive ? '✓ Current Plan' : (isFree ? 'Downgrade' : 'Upgrade')) +
+      '</button>' +
+    '</div>';
+  }).join('');
+}
+window.renderTierGrid = renderTierGrid;
+
+function buyTier(tierId, price) {
+  if (!CU) { toast('Please sign in first.', 'fail'); return; }
+  if (price === 0) { toast('You are already on the Free plan.', 'warn'); return; }
+  var tier = TIERS.find(function(t){ return t.id === tierId; });
+  if (!tier) return;
+
+  var pubKey = window.PK || 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+  if (typeof PaystackPop === 'undefined') { toast('Paystack did not load. Refresh and try again.', 'fail'); return; }
+
+  var handler = PaystackPop.setup({
+    key:      pubKey,
+    email:    CU.email,
+    amount:   price * 100,
+    currency: 'NGN',
+    ref:      'TIER-' + tierId.toUpperCase() + '-' + CU.id + '-' + Date.now(),
+    metadata: { userId: String(CU.id), type: 'membership_tier', tier: tierId },
+    callback: function(response) {
+      /* Save tier to user profile */
+      apiCall('/auth?action=update-profile', 'POST', { userId: CU.id, membershipTier: tierId, tierRef: response.reference })
+        .then(function(data) {
+          if (data.ok || data.user) {
+            CU.membershipTier = tierId;
+            localStorage.setItem('nm_current_user', JSON.stringify(CU));
+            toast('🎉 Welcome to ' + tier.name + ' plan! Your benefits are now active.', 'ok');
+            renderTierGrid();
+          } else {
+            toast('Payment received but profile update failed. Contact support.', 'warn');
+          }
+        }).catch(function(){ toast('Payment received! Refresh to see your new plan.', 'ok'); });
+    },
+    onClose: function() { toast('Upgrade cancelled.', 'warn'); }
+  });
+  handler.openIframe();
+}
+window.buyTier = buyTier;
+
+/* ═══════════════════════════════════════════════════════
+   PROMOTED PRODUCTS
+═══════════════════════════════════════════════════════ */
+var PROMO_DURATIONS = [
+  { days: 3,  price: 500,  label: '3 Days' },
+  { days: 7,  price: 1000, label: '7 Days' },
+  { days: 14, price: 1800, label: '14 Days' },
+  { days: 30, price: 3000, label: '30 Days' }
+];
+
+function renderPromoteProducts() {
+  var container = document.getElementById('promote-products-list');
+  if (!container || !CU) return;
+
+  var myProds = prods.filter(function(p){
+    return (p.seller === CU.name || p.sellerEmail === maskEmail(CU.email)) && p.status === 'active';
+  });
+
+  if (!myProds.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem"><div style="font-size:2rem;margin-bottom:8px">📦</div>You need active products to promote. <a href="#" onclick="go(\'sell\');return false" style="color:var(--gold)">List a product</a></div>';
+    return;
+  }
+
+  container.innerHTML = myProds.map(function(p) {
+    var isPromoted = p.promoted && p.promotedUntil && new Date(p.promotedUntil) > new Date();
+    var img = (p.imgs && p.imgs[0]) ? '<img src="' + p.imgs[0] + '" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0"/>' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">' + (p.emoji||'📦') + '</div>';
+    return '<div class="promote-slot' + (isPromoted ? ' active-promo' : '') + '" style="margin-bottom:10px;cursor:default">' +
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
+        img +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;font-size:.84rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + p.name + '</div>' +
+          '<div style="font-size:.72rem;color:var(--gold);margin-top:2px">₦' + Number(p.price||0).toLocaleString() + '</div>' +
+        '</div>' +
+        (isPromoted ? '<span class="promo-badge">⚡ Live</span>' : '') +
+      '</div>' +
+      (isPromoted
+        ? '<div style="font-size:.72rem;color:#a855f7;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:8px 12px;text-align:center">⚡ Promoted until ' + new Date(p.promotedUntil).toLocaleDateString() + '</div>'
+        : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + PROMO_DURATIONS.map(function(d){
+            return '<button onclick="promoteProduct(\'' + p.id + '\',' + d.days + ',' + d.price + ')" style="flex:1;min-width:70px;padding:8px 6px;border-radius:8px;font-size:.7rem;font-weight:700;border:1.5px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;transition:.2s" onmouseover="this.style.borderColor=\'#a855f7\';this.style.color=\'#a855f7\'" onmouseout="this.style.borderColor=\'var(--border2)\';this.style.color=\'var(--text)\'">' + d.label + '<br/><span style="color:#a855f7;font-weight:800">₦' + d.price.toLocaleString() + '</span></button>';
+          }).join('') + '</div>'
+      ) +
+    '</div>';
+  }).join('');
+}
+window.renderPromoteProducts = renderPromoteProducts;
+
+function promoteProduct(productId, days, price) {
+  if (!CU) { toast('Please sign in.', 'fail'); return; }
+  var product = prods.find(function(p){ return String(p.id) === String(productId); });
+  if (!product) { toast('Product not found.', 'fail'); return; }
+
+  var pubKey = window.PK || 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+  if (typeof PaystackPop === 'undefined') { toast('Paystack did not load. Refresh and try again.', 'fail'); return; }
+
+  var handler = PaystackPop.setup({
+    key:      pubKey,
+    email:    CU.email,
+    amount:   price * 100,
+    currency: 'NGN',
+    ref:      'PROMO-' + productId + '-' + Date.now(),
+    metadata: { userId: String(CU.id), type: 'promote_product', productId: String(productId), days: days },
+    callback: function(response) {
+      var until = new Date();
+      until.setDate(until.getDate() + days);
+      /* Mark product as promoted locally */
+      var idx = prods.findIndex(function(p){ return String(p.id) === String(productId); });
+      if (idx > -1) {
+        prods[idx].promoted = true;
+        prods[idx].promotedUntil = until.toISOString();
+        prods[idx].featured = true;
+        sv('nm_products', prods);
+      }
+      /* Sync to DB */
+      apiCall('/products?action=update', 'POST', {
+        productId: String(productId),
+        promoted: true,
+        promotedUntil: until.toISOString(),
+        featured: true,
+        promotedRef: response.reference
+      }).catch(function(){});
+      toast('🚀 Product is now promoted for ' + days + ' days!', 'ok');
+      renderPromoteProducts();
+    },
+    onClose: function() { toast('Promotion cancelled.', 'warn'); }
+  });
+  handler.openIframe();
+}
+window.promoteProduct = promoteProduct;
+
+/* ═══════════════════════════════════════════════════════
+   LOYALTY POINTS
+═══════════════════════════════════════════════════════ */
+function getLoyaltyPoints() {
+  if (!CU) return 0;
+  return parseInt(CU.loyaltyPoints || 0);
+}
+
+function getLoyaltyTier(points) {
+  if (points >= 5000) return { name: 'Diamond', icon: '💎', next: null, nextPts: null };
+  if (points >= 2000) return { name: 'Gold',    icon: '🥇', next: 'Diamond', nextPts: 5000 };
+  if (points >= 500)  return { name: 'Silver',  icon: '🥈', next: 'Gold',    nextPts: 2000 };
+  return                     { name: 'Bronze',  icon: '🥉', next: 'Silver',  nextPts: 500  };
+}
+
+function renderLoyaltyTab() {
+  var pts     = getLoyaltyPoints();
+  var tier    = getLoyaltyTier(pts);
+  var totalEl = document.getElementById('loyalty-points-total');
+  var progEl  = document.getElementById('loyalty-progress-bar');
+  var nextEl  = document.getElementById('loyalty-points-next');
+  var histEl  = document.getElementById('loyalty-history');
+
+  if (totalEl) totalEl.textContent = pts.toLocaleString();
+
+  if (tier.next && tier.nextPts) {
+    var prevThreshold = tier.name === 'Bronze' ? 0 : tier.name === 'Silver' ? 500 : 2000;
+    var progress = Math.min(100, Math.round(((pts - prevThreshold) / (tier.nextPts - prevThreshold)) * 100));
+    if (progEl) progEl.style.width = progress + '%';
+    if (nextEl) nextEl.textContent = (tier.nextPts - pts).toLocaleString() + ' more points to reach ' + tier.next + ' ' + (tier.name === 'Bronze' ? '🥈' : tier.name === 'Silver' ? '🥇' : '💎');
+  } else {
+    if (progEl) progEl.style.width = '100%';
+    if (nextEl) nextEl.textContent = '💎 You\'ve reached Diamond — the highest tier!';
+  }
+
+  /* Highlight current tier row */
+  ['bronze','silver','gold','diamond'].forEach(function(t) {
+    var row = document.getElementById('reward-tier-' + t);
+    if (!row) return;
+    var isActive = tier.name.toLowerCase() === t;
+    row.style.borderColor  = isActive ? 'var(--gold)' : 'var(--border)';
+    row.style.background   = isActive ? 'rgba(201,146,42,.06)' : 'var(--bg3)';
+    row.style.boxShadow    = isActive ? '0 2px 12px rgba(201,146,42,.18)' : 'none';
+  });
+
+  /* Points history */
+  if (histEl) {
+    var history = CU.loyaltyHistory || [];
+    if (!history.length) {
+      histEl.innerHTML = '<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:16px 0">No points yet. Buy or sell to start earning!</p>';
+    } else {
+      histEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:1px">' +
+        history.slice().reverse().slice(0,15).map(function(h) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--bg3);border-radius:8px;margin-bottom:6px">' +
+            '<div>' +
+              '<div style="font-size:.82rem;font-weight:600;color:var(--text)">' + (h.label||'Points earned') + '</div>' +
+              '<div style="font-size:.7rem;color:var(--muted);margin-top:2px">' + (h.date||'') + '</div>' +
+            '</div>' +
+            '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.1rem;font-weight:700;color:var(--gold)">+' + h.pts + ' pts</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+  }
+}
+window.renderLoyaltyTab = renderLoyaltyTab;
+
+/* Award points helper (called after purchase/sale) */
+function awardLoyaltyPoints(pts, label) {
+  if (!CU) return;
+  CU.loyaltyPoints = (parseInt(CU.loyaltyPoints||0)) + pts;
+  if (!CU.loyaltyHistory) CU.loyaltyHistory = [];
+  CU.loyaltyHistory.push({ pts: pts, label: label, date: new Date().toLocaleDateString() });
+  localStorage.setItem('nm_current_user', JSON.stringify(CU));
+  /* Sync to DB */
+  apiCall('/auth?action=update-profile', 'POST', { userId: CU.id, loyaltyPoints: CU.loyaltyPoints }).catch(function(){});
+}
+window.awardLoyaltyPoints = awardLoyaltyPoints;
 
 /* ── upgradeToSeller: any user can activate seller mode in one tap ── */
 function upgradeToSeller() {
@@ -7142,7 +7619,7 @@ function openPromoteModal() {
 }
 window.openPromoteModal = openPromoteModal;
 
-function promoteProduct() {
+function promoteProductModal() {
   var productId = document.getElementById('promote-product-select').value;
   var duration = parseInt(document.getElementById('promote-duration').value, 10);
   
@@ -7198,7 +7675,7 @@ function promoteProduct() {
   });
   handler.openIframe();
 }
-window.promoteProduct = promoteProduct;
+window.promoteProductModal = promoteProductModal;
 
 /* ═══ TOAST ═══ */
 function toast(msg, type) {
@@ -8113,7 +8590,7 @@ validateSell();
       </div>
 
       <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="sbtn" style="flex:1;background:var(--gold)" onclick="promoteProduct()">✓ Pay & Promote</button>
+        <button class="sbtn" style="flex:1;background:var(--gold)" onclick="promoteProductModal()">✓ Pay & Promote</button>
         <button onclick="cM('m-promote')" style="flex:1;background:none;border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;color:var(--text)">Cancel</button>
       </div>
     </div>
