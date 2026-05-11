@@ -421,12 +421,14 @@ module.exports = async function handler(req, res) {
       `;
 
       /* ── Credit seller balance ── */
+      let resolvedSellerIdPs = null;
       if (sellerUserId) {
         await sql`
           UPDATE users
           SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
           WHERE id = ${String(sellerUserId)}
         `;
+        resolvedSellerIdPs = String(sellerUserId);
         console.log('[paystack.js] DVC release — seller', sellerUserId, 'credited ₦', sellerPayout);
       } else {
         /* Find seller from order items if no sellerUserId passed */
@@ -437,7 +439,21 @@ module.exports = async function handler(req, res) {
             SET seller_balance = COALESCE(seller_balance, 0) + ${sellerPayout}
             WHERE id = ${String(sellerIdFromItem)}
           `;
+          resolvedSellerIdPs = String(sellerIdFromItem);
         }
+      }
+
+      /* ── Award seller 20 loyalty points ── */
+      if (resolvedSellerIdPs) {
+        try {
+          const sRows = await sql`SELECT loyalty_points, loyalty_history FROM users WHERE id = ${resolvedSellerIdPs} LIMIT 1`;
+          if (sRows.length) {
+            const newPts  = parseInt(sRows[0].loyalty_points || 0) + 20;
+            const hist    = sRows[0].loyalty_history || [];
+            hist.push({ pts: 20, label: 'Sale confirmed: ' + orderId, date: new Date().toLocaleDateString() });
+            await sql`UPDATE users SET loyalty_points = ${newPts}, loyalty_history = ${JSON.stringify(hist)}::jsonb WHERE id = ${resolvedSellerIdPs}`;
+          }
+        } catch (e) { console.warn('[paystack.js] loyalty points (non-fatal):', e.message); }
       }
 
       /* ── FIX 4: Credit affiliate ONLY if valid non-empty aff_code ── */
