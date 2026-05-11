@@ -214,10 +214,10 @@
 /* ══════════════════════════════════════
    IMAGE CAROUSEL — Product Detail
 ══════════════════════════════════════ */
-.img-carousel-wrap{position:relative;width:100%;background:var(--bg3);border-radius:12px;overflow:hidden;margin-bottom:16px;aspect-ratio:4/3;}
+.img-carousel-wrap{position:relative;width:100%;background:var(--bg3);border-radius:12px;overflow:hidden;margin-bottom:16px;aspect-ratio:1/1;}
 .img-carousel-container{display:flex;width:100%;height:100%;transition:transform .3s ease;scroll-snap-type:x mandatory;}
 .img-carousel-slide{flex:0 0 100%;display:flex;align-items:center;justify-content:center;min-height:0;scroll-snap-align:start;}
-.img-carousel-slide img{width:100%;height:100%;object-fit:cover;}
+.img-carousel-slide img{width:100%;height:100%;object-fit:contain;}
 .img-carousel-slide.placeholder{background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:3rem;color:var(--muted);}
 .carousel-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:#fff;width:40px;height:40px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:background .2s;z-index:10;}
 .carousel-nav:hover{background:rgba(0,0,0,.7);}
