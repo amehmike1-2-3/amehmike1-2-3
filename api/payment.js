@@ -768,6 +768,19 @@ module.exports = async function handler(req, res) {
 
       console.log('[payment/confirm]', orderId, '₦' + amount, '| status:', orderStatus);
 
+      /* Award buyer 10 loyalty points for purchase */
+      try {
+        const buyerRows = await sql`SELECT id, loyalty_points, loyalty_history FROM users WHERE email = ${String(customer.email || '').toLowerCase()} LIMIT 1`;
+        if (buyerRows.length) {
+          const bId      = String(buyerRows[0].id);
+          const currPts  = parseInt(buyerRows[0].loyalty_points || 0);
+          const newPts   = currPts + 10;
+          const bHistory = buyerRows[0].loyalty_history || [];
+          bHistory.push({ pts: 10, label: 'Purchase: ' + orderId, date: new Date().toLocaleDateString() });
+          await sql`UPDATE users SET loyalty_points = ${newPts}, loyalty_history = ${JSON.stringify(bHistory)}::jsonb WHERE id = ${bId}`;
+        }
+      } catch (e) { console.warn('[payment/confirm] buyer loyalty points (non-fatal):', e.message); }
+
       /* ── Email buyer: order confirmation + download link (non-fatal) ──
          Uses fetch to /api/auth?action=send-email so no extra dep needed.
          Falls back gracefully if email service not configured.          */
@@ -910,6 +923,18 @@ module.exports = async function handler(req, res) {
         sellerPayout, affiliateFee, affCode: affCode || null,
         sellerId: resolvedSellerId, type: 'dvc_release'
       });
+
+      /* Award seller 20 loyalty points for confirmed sale */
+      try {
+        const sellerRows = await sql`SELECT loyalty_points, loyalty_history FROM users WHERE id = ${resolvedSellerId} LIMIT 1`;
+        if (sellerRows.length) {
+          const currentPts  = parseInt(sellerRows[0].loyalty_points || 0);
+          const newPts      = currentPts + 20;
+          const history     = sellerRows[0].loyalty_history || [];
+          history.push({ pts: 20, label: 'Sale confirmed: ' + orderId, date: new Date().toLocaleDateString() });
+          await sql`UPDATE users SET loyalty_points = ${newPts}, loyalty_history = ${JSON.stringify(history)}::jsonb WHERE id = ${resolvedSellerId}`;
+        }
+      } catch (e) { console.warn('[payment/dvc-release] loyalty points (non-fatal):', e.message); }
 
       console.log('[payment/dvc-release]', orderId, '| seller ₦' + sellerPayout);
 
