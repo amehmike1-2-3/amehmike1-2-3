@@ -107,6 +107,10 @@ function toPublicUser(row) {
     affiliateBalance: parseFloat(row.affiliate_balance || 0),
     adminBalance:     parseFloat(row.admin_balance     || 0),
     suspended:        row.suspended         || false,
+    membershipTier:   row.membership_tier   || 'free',
+    tierRef:          row.tier_ref          || '',
+    loyaltyPoints:    parseInt(row.loyalty_points || 0),
+    loyaltyHistory:   row.loyalty_history   || [],
   };
 }
 
@@ -579,13 +583,21 @@ module.exports = async function handler(req, res) {
       const {
         userId, payoutBank, payoutAcct, payoutAname,
         subaccountCode, subaccountStatus,
-        role, suspended, kycStatus
+        role, suspended, kycStatus,
+        membershipTier, tierRef,
+        loyaltyPoints, loyaltyHistory
       } = req.body || {};
 
       if (!userId) return res.status(400).json({ error: 'userId is required.' });
 
       const safeRole = role && ['buyer', 'seller', 'affiliate', 'admin'].includes(role)
         ? role : null;
+      const safeTier = membershipTier && ['free', 'starter', 'pro', 'business'].includes(membershipTier)
+        ? membershipTier : null;
+      const safeLoyaltyPts  = (loyaltyPoints !== undefined && loyaltyPoints !== null)
+        ? parseInt(loyaltyPoints) : null;
+      const safeLoyaltyHist = loyaltyHistory
+        ? JSON.stringify(loyaltyHistory) : null;
 
       await sql`
         UPDATE users SET
@@ -596,13 +608,17 @@ module.exports = async function handler(req, res) {
           subaccount_status = COALESCE(${subaccountStatus ?? null}, subaccount_status),
           role              = COALESCE(${safeRole         ?? null}, role),
           suspended         = COALESCE(${suspended        ?? null}, suspended),
-          kyc_status        = COALESCE(${kycStatus        ?? null}, kyc_status)
+          kyc_status        = COALESCE(${kycStatus        ?? null}, kyc_status),
+          membership_tier   = COALESCE(${safeTier         ?? null}, membership_tier),
+          tier_ref          = COALESCE(${tierRef          ?? null}, tier_ref),
+          loyalty_points    = COALESCE(${safeLoyaltyPts   ?? null}, loyalty_points),
+          loyalty_history   = COALESCE(${safeLoyaltyHist  ?? null}::jsonb, loyalty_history)
         WHERE id = ${userId}
       `;
 
       const rows = await sql`SELECT * FROM users WHERE id = ${userId} LIMIT 1`;
       if (!rows.length) return res.status(404).json({ error: 'User not found.' });
-      return res.status(200).json({ user: toPublicUser(rows[0]) });
+      return res.status(200).json({ ok: true, user: toPublicUser(rows[0]) });
     }
 
     /* ────────────────────────────────────────────────────
