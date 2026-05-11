@@ -30,6 +30,10 @@ function toPublicUser(row) {
     suspended: row.suspended || false,
     sellerBalance: parseFloat(row.seller_balance || 0),
     affiliateBalance: parseFloat(row.affiliate_balance || 0),
+    membershipTier: row.membership_tier || 'free',
+    tierRef: row.tier_ref || '',
+    loyaltyPoints: parseInt(row.loyalty_points || 0),
+    loyaltyHistory: row.loyalty_history || [],
   };
 }
 
@@ -70,16 +74,21 @@ module.exports = async function handler(req, res) {
        UPDATE USER (ADMIN ONLY)
     ──────────────────────────────────────────────────── */
     if (req.method === 'POST') {
-      const { userId, role, suspended, kycStatus } = req.body || {};
+      const { userId, role, suspended, kycStatus, membershipTier, tierRef, loyaltyPoints, loyaltyHistory } = req.body || {};
       if (!userId) return res.status(400).json({ error: 'userId required.' });
 
       const safeRole = ['buyer', 'seller', 'affiliate', 'admin'].includes(role) ? role : null;
+      const safeTier = ['free', 'starter', 'pro', 'business'].includes(membershipTier) ? membershipTier : null;
 
       await sql`
         UPDATE users SET
-          role = COALESCE(${safeRole ?? null}, role),
-          suspended = COALESCE(${suspended ?? null}, suspended),
-          kyc_status = COALESCE(${kycStatus ?? null}, kyc_status)
+          role             = COALESCE(${safeRole ?? null}, role),
+          suspended        = COALESCE(${suspended ?? null}, suspended),
+          kyc_status       = COALESCE(${kycStatus ?? null}, kyc_status),
+          membership_tier  = COALESCE(${safeTier ?? null}, membership_tier),
+          tier_ref         = COALESCE(${tierRef ?? null}, tier_ref),
+          loyalty_points   = COALESCE(${loyaltyPoints ?? null}, loyalty_points),
+          loyalty_history  = COALESCE(${loyaltyHistory ? JSON.stringify(loyaltyHistory) : null}::jsonb, loyalty_history)
         WHERE id = ${userId}
       `;
 
