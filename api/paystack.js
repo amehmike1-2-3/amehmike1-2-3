@@ -398,15 +398,35 @@ module.exports = async function handler(req, res) {
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
       if (!Array.isArray(items)) items = [];
 
-      const hasPhysical   = items.some(function(i){ return i.type === 'physical'; });
-      const platformRate  = hasPhysical ? 0.05 : 0.15;
-      const affiliateRate = order.aff_code ? 0.05 : 0;
-      const sellerRate    = 1 - platformRate - affiliateRate;
-      const total         = parseFloat(order.total || 0);
-      const platformFee   = Math.round(total * platformRate);
-      const affiliateFee  = Math.round(total * affiliateRate);
-      const sellerPayout  = Math.round(total * sellerRate);
-      const collectedAt   = new Date().toISOString();
+      const hasPhysical = items.some(function(i){ return i.type === 'physical'; });
+      const total       = parseFloat(order.total || 0);
+
+      /* Fetch seller membership tier for correct commission rate */
+      const dvcSellerId = sellerUserId || (items[0] && (items[0].sellerId || items[0].seller_id));
+      let dvcTier = 'free';
+      if (dvcSellerId) {
+        try {
+          const tRows = await sql`SELECT membership_tier FROM users WHERE id = ${String(dvcSellerId)} LIMIT 1`;
+          if (tRows.length) dvcTier = tRows[0].membership_tier || 'free';
+        } catch(e) { /* non-fatal */ }
+      }
+
+      const tierRates = {
+        free:     { digital: 0.10, physical: 0.05 },
+        starter:  { digital: 0.08, physical: 0.04 },
+        pro:      { digital: 0.06, physical: 0.03 },
+        business: { digital: 0.04, physical: 0.02 },
+      };
+      const rates        = tierRates[dvcTier] || tierRates.free;
+      const baseRate     = hasPhysical ? rates.physical : rates.digital;
+      const hasAff       = order.aff_code && String(order.aff_code).trim().length > 2;
+      const platformRate = Math.max(0.01, baseRate - (hasAff ? 0.02 : 0));
+      const affiliateRate = hasAff ? 0.05 : 0;
+      const sellerRate   = 1 - platformRate - affiliateRate;
+      const platformFee  = Math.round(total * platformRate);
+      const affiliateFee = Math.round(total * affiliateRate);
+      const sellerPayout = Math.round(total * sellerRate);
+      const collectedAt  = new Date().toISOString();
 
       /* ── Mark order completed ── */
       await sql`
