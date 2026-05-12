@@ -97,21 +97,25 @@ function generateDVC(orderId) {
   return String(Math.abs(hash) % 900000 + 100000);
 }
 
-/* Tiered commission split — matches index.html markCol/markDL exactly */
-function computeSplit(total, hasPhysical, hasValidAff) {
-  let platformRate, affiliateRate;
-  if (hasValidAff) {
-    platformRate  = hasPhysical ? 0.07 : 0.15;
-    affiliateRate = 0.05;
-  } else {
-    platformRate  = hasPhysical ? 0.05 : 0.10;
-    affiliateRate = 0;
-  }
+/* Tiered commission split — adjusts based on seller membership tier */
+function computeSplit(total, hasPhysical, hasValidAff, membershipTier) {
+  /* Base platform rates by membership tier */
+  const tierRates = {
+    free:     { digital: 0.10, physical: 0.05 },
+    starter:  { digital: 0.08, physical: 0.04 },
+    pro:      { digital: 0.06, physical: 0.03 },
+    business: { digital: 0.04, physical: 0.02 },
+  };
+  const tier  = tierRates[membershipTier] || tierRates.free;
+  const baseRate     = hasPhysical ? tier.physical : tier.digital;
+  const affiliateRate = hasValidAff ? 0.05 : 0;
+  /* If affiliate commission would exceed base, cap platform at 1% */
+  const platformRate = Math.max(0.01, baseRate - (hasValidAff ? 0.02 : 0));
   const sellerRate   = 1 - platformRate - affiliateRate;
   const platformFee  = Math.round(total * platformRate);
   const affiliateFee = Math.round(total * affiliateRate);
   const sellerPayout = Math.round(total * sellerRate);
-  return { platformFee, affiliateFee, sellerPayout };
+  return { platformFee, affiliateFee, sellerPayout, platformRate };
 }
 
 /* Write to admin_transactions — non-fatal if table missing */
@@ -657,23 +661,25 @@ module.exports = async function handler(req, res) {
         return i.type === 'digital' || i.type === 'course';
       });
 
-      /* Compute split */
+      /* Compute split — fetch seller tier first */
       const rawAff      = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
       const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
-      const split       = computeSplit(amount, hasPhysical, hasValidAff);
-
-      /* Resolve affiliate user */
-      let affUserId = null;
-      if (hasValidAff && split.affiliateFee > 0) {
-        const affRows = await sql`SELECT id FROM users WHERE aff_code = ${rawAff} LIMIT 1`;
-        if (affRows.length) affUserId = String(affRows[0].id);
-      }
 
       /* Resolve seller */
       const resolvedSellerId = sellerUserId
         ? String(sellerUserId)
         : (itemList[0] && (itemList[0].sellerId || itemList[0].seller_id))
           ? String(itemList[0].sellerId || itemList[0].seller_id) : null;
+
+      let sellerTier = 'free';
+      if (resolvedSellerId) {
+        try {
+          const tierRows = await sql`SELECT membership_tier FROM users WHERE id = ${resolvedSellerId} LIMIT 1`;
+          if (tierRows.length) sellerTier = tierRows[0].membership_tier || 'free';
+        } catch(e) { /* non-fatal — default to free */ }
+      }
+
+      const split = computeSplit(amount, hasPhysical, hasValidAff, sellerTier);
 
       const orderStatus  = isAllDigital ? 'paid' : 'escrow_held';
       const deliveryCode = generateDVC(String(orderId));
@@ -1172,10 +1178,18 @@ module.exports = async function handler(req, res) {
 
               const rawAff = (affCode && typeof affCode === 'string') ? affCode.trim() : '';
               const hasValidAff = rawAff.length > 2 && rawAff !== 'GUEST';
-              const split = computeSplit(total, hasPhysical, hasValidAff);
 
               const webhookSellerId = (itemList[0] && (itemList[0].sellerId || itemList[0].seller_id))
                 ? parseInt(itemList[0].sellerId || itemList[0].seller_id) : null;
+
+              let webhookSellerTier = 'free';
+              if (webhookSellerId) {
+                try {
+                  const wTierRows = await sql`SELECT membership_tier FROM users WHERE id = ${String(webhookSellerId)} LIMIT 1`;
+                  if (wTierRows.length) webhookSellerTier = wTierRows[0].membership_tier || 'free';
+                } catch(e) { /* non-fatal */ }
+              }
+              const split = computeSplit(total, hasPhysical, hasValidAff, webhookSellerTier);
               await sql`
                 INSERT INTO orders (
                   id, user_id, customer, items, total, amount, platform_fee, seller_payout,
