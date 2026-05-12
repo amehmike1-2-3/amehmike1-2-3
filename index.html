@@ -7902,6 +7902,18 @@ function tChat() {
       : "Hey! 👋 I'm **Neyo AI**. Ask me anything — selling tips, how to earn, business ideas, or honestly just whatever's on your mind. What do you want to know?";
     addBotMsg(greet);
   }
+  /* Prefetch products for AI recommendations if not already loaded */
+  if (chatOpen2 && (!window.prods || !window.prods.length)) {
+    fetch('/api/products')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.products && d.products.length) {
+          window.prods = d.products;
+          prods = d.products;
+        }
+      })
+      .catch(function(){});
+  }
 }
 window.tChat = tChat;
 
