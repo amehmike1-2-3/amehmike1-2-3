@@ -76,7 +76,7 @@
 <link rel="icon" type="image/webp" href="https://neyomarket.com.ng/neyomarket-logo.webp"/>
 <link rel="shortcut icon" type="image/webp" href="https://neyomarket.com.ng/neyomarket-logo.webp"/>
 <link rel="apple-touch-icon" type="image/webp" href="https://neyomarket.com.ng/neyomarket-logo.webp"/>
-<link rel="manifest" href="data:application/json,%7B%22name%22:%22NeyoMarket%22,%22short_name%22:%22NeyoMarket%22,%22icons%22:%5B%7B%22src%22:%22data:image/svg%2bxml,%253Csvg%2520xmlns=%2527http://www.w3.org/2000/svg%2527%2520viewBox=%27650%2520640%27%253E%253Crect%2520width=%2527640%2527%2520height=%2527640%2527%2520rx=%2527140%2527%2520fill=%2527%25230a0a1a%2527/%253E%253Ctext%2520x=%2527320%2527%2520y=%2527360%2527%2520dominant-baseline=%2527middle%2527%2520text-anchor=%2527middle%2527%2520font-size=%2527400%2527%2520font-family=%2527serif%2527%2520font-weight=%2527900%2527%2520fill=%2527%2523c9922a%2527%253EN%253C/text%253E%253C/svg%253E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg%2bxml%22%7D,%7B%22src%22:%22data:image/svg%2bxml,%253Csvg%2520xmlns=%2527http://www.w3.org/2000/svg%2527%2520viewBox=%27650%2520640%27%253E%253Crect%2520width=%2527640%2527%2520height=%2527640%2527%2520rx=%2527140%2527%2520fill=%2527%25230a0a1a%2527/%253E%253Ctext%2520x=%2527320%2527%2520y=%2527360%2527%2520dominant-baseline=%2527middle%2527%2520text-anchor=%2527middle%2527%2520font-size=%2527400%2527%2520font-family=%2527serif%2527%2520font-weight=%2527900%2527%2520fill=%2527%2523c9922a%2527%253EN%253C/text%253E%253C/svg%253E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg%2bxml%22,%22purpose%22:%22any%22%7D%5D,%22theme_color%22:%22%23c9922a%22,%22background_color%22:%22%23ffffff%22,%22display%22:%22standalone%22%7D"/>
+<link rel="manifest" href="/manifest.json"/>
 
 <!-- ═══ FONTS ═══ -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -8622,6 +8622,16 @@ validateSell();
   </div>
 </div>
 
+<!-- ═══ PWA SERVICE WORKER ═══ -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(reg) { console.log('[SW] Registered:', reg.scope); })
+      .catch(function(err) { console.warn('[SW] Registration failed:', err); });
+  });
+}
+</script>
 </body>
 </html>
 <!-- ═══ NEW FUNCTIONS FOR FEATURES ═══ -->
