@@ -2005,11 +2005,11 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 
       <!-- Profile Summary Card -->
       <div style="background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px">
-        <div id="pav" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:#fff;flex-shrink:0">?</div>
+        <div id="settings-pav" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:#fff;flex-shrink:0">?</div>
         <div style="flex:1;min-width:0">
-          <div id="p-name" style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:2px">—</div>
-          <div id="p-email" style="font-size:.76rem;color:var(--muted);margin-bottom:4px">—</div>
-          <div id="p-role" style="font-size:.68rem;color:var(--muted2)">—</div>
+          <div id="settings-p-name" style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:2px">—</div>
+          <div id="settings-p-email" style="font-size:.76rem;color:var(--muted);margin-bottom:4px">—</div>
+          <div id="settings-p-role" style="font-size:.68rem;color:var(--muted2)">—</div>
         </div>
         <div id="tier-badge-settings" style="font-size:.6rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:5px 12px;border-radius:20px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.3);color:var(--gold);white-space:nowrap">FREE</div>
       </div>
@@ -4829,8 +4829,26 @@ window.forgotPassword = forgotPassword;
 /* ═══ PROFILE ═══ */
 function refreshProf() {
   if (!CU) return;
-  var av = document.getElementById('pav'); if (av) av.textContent = CU.name.charAt(0).toUpperCase();
+  var initLetter = CU.name.charAt(0).toUpperCase();
+  var roleLabel  = CU.role === 'admin' ? '🛡 Admin' : CU.role === 'seller' ? '🏪 Seller' : CU.role === 'affiliate' ? '💸 Affiliate' : '🛒 Buyer';
+  var tierLabel  = (CU.membershipTier || 'free').toUpperCase();
+  var maskedEmail = maskEmail(CU.email);
+
+  /* Original profile page elements */
+  var av = document.getElementById('pav'); if (av) av.textContent = initLetter;
   var pn = document.getElementById('p-name'); if (pn) pn.textContent = CU.name;
+  var pr = document.getElementById('p-role'); if (pr) pr.textContent = roleLabel + ' · Joined ' + (CU.joined || '2025');
+  var pe = document.getElementById('p-email'); if (pe) pe.textContent = maskedEmail;
+
+  /* Settings card elements (new — unique IDs) */
+  var sav = document.getElementById('settings-pav');       if (sav) sav.textContent = initLetter;
+  var spn = document.getElementById('settings-p-name');    if (spn) spn.textContent = CU.name;
+  var spe = document.getElementById('settings-p-email');   if (spe) spe.textContent = maskedEmail;
+  var spr = document.getElementById('settings-p-role');    if (spr) spr.textContent = roleLabel + ' · Joined ' + (CU.joined || '2025');
+
+  /* Tier badges */
+  var tb1 = document.getElementById('tier-badge-display');   if (tb1) tb1.textContent = tierLabel;
+  var tb2 = document.getElementById('tier-badge-settings');  if (tb2) tb2.textContent = tierLabel;
   /* Fetch latest balances from Neon on every profile load */
   fetch('/api/payment?action=users&admin=true')
     .then(function(r){ return r.json(); })
@@ -4852,11 +4870,6 @@ function refreshProf() {
         renderKYCStatus();
       }
     }).catch(function(){});
-  var pr = document.getElementById('p-role'); if (pr) {
-    var roleLabel = CU.role === 'admin' ? '🛡 Admin' : CU.role === 'seller' ? '🏪 Seller' : CU.role === 'affiliate' ? '💸 Affiliate' : '🛒 Buyer';
-    pr.textContent = roleLabel + ' · Joined ' + (CU.joined || '2025');
-  }
-  var pe = document.getElementById('p-email'); if (pe) pe.textContent = maskEmail(CU.email);
   var al = document.getElementById('aff-l'); if (al) al.value = SITE_BASE + '?ref=' + (CU.affCode || 'USER');
   if (CU.payoutBank)  sval('po-bank', CU.payoutBank);
   if (CU.payoutAcct)  sval('po-acct', CU.payoutAcct);
