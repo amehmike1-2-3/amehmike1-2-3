@@ -111,6 +111,7 @@ function toPublicUser(row) {
     tierRef:          row.tier_ref          || '',
     loyaltyPoints:    parseInt(row.loyalty_points || 0),
     loyaltyHistory:   row.loyalty_history   || [],
+    badgeVerified:    row.badge_verified    || false,
   };
 }
 
@@ -672,12 +673,27 @@ module.exports = async function handler(req, res) {
           return res.status(403).json({ error: 'Payment not verified' });
         }
 
-        /* Set badge_verified only after payment confirmed */
+        /* Set badge_verified on user AND all their products */
         await sql`
           UPDATE users 
           SET badge_verified = true
           WHERE id = ${String(userId)}
         `;
+
+        await sql`
+          UPDATE products
+          SET badge_verified = true
+          WHERE seller_id::text = ${String(userId)}
+        `;
+
+        /* Also insert into seller_badges table for record */
+        try {
+          await sql`
+            INSERT INTO seller_badges (user_id, payment_ref, amount_paid, created_at)
+            VALUES (${String(userId)}, ${String(ref)}, 2000, NOW())
+            ON CONFLICT DO NOTHING
+          `;
+        } catch(e) { /* non-fatal */ }
 
         return res.status(200).json({ ok: true });
       } catch (err) {
