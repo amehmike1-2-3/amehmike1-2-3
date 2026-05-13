@@ -702,6 +702,75 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* ══════════════════════════════════════════════════
+       OG — Open Graph product preview for social sharing
+    ══════════════════════════════════════════════════ */
+    if (req.query.action === 'og') {
+      const productId = req.query.id || req.query.p || '';
+      if (!productId) return res.status(400).send('Missing product id');
+
+      const rows = await sql`
+        SELECT name, description, price, discount_price, imgs, seller, type
+        FROM products
+        WHERE id = ${Number(productId)} AND status = 'active'
+        LIMIT 1
+      `;
+
+      if (!rows.length) return res.status(404).send('Product not found');
+
+      const p       = rows[0];
+      const name    = p.name || 'Product on NeyoMarket';
+      const desc    = (p.description || 'Buy securely on NeyoMarket — Nigeria\'s trusted marketplace.').slice(0, 200);
+      const price   = p.discount_price ? p.discount_price : p.price;
+      const priceStr = '₦' + Number(price).toLocaleString();
+      const siteUrl = 'https://neyomarket.com.ng';
+      const prodUrl = siteUrl + '/?p=' + productId;
+
+      /* Pick first image */
+      let imgUrl = siteUrl + '/neyomarket-logo.webp';
+      try {
+        const imgs = typeof p.imgs === 'string' ? JSON.parse(p.imgs) : (p.imgs || []);
+        if (Array.isArray(imgs) && imgs.length) imgUrl = imgs[0];
+      } catch(e) {}
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${name} — NeyoMarket</title>
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="product"/>
+  <meta property="og:url"         content="${prodUrl}"/>
+  <meta property="og:title"       content="${name} — ${priceStr}"/>
+  <meta property="og:description" content="${desc}"/>
+  <meta property="og:image"       content="${imgUrl}"/>
+  <meta property="og:image:width" content="800"/>
+  <meta property="og:image:height"content="800"/>
+  <meta property="og:site_name"   content="NeyoMarket"/>
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image"/>
+  <meta name="twitter:title"       content="${name} — ${priceStr}"/>
+  <meta name="twitter:description" content="${desc}"/>
+  <meta name="twitter:image"       content="${imgUrl}"/>
+
+  <!-- WhatsApp / general -->
+  <meta name="description" content="${desc}"/>
+
+  <!-- Redirect human visitors to the real SPA -->
+  <meta http-equiv="refresh" content="0;url=${prodUrl}"/>
+</head>
+<body>
+  <p>Redirecting to <a href="${prodUrl}">${name}</a>…</p>
+</body>
+</html>`;
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
+      return res.status(200).send(html);
+    }
+
     return res.status(400).json({ error: 'Unknown action.' });
 
   } catch (err) {
