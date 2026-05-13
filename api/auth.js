@@ -707,6 +707,7 @@ module.exports = async function handler(req, res) {
     ══════════════════════════════════════════════════ */
     if (req.query.action === 'og') {
       const productId = req.query.id || req.query.p || '';
+      const refCode   = req.query.ref || '';
       if (!productId) return res.status(400).send('Missing product id');
 
       const rows = await sql`
@@ -724,7 +725,8 @@ module.exports = async function handler(req, res) {
       const price    = p.discount_price ? p.discount_price : p.price;
       const priceStr = '₦' + Number(price).toLocaleString();
       const siteUrl  = 'https://neyomarket.com.ng';
-      const prodUrl  = siteUrl + '/?p=' + productId;
+      /* Include ref code in redirect so affiliate commission is tracked */
+      const prodUrl  = siteUrl + '/?p=' + productId + (refCode ? '&ref=' + encodeURIComponent(refCode) : '');
 
       /* Use proxied image URL — bypasses ImgBB hotlink block */
       const imgProxyUrl = siteUrl + '/api/auth?action=og-img&id=' + productId;
