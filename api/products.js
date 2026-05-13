@@ -64,6 +64,9 @@ function toProduct(r) {
     isFeature:      r.is_featured      || false,
     createdAt:      r.created_at       || null,
     condition:      r.condition        || null,
+    sellerTier:     r.seller_tier      || r.membership_tier || 'free',
+    promoted:       r.promoted         || false,
+    promotedUntil:  r.promoted_until   || null,
   };
 }
 
@@ -107,9 +110,13 @@ module.exports = async function handler(req, res) {
           rows = await sql`SELECT * FROM products ORDER BY created_at DESC`;
         }
       } else {
-        /* Public marketplace — active only */
+        /* Public marketplace — active only, with seller tier */
         rows = await sql`
-          SELECT * FROM products WHERE status = 'active' ORDER BY created_at DESC
+          SELECT p.*, u.membership_tier AS seller_tier
+          FROM products p
+          LEFT JOIN users u ON u.id::text = p.seller_id::text
+          WHERE p.status = 'active'
+          ORDER BY p.created_at DESC
         `;
       }
 
