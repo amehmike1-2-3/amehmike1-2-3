@@ -3192,6 +3192,10 @@ function mkCard(p) {
     ? '<span class="featured-badge" style="background:linear-gradient(135deg,#f0c040,#d4af37);color:#fff;padding:3px 8px;border-radius:3px;font-size:.65rem;font-weight:700;text-transform:uppercase;margin-left:6px">⭐ Featured</span>' : '';
   var promoBadge = (p.promoted && p.promotedUntil && new Date(p.promotedUntil) > new Date())
     ? '<span style="display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:.55rem;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:.3px;text-transform:uppercase;margin-left:5px">⚡ Sponsored</span>' : '';
+  var tierBadge = '';
+  if      (p.sellerTier === 'business') tierBadge = '<span style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:1px 6px;border-radius:4px;font-size:.55rem;font-weight:700;margin-left:4px;vertical-align:middle">💼 Business</span>';
+  else if (p.sellerTier === 'pro')      tierBadge = '<span style="display:inline-block;background:linear-gradient(135deg,#c9922a,#b45309);color:#fff;padding:1px 6px;border-radius:4px;font-size:.55rem;font-weight:700;margin-left:4px;vertical-align:middle">🥇 Pro</span>';
+  else if (p.sellerTier === 'starter')  tierBadge = '<span style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:1px 6px;border-radius:4px;font-size:.55rem;font-weight:700;margin-left:4px;vertical-align:middle">🔵 Starter</span>';
 
   var qty        = (p.quantity !== undefined && p.quantity !== null) ? parseInt(p.quantity, 10) : null;
   var location   = p.location || p.seller_location || '';
@@ -3205,7 +3209,7 @@ function mkCard(p) {
     + (outOfStock ? '<span class="sale-badge" style="background:#6b7280">OUT OF STOCK</span>' : saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
     + '<span class="pb2 ' + tc + '">' + tl + '</span>'
     + '<span class="el">\uD83D\uDEE1 Escrow</span></div>'
-    + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + featuredBadge + promoBadge + '</h4>'
+    + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + featuredBadge + promoBadge + tierBadge + '</h4>'
     + '<div class="pcs">by ' + p.seller + (location ? ' \u00b7 \uD83D\uDCCD' + location : '') + (p.reviews > 0 ? ' \u00b7 \u2B50' + p.rating : '') + '</div>'
     + (lowStock ? '<div style="font-size:.7rem;color:var(--orange);font-weight:700;margin-bottom:3px">\u26a1 Only ' + qty + ' left!</div>' : '')
     + (saleActive && saving > 0 ? '<div class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
@@ -3328,6 +3332,10 @@ function opn(id) {
   /* Seller info */
   var verBadge   = (p.sellerVerified||p.seller_verified) ? ' <span style="background:#1d4ed8;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Verified</span>' : '';
   var trustBadge = (p.badgeVerified||p.badge_verified) ? ' <span style="background:#b45309;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Trusted</span>' : '';
+  var pdTierBadge = '';
+  if      (p.sellerTier === 'business') pdTierBadge = ' <span style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">💼 Business</span>';
+  else if (p.sellerTier === 'pro')      pdTierBadge = ' <span style="background:linear-gradient(135deg,#c9922a,#b45309);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">🥇 Pro</span>';
+  else if (p.sellerTier === 'starter')  pdTierBadge = ' <span style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">🔵 Starter</span>';
   var pdQty      = (p.quantity !== undefined && p.quantity !== null) ? parseInt(p.quantity, 10) : null;
   var pdLocation = p.location || p.seller_location || '';
   var pdBio      = p.sellerBio || p.seller_bio || '';
@@ -3393,7 +3401,7 @@ function opn(id) {
     
     /* ════ SELLER INFO ════ */
     + '<div style="padding:0 14px 14px;">'
-    + '<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px"><strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + (pdLocation ? ' &nbsp;📍 ' + pdLocation : '') + '</p>'
+    + '<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px"><strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + pdTierBadge + (pdLocation ? ' &nbsp;📍 ' + pdLocation : '') + '</p>'
     + (pdStock ? '<div style="margin-bottom:8px">' + pdStock + '</div>' : '')
     + (pdBio ? '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--text);line-height:1.5">'
       + '<strong style="color:#111827;display:block;margin-bottom:4px">About Seller</strong>'
