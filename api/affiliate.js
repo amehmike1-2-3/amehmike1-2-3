@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
       if (!affCode || !orderId || !commission)
         return res.status(400).json({ error: 'affCode, orderId and commission required.' });
 
-      const users = await sql`SELECT id FROM users WHERE aff_code = ${affCode} LIMIT 1`;
+      const users = await sql`SELECT id, loyalty_points, loyalty_history FROM users WHERE aff_code = ${affCode} LIMIT 1`;
       if (!users.length) return res.status(200).json({ ok: true, skipped: 'Affiliate not found' });
 
       await sql`
@@ -37,6 +37,20 @@ module.exports = async function handler(req, res) {
           (${String(users[0].id)}, ${affCode}, ${String(orderId)}, ${amount || 0}, ${commission}, ${String(productId || '')}, ${'pending'}, NOW())
         ON CONFLICT (order_id) DO NOTHING
       `;
+
+      /* Award referrer 50 loyalty points for successful referral */
+      try {
+        const currentPts = parseInt(users[0].loyalty_points || 0);
+        const newPts     = currentPts + 50;
+        const history    = users[0].loyalty_history || [];
+        history.push({ pts: 50, label: 'Referral bonus: Order ' + orderId, date: new Date().toLocaleDateString() });
+        await sql`
+          UPDATE users
+          SET loyalty_points  = ${newPts},
+              loyalty_history = ${JSON.stringify(history)}::jsonb
+          WHERE id = ${String(users[0].id)}
+        `;
+      } catch (e) { console.warn('[affiliate/record] loyalty points (non-fatal):', e.message); }
 
       return res.status(201).json({ ok: true });
     }
