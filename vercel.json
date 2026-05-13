@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/og/:id",
+      "destination": "/api/auth?action=og&id=:id"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
