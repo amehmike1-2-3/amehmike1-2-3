@@ -3621,16 +3621,16 @@ var SITE_BASE = 'https://neyomarket.com.ng/';
 
 function cpyAffProd(id) {
   var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
-  // Format: ?ref=AFFILIATE_ID&p=PRODUCT_ID  — deep-links directly to the product
-  var link = SITE_BASE + '?ref=' + code + '&p=' + id;
-  safeCopy(link, 'Affiliate link copied! 🔗');
+  /* OG URL — WhatsApp/social scrapes this and sees product image */
+  var link = 'https://neyomarket.com.ng/og/' + id + '?ref=' + code;
+  safeCopy(link, '🔗 Affiliate link copied! Share it to earn commission.');
 }
 window.cpyAffProd = cpyAffProd;
 
 // Also expose as generateAffiliateLink() for any external calls
 function generateAffiliateLink(id) {
   var code = CU ? (CU.affCode || 'GUEST') : 'GUEST';
-  return SITE_BASE + '?ref=' + code + '&p=' + id;
+  return 'https://neyomarket.com.ng/og/' + id + '?ref=' + code;
 }
 window.generateAffiliateLink = generateAffiliateLink;
 
