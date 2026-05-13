@@ -718,20 +718,16 @@ module.exports = async function handler(req, res) {
 
       if (!rows.length) return res.status(404).send('Product not found');
 
-      const p       = rows[0];
-      const name    = p.name || 'Product on NeyoMarket';
-      const desc    = (p.description || 'Buy securely on NeyoMarket — Nigeria\'s trusted marketplace.').slice(0, 200);
-      const price   = p.discount_price ? p.discount_price : p.price;
+      const p        = rows[0];
+      const name     = p.name || 'Product on NeyoMarket';
+      const desc     = (p.description || 'Buy securely on NeyoMarket — Nigeria\'s trusted marketplace.').slice(0, 200);
+      const price    = p.discount_price ? p.discount_price : p.price;
       const priceStr = '₦' + Number(price).toLocaleString();
-      const siteUrl = 'https://neyomarket.com.ng';
-      const prodUrl = siteUrl + '/?p=' + productId;
+      const siteUrl  = 'https://neyomarket.com.ng';
+      const prodUrl  = siteUrl + '/?p=' + productId;
 
-      /* Pick first image */
-      let imgUrl = siteUrl + '/neyomarket-logo.webp';
-      try {
-        const imgs = typeof p.imgs === 'string' ? JSON.parse(p.imgs) : (p.imgs || []);
-        if (Array.isArray(imgs) && imgs.length) imgUrl = imgs[0];
-      } catch(e) {}
+      /* Use proxied image URL — bypasses ImgBB hotlink block */
+      const imgProxyUrl = siteUrl + '/api/auth?action=og-img&id=' + productId;
 
       const html = `<!DOCTYPE html>
 <html>
@@ -740,20 +736,21 @@ module.exports = async function handler(req, res) {
   <title>${name} — NeyoMarket</title>
 
   <!-- Open Graph -->
-  <meta property="og:type"        content="product"/>
-  <meta property="og:url"         content="${prodUrl}"/>
-  <meta property="og:title"       content="${name} — ${priceStr}"/>
-  <meta property="og:description" content="${desc}"/>
-  <meta property="og:image"       content="${imgUrl}"/>
-  <meta property="og:image:width" content="800"/>
-  <meta property="og:image:height"content="800"/>
-  <meta property="og:site_name"   content="NeyoMarket"/>
+  <meta property="og:type"         content="product"/>
+  <meta property="og:url"          content="${prodUrl}"/>
+  <meta property="og:title"        content="${name} — ${priceStr}"/>
+  <meta property="og:description"  content="${desc}"/>
+  <meta property="og:image"        content="${imgProxyUrl}"/>
+  <meta property="og:image:width"  content="800"/>
+  <meta property="og:image:height" content="800"/>
+  <meta property="og:image:type"   content="image/jpeg"/>
+  <meta property="og:site_name"    content="NeyoMarket"/>
 
   <!-- Twitter Card -->
   <meta name="twitter:card"        content="summary_large_image"/>
   <meta name="twitter:title"       content="${name} — ${priceStr}"/>
   <meta name="twitter:description" content="${desc}"/>
-  <meta name="twitter:image"       content="${imgUrl}"/>
+  <meta name="twitter:image"       content="${imgProxyUrl}"/>
 
   <!-- WhatsApp / general -->
   <meta name="description" content="${desc}"/>
@@ -769,6 +766,64 @@ module.exports = async function handler(req, res) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
       return res.status(200).send(html);
+    }
+
+    /* ══════════════════════════════════════════════════
+       OG-IMG — proxy product image to bypass ImgBB hotlink block
+    ══════════════════════════════════════════════════ */
+    if (req.query.action === 'og-img') {
+      const productId = req.query.id || '';
+      if (!productId) return res.status(400).send('Missing id');
+
+      try {
+        const rows = await sql`
+          SELECT imgs FROM products
+          WHERE id = ${Number(productId)} AND status = 'active'
+          LIMIT 1
+        `;
+
+        if (!rows.length) return res.status(404).send('Not found');
+
+        /* Parse first image URL */
+        let imgUrl = '';
+        try {
+          const imgs = typeof rows[0].imgs === 'string'
+            ? JSON.parse(rows[0].imgs) : (rows[0].imgs || []);
+          if (Array.isArray(imgs) && imgs.length) imgUrl = imgs[0];
+        } catch(e) {}
+
+        if (!imgUrl) {
+          /* Fallback — redirect to logo */
+          res.setHeader('Location', 'https://neyomarket.com.ng/neyomarket-logo.webp');
+          return res.status(302).end();
+        }
+
+        /* Fetch image from ImgBB and pipe it through */
+        const imgRes = await fetch(imgUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; NeyoMarket/1.0)',
+            'Referer':    'https://neyomarket.com.ng'
+          }
+        });
+
+        if (!imgRes.ok) {
+          res.setHeader('Location', 'https://neyomarket.com.ng/neyomarket-logo.webp');
+          return res.status(302).end();
+        }
+
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        const buffer      = await imgRes.arrayBuffer();
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.status(200).send(Buffer.from(buffer));
+
+      } catch(e) {
+        console.warn('[og-img] proxy failed:', e.message);
+        res.setHeader('Location', 'https://neyomarket.com.ng/neyomarket-logo.webp');
+        return res.status(302).end();
+      }
     }
 
     return res.status(400).json({ error: 'Unknown action.' });
