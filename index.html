@@ -3349,6 +3349,7 @@ function opn(id) {
   var saleActive = discPrice > 0 && discPrice < p.price && (!saleEndsAt || new Date(saleEndsAt) > new Date());
   var displayP   = saleActive ? discPrice : p.price;
   var saving     = saleActive ? Math.round(p.price-discPrice) : 0;
+  var sym        = currSymbol(p.currency);
   
   /* Seller info */
   var verBadge   = (p.sellerVerified||p.seller_verified) ? ' <span style="background:#1d4ed8;color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">✓ Verified</span>' : '';
@@ -3391,9 +3392,9 @@ function opn(id) {
     /* ════ SLEEK PRICING BLOCK ON ONE LINE ════ */
     + '<div style="padding:0 14px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
     + '<div style="display:flex;align-items:baseline;gap:8px">'
-    + (saleActive ? '<span style="text-decoration:line-through;color:#9ca3af;font-size:.9rem">&#x20a6;' + p.price.toLocaleString() + '</span>' : '')
-    + '<span style="font-size:1.6rem;font-weight:800;color:' + (saleActive?'#dc2626':'#111827') + ';font-family:serif">&#x20a6;' + displayP.toLocaleString() + '</span>'
-    + (saving > 0 ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700">Save &#x20a6;' + saving.toLocaleString() + '</span>' : '')
+    + (saleActive ? '<span style="text-decoration:line-through;color:#9ca3af;font-size:.9rem">' + sym + p.price.toLocaleString() + '</span>' : '')
+    + '<span style="font-size:1.6rem;font-weight:800;color:' + (saleActive?'#dc2626':'#111827') + ';font-family:serif">' + sym + displayP.toLocaleString() + '</span>'
+    + (saving > 0 ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700">Save ' + sym + saving.toLocaleString() + '</span>' : '')
     + '</div>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'
     + '<span style="background:#f3f4f6;color:var(--text);padding:3px 8px;border-radius:16px;font-size:.65rem;font-weight:600">' + (p.type==='digital'?'⚡ Digital':p.type==='course'?'🎓 Course':'📦 Physical') + '</span>'
@@ -3696,17 +3697,18 @@ function openCart() {
     var disc = (i.isOnSale || i.is_on_sale) && parseFloat(i.discountPrice || i.discount_price || 0) > 0 ? parseFloat(i.discountPrice || i.discount_price) : base;
     var ship = (i.type === 'physical') ? parseFloat(i.shippingFee || i.shipping_fee || 0) : 0;
     var lineT = (disc + ship) * qty;
+    var iSym = currSymbol(i.currency);
     var imgH = (i.imgs && i.imgs[0]) ? '<img class="ctimg" src="' + i.imgs[0] + '" alt=""/>' : '<div class="ctimg">' + (i.emoji || '📦') + '</div>';
     var priceHtml = (disc < base)
-      ? '<span style="text-decoration:line-through;font-size:.72rem;color:var(--muted)">₦' + (base*qty).toLocaleString() + '</span> <span style="color:var(--red)">₦' + lineT.toLocaleString() + '</span>'
-      : '₦' + lineT.toLocaleString();
+      ? '<span style="text-decoration:line-through;font-size:.72rem;color:var(--muted)">' + iSym + (base*qty).toLocaleString() + '</span> <span style="color:var(--red)">' + iSym + lineT.toLocaleString() + '</span>'
+      : iSym + lineT.toLocaleString();
     return '<div class="cti">' + imgH
       + '<div class="ctin"><h4>' + i.name.substring(0, 28) + (i.name.length > 28 ? '…' : '') + '</h4>'
-      + '<p style="font-size:.72rem;color:var(--muted)">Qty: ' + qty + ' · ' + i.type + (ship > 0 ? ' · +₦' + ship.toLocaleString() + ' shipping' : '') + '</p></div>'
+      + '<p style="font-size:.72rem;color:var(--muted)">Qty: ' + qty + ' · ' + i.type + (ship > 0 ? ' · +' + iSym + ship.toLocaleString() + ' shipping' : '') + '</p></div>'
       + '<span class="ctp">' + priceHtml + '</span>'
       + '<button class="rmbtn" onclick="rmCart(' + i.id + ')">🗑</button></div>';
   }).join('')
-    + '<div class="ctr"><span>Total</span><span class="ctrc">₦' + total.toLocaleString() + '</span></div>'
+    + '<div class="ctr"><span>Total</span><span class="ctrc">' + currSymbol((cart[0]&&cart[0].currency)||'NGN') + total.toLocaleString() + '</span></div>'
     + '<button class="cobtn" onclick="cM(\'m-cart\');startCheckout()">Proceed to Secure Checkout 🔐</button>';
   oM('m-cart');
 }
@@ -3784,18 +3786,19 @@ function bSum(pageId) {
     shipping += ship * qty;
     savings  += (base - disc) * qty;
   });
-  var total  = subtotal + shipping;
-  var platFee = Math.round(total * 0.05);
+  var total    = subtotal + shipping;
+  var platFee  = Math.round(total * 0.05);
   var sellerPay = total - platFee;
+  var cSym     = currSymbol((cart[0]&&cart[0].currency)||'NGN');
 
   var html = (savings > 0
-    ? '<div class="cor" style="color:var(--green)"><span>You Save</span><span>-₦' + savings.toLocaleString() + '</span></div>'
+    ? '<div class="cor" style="color:var(--green)"><span>You Save</span><span>-' + cSym + savings.toLocaleString() + '</span></div>'
     : '')
-    + '<div class="cor"><span>Subtotal</span><span>₦' + subtotal.toLocaleString() + '</span></div>'
-    + (shipping > 0 ? '<div class="cor"><span>Shipping</span><span>₦' + shipping.toLocaleString() + '</span></div>' : '')
-    + '<div class="cor"><span>Platform Fee (5%)</span><span>₦' + platFee.toLocaleString() + '</span></div>'
-    + '<div class="cor"><span>Seller Receives (95%)</span><span style="color:var(--green)">₦' + sellerPay.toLocaleString() + '</span></div>'
-    + '<div class="cot"><span>You Pay</span><span style="color:var(--gold)">₦' + total.toLocaleString() + '</span></div>';
+    + '<div class="cor"><span>Subtotal</span><span>' + cSym + subtotal.toLocaleString() + '</span></div>'
+    + (shipping > 0 ? '<div class="cor"><span>Shipping</span><span>' + cSym + shipping.toLocaleString() + '</span></div>' : '')
+    + '<div class="cor"><span>Platform Fee (5%)</span><span>' + cSym + platFee.toLocaleString() + '</span></div>'
+    + '<div class="cor"><span>Seller Receives (95%)</span><span style="color:var(--green)">' + cSym + sellerPay.toLocaleString() + '</span></div>'
+    + '<div class="cot"><span>You Pay</span><span style="color:var(--gold)">' + cSym + total.toLocaleString() + '</span></div>';
   var sid = pageId === 'shipping' ? 'ship-sum' : 'co-sum';
   var el = document.getElementById(sid); if (el) el.innerHTML = html;
   if (pageId === 'shipping') vShip(); else vCo();
@@ -3876,14 +3879,14 @@ function processPaystack(mode) {
     }
   }
 
-  /* Use currency of first cart item — default NGN */
-  var cartCurrency = (cart[0] && cart[0].currency) ? cart[0].currency : 'NGN';
+  /* Always charge in NGN — Paystack Nigeria doesn't support multi-currency yet.
+     Products display in their listed currency but payment is always NGN. */
 
   var cfg = {
     key:      PK,
     email:    email,
     amount:   Math.round(total * 100),
-    currency: cartCurrency,
+    currency: 'NGN',
     ref:      trackId,
     metadata: {
       custom_fields: [
