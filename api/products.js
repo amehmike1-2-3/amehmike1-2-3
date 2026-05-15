@@ -67,6 +67,7 @@ function toProduct(r) {
     sellerTier:     r.seller_tier      || r.membership_tier || 'free',
     promoted:       r.promoted         || false,
     promotedUntil:  r.promoted_until   || null,
+    currency:       r.currency         || 'NGN',
   };
 }
 
@@ -167,6 +168,7 @@ module.exports = async function handler(req, res) {
       const productEmoji   = p.emoji       || '📦';
       const productBadge   = p.badge       || '';
       const productCondition = p.condition || null;
+      const productCurrency  = ['NGN','USD','GBP','EUR','CAD','GHS'].includes(p.currency) ? p.currency : 'NGN';
 
       const rows = await sql`
         INSERT INTO products (
@@ -175,7 +177,7 @@ module.exports = async function handler(req, res) {
           commission, description, seller, seller_id, seller_email, seller_whatsapp,
           rating, reviews, emoji, imgs, status, badge, date, escrow,
           file_ext, file_name, file_url, is_verified, disputed,
-          quantity, location, seller_bio, created_at, condition
+          quantity, location, seller_bio, created_at, condition, currency
         ) VALUES (
           ${id}, ${p.name}, ${productType}, ${productCat}, ${parseFloat(p.price)},
           ${discountPrice}, ${isOnSale}, ${saleEndsAt}, ${shippingFee},
@@ -188,7 +190,7 @@ module.exports = async function handler(req, res) {
           ${p.location || ''},
           ${p.sellerBio || p.seller_bio || ''},
           NOW(),
-          ${productCondition}
+          ${productCondition}, ${productCurrency}
         )
         RETURNING *
       `;
