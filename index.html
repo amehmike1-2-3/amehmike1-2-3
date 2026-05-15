@@ -1601,7 +1601,21 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           <option value="other">📦 Other</option>
         </select>
       </div>
-      <div class="fg"><label>Price (₦) <span class="rq">*</span></label><input class="fi" type="number" id="s-price" placeholder="e.g. 5000" min="100" oninput="validateSell()"/></div>
+      <div class="fg">
+        <label>Price & Currency <span class="rq">*</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="fi" id="s-currency" style="width:110px;flex-shrink:0">
+            <option value="NGN">🇳🇬 NGN</option>
+            <option value="USD">🇺🇸 USD</option>
+            <option value="GBP">🇬🇧 GBP</option>
+            <option value="EUR">🇪🇺 EUR</option>
+            <option value="CAD">🇨🇦 CAD</option>
+            <option value="GHS">🇬🇭 GHS</option>
+          </select>
+          <input class="fi" type="number" id="s-price" placeholder="e.g. 5000" min="1" oninput="validateSell()" style="flex:1"/>
+        </div>
+        <p class="hint">Choose the currency your buyers will pay in.</p>
+      </div>
       <div class="fg"><label>Affiliate Commission % <span class="rq">*</span></label><input class="fi" type="number" id="s-comm" placeholder="5 – 40" min="5" max="40" oninput="validateSell()"/></div>
 
       <!-- Discount / Sale Price -->
@@ -3033,6 +3047,7 @@ function submitProduct() {
     sellerWhatsapp: CU && CU.phone ? CU.phone : '',
     cat:            gv('s-cat')  || 'other',
     price:          parseFloat(gv('s-price')) || 0,
+        currency:       gv('s-currency') || 'NGN',
     commission:     parseFloat(gv('s-comm'))  || 0,
     description:    gv('s-desc'),
     desc:           gv('s-desc'),
@@ -3144,7 +3159,7 @@ window.submitProduct = submitProduct;
 
 function resetSell() {
   uploadedImages = []; dReady = false; digitalFileData = null;
-  ['s-name','s-type','s-cat','s-price','s-comm','s-desc','s-email','s-discount-price','s-sale-ends','s-shipping-fee'].forEach(function (id) { sval(id, ''); });
+  ['s-name','s-type','s-cat','s-price','s-currency','s-comm','s-desc','s-email','s-discount-price','s-sale-ends','s-shipping-fee'].forEach(function (id) { sval(id, ''); });
   var cb = document.getElementById('sell-cb'); if (cb) cb.checked = false;
   var dw = document.getElementById('dfile-wrap'); if (dw) dw.style.display = 'none';
   var fn = document.getElementById('dfile-name'); if (fn) fn.textContent = 'Tap to Choose File';
@@ -3218,11 +3233,11 @@ function mkCard(p) {
     + '<div class="pcb"><h4>' + p.name + verBadge + trustBadge + featuredBadge + promoBadge + tierBadge + '</h4>'
     + '<div class="pcs">by ' + p.seller + (location ? ' \u00b7 \uD83D\uDCCD' + location : '') + (p.reviews > 0 ? ' \u00b7 \u2B50' + p.rating : '') + '</div>'
     + (lowStock ? '<div style="font-size:.7rem;color:var(--orange);font-weight:700;margin-bottom:3px">\u26a1 Only ' + qty + ' left!</div>' : '')
-    + (saleActive && saving > 0 ? '<div class="savings-tag">\uD83D\uDD25 Save \u20a6' + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
+    + (saleActive && saving > 0 ? '<div class="savings-tag">🔥 Save ' + currSymbol(p.currency) + saving.toLocaleString() + ' (' + savePct + '% OFF)</div>' : '')
     + (timerStr ? '<div class="live-timer" id="t' + p.id + '"><span class="dot">&#x25CF;</span> <span>' + timerStr + '</span></div>' : '')
     + '<div class="pcf"><div>'
-    + (saleActive ? '<span class="price-original">\u20a6' + p.price.toLocaleString() + '</span>' : '')
-    + '<span class="pcp' + (saleActive ? '" style="color:var(--red)' : '') + '">\u20a6' + displayPrice.toLocaleString() + '</span>'
+    + (saleActive ? '<span class="price-original">' + currSymbol(p.currency) + p.price.toLocaleString() + '</span>' : '')
+    + '<span class="pcp' + (saleActive ? '" style="color:var(--red)' : '') + '">' + currSymbol(p.currency) + displayPrice.toLocaleString() + '</span>'
     + '</div>'
     + (p.reviews > 0 ? '<span class="pcr">\u2B50' + p.rating + '</span>' : '<span style="font-size:.7rem;color:var(--muted)">New</span>')
     + '</div>'
@@ -3861,11 +3876,14 @@ function processPaystack(mode) {
     }
   }
 
+  /* Use currency of first cart item — default NGN */
+  var cartCurrency = (cart[0] && cart[0].currency) ? cart[0].currency : 'NGN';
+
   var cfg = {
     key:      PK,
     email:    email,
     amount:   Math.round(total * 100),
-    currency: 'NGN',
+    currency: cartCurrency,
     ref:      trackId,
     metadata: {
       custom_fields: [
@@ -5701,7 +5719,11 @@ var BANK_CODES = {
 
 /* Live account name verification via vault */
 var verifyTimer = null;
-/* Resolve account name for seller dashboard bank form */
+/* Currency symbol helper */
+function currSymbol(c) {
+  return { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' }[c] || '₦';
+}
+window.currSymbol = currSymbol;
 function resolveSellerAcct() {
   var bank  = gv('sel-bank');
   var acct  = gv('sel-acct');
