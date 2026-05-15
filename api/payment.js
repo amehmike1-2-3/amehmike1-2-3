@@ -311,14 +311,16 @@ module.exports = async function handler(req, res) {
       if (!o.id || !o.total) return jsonErr(res, 400, 'id and total are required.');
 
       const deliveryCode = generateDVC(String(o.id));
-      const affCode = (o.affCode && String(o.affCode).trim().length > 2)
+      const affCode    = (o.affCode && String(o.affCode).trim().length > 2)
         ? String(o.affCode).trim() : null;
+      const orderCurrency = ['NGN','USD','GBP','EUR','CAD','GHS'].includes(o.currency)
+        ? o.currency : 'NGN';
 
       await sql`
         INSERT INTO orders (
           id, user_id, customer, items, total, amount, platform_fee, seller_payout,
           affiliate_fee, aff_code, seller_id, status, collected, mode, ref,
-          shipping, delivery_code, file_url, date, created_at
+          shipping, delivery_code, file_url, date, created_at, currency
         ) VALUES (
           ${String(o.id)},
           ${String(o.userId || '')},
@@ -339,7 +341,8 @@ module.exports = async function handler(req, res) {
           ${deliveryCode},
           ${o.fileUrl || null},
           ${new Date().toLocaleDateString()},
-          NOW()
+          NOW(),
+          ${orderCurrency}
         )
         ON CONFLICT (id) DO UPDATE SET
           status        = EXCLUDED.status,
