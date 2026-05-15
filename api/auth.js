@@ -1,4 +1,4 @@
-// /api/auth.js — NeyoMarket Authentication API with Gmail SMTP Email Service
+// /api/auth.js — NeyoMarket Authentication API with Gmail SMTP Email Service 
 // Features: login, register (with email verification), reset-password, change-password,
 //           update-profile, kyc, verify-email — all with rate limiting
 
