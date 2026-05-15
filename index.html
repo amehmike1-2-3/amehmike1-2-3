@@ -3879,23 +3879,26 @@ function processPaystack(mode) {
     }
   }
 
-  /* Always charge in NGN — Paystack Nigeria doesn't support multi-currency yet.
-     Products display in their listed currency but payment is always NGN. */
+  /* Always charge in NGN — convert foreign currency to NGN using live rate */
+  var cartCurrency = (cart[0] && cart[0].currency) ? cart[0].currency : 'NGN';
 
-  var cfg = {
-    key:      PK,
-    email:    email,
-    amount:   Math.round(total * 100),
-    currency: 'NGN',
-    ref:      trackId,
-    metadata: {
-      custom_fields: [
-        { display_name: 'Customer',    variable_name: 'customer', value: name },
-        { display_name: 'WhatsApp',    variable_name: 'whatsapp', value: wa || 'N/A' },
-        { display_name: 'Address',     variable_name: 'address',  value: addr },
-        { display_name: 'Tracking ID', variable_name: 'tracking', value: trackId }
-      ]
-    },
+  function openPaystackWithAmount(ngnAmount) {
+    var cfg = {
+      key:      PK,
+      email:    email,
+      amount:   Math.round(ngnAmount * 100),
+      currency: 'NGN',
+      ref:      trackId,
+      metadata: {
+        custom_fields: [
+          { display_name: 'Customer',          variable_name: 'customer',      value: name },
+          { display_name: 'WhatsApp',          variable_name: 'whatsapp',      value: wa || 'N/A' },
+          { display_name: 'Address',           variable_name: 'address',       value: addr },
+          { display_name: 'Tracking ID',       variable_name: 'tracking',      value: trackId },
+          { display_name: 'Original Currency', variable_name: 'orig_currency', value: cartCurrency },
+          { display_name: 'Original Amount',   variable_name: 'orig_amount',   value: total.toLocaleString() }
+        ]
+      },
 
     callback: function (resp) {
       /* ── DB FIRST, UI SECOND ── */
@@ -4004,10 +4007,10 @@ function processPaystack(mode) {
         if (rf) rf.innerHTML =
           '<div>Name: '         + name + '</div>' +
           '<div>WhatsApp: '     + (wa || 'N/A') + '</div>' +
-          '<div>Amount Paid: ₦' + total.toLocaleString() + '</div>' +
-          '<div>Platform Fee: ₦' + (data.platformFee || Math.round(total * 0.05)).toLocaleString() + ' (5%)</div>' +
-          (data.affiliateFee ? '<div>Affiliate: ₦' + data.affiliateFee.toLocaleString() + ' (5%)</div>' : '') +
-          '<div>Seller Gets: ₦' + (data.sellerAmount || Math.round(total * 0.90)).toLocaleString() + '</div>' +
+          '<div>Amount Paid: '  + currSymbol(cartCurrency) + total.toLocaleString() + '</div>' +
+          '<div>Platform Fee: ' + currSymbol(cartCurrency) + (data.platformFee || Math.round(total * 0.05)).toLocaleString() + ' (5%)</div>' +
+          (data.affiliateFee ? '<div>Affiliate: ' + currSymbol(cartCurrency) + data.affiliateFee.toLocaleString() + ' (5%)</div>' : '') +
+          '<div>Seller Gets: '  + currSymbol(cartCurrency) + (data.sellerAmount || Math.round(total * 0.90)).toLocaleString() + '</div>' +
           '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
           '<div style="margin-top:8px;color:var(--green)">✅ Payment confirmed & saved. Escrow active.</div>';
 
@@ -4039,8 +4042,8 @@ function processPaystack(mode) {
   /* ── Inject split if seller has a subaccount ── */
   if (sellerSubaccount) {
     cfg.subaccount          = sellerSubaccount;
-    cfg.transaction_charge  = platformCharge;  /* kobo kept by platform */
-    cfg.bearer              = 'account';        /* platform bears Paystack fees */
+    cfg.transaction_charge  = Math.round(ngnAmount * 0.10 * 100);
+    cfg.bearer              = 'account';
   }
 
   if (typeof PaystackPop === 'undefined') {
@@ -4053,7 +4056,37 @@ function processPaystack(mode) {
   } catch (err) {
     toast('Paystack error: ' + (err.message || 'Unknown') + '. Please refresh and try again.', 'fail');
   }
-}
+  } /* end openPaystackWithAmount */
+
+  /* ── Convert to NGN if needed, then open Paystack ── */
+  if (cartCurrency === 'NGN') {
+    openPaystackWithAmount(total);
+  } else {
+    toast('⏳ Fetching live exchange rate…', 'ok');
+    fetch('https://open.er-api.com/v6/latest/' + cartCurrency)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var rate   = (data && data.rates && data.rates.NGN) ? data.rates.NGN : null;
+        if (!rate) {
+          /* Fallback rates if API fails */
+          var fallback = { USD: 1580, GBP: 2000, EUR: 1720, CAD: 1160, GHS: 105 };
+          rate = fallback[cartCurrency] || 1580;
+          toast('⚠ Using estimated rate. Live rate unavailable.', 'warn');
+        }
+        var ngnTotal = Math.round(total * rate);
+        toast('💱 ' + currSymbol(cartCurrency) + total.toLocaleString() + ' = ₦' + ngnTotal.toLocaleString() + ' (live rate)', 'ok');
+        openPaystackWithAmount(ngnTotal);
+      })
+      .catch(function() {
+        /* Fallback rates if network fails */
+        var fallback = { USD: 1580, GBP: 2000, EUR: 1720, CAD: 1160, GHS: 105 };
+        var rate     = fallback[cartCurrency] || 1580;
+        var ngnTotal = Math.round(total * rate);
+        toast('⚠ Using estimated rate. Paying ₦' + ngnTotal.toLocaleString(), 'warn');
+        openPaystackWithAmount(ngnTotal);
+      });
+  }
+} /* end processPaystack */
 window.processPaystack = processPaystack;
 
 /* ═══ ORDERS ═══ */
