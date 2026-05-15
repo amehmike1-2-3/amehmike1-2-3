@@ -2992,7 +2992,10 @@ function validateSell() {
   if (!type)                             issues.push('Select a product type');
   if (!cat)                              issues.push('Select a category');
   if (!cond)                             issues.push('Select product condition (New/Used)');  /* NEW */
-  if (!price || price < 100)             issues.push('Price must be at least ₦100');
+  var currency = gv('s-currency') || 'NGN';
+  var minPrice = { NGN: 100, USD: 1, GBP: 1, EUR: 1, CAD: 1, GHS: 1 }[currency] || 1;
+  var minLabel = { NGN: '₦100', USD: '$1', GBP: '£1', EUR: '€1', CAD: 'CA$1', GHS: 'GH₵1' }[currency] || '1';
+  if (!price || price < minPrice)        issues.push('Price must be at least ' + minLabel);
   if (!comm || comm < 5 || comm > 40)    issues.push('Commission must be 5–40%');
   if (desc.length < 20)                  issues.push('Description too short (min 20 chars)');
   if (!email || !email.includes('@'))    issues.push('Valid payout email required');
