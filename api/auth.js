@@ -711,7 +711,7 @@ module.exports = async function handler(req, res) {
       if (!productId) return res.status(400).send('Missing product id');
 
       const rows = await sql`
-        SELECT name, description, price, discount_price, imgs, seller, type
+        SELECT name, description, price, discount_price, imgs, seller, type, currency
         FROM products
         WHERE id = ${Number(productId)} AND status = 'active'
         LIMIT 1
@@ -723,7 +723,9 @@ module.exports = async function handler(req, res) {
       const name     = p.name || 'Product on NeyoMarket';
       const desc     = (p.description || 'Buy securely on NeyoMarket — Nigeria\'s trusted marketplace.').slice(0, 200);
       const price    = p.discount_price ? p.discount_price : p.price;
-      const priceStr = '₦' + Number(price).toLocaleString();
+      const symMap   = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' };
+      const sym      = symMap[p.currency] || '₦';
+      const priceStr = sym + Number(price).toLocaleString();
       const siteUrl  = 'https://neyomarket.com.ng';
       /* Include ref code in redirect so affiliate commission is tracked */
       const prodUrl  = siteUrl + '/?p=' + productId + (refCode ? '&ref=' + encodeURIComponent(refCode) : '');
