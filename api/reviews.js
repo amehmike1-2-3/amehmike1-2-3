@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
 
     /* ── POST /api/reviews — submit a review ── */
     if (req.method === 'POST') {
-      const { productId, userId, userName, rating, comment } = req.body || {};
+      const { productId, userId, userName, rating, comment, photo } = req.body || {};
       if (!productId || !userId || !rating)
         return res.status(400).json({ error: 'productId, userId and rating are required.' });
       if (rating < 1 || rating > 5)
@@ -41,9 +41,12 @@ module.exports = async function handler(req, res) {
       if (existing.length)
         return res.status(409).json({ error: 'You have already reviewed this product.' });
 
+      /* Validate photo URL if provided — must be ImgBB or similar */
+      const safePhoto = (photo && typeof photo === 'string' && photo.startsWith('https://')) ? photo : null;
+
       await sql`
-        INSERT INTO reviews (product_id, user_id, user_name, rating, comment, created_at)
-        VALUES (${productId}, ${userId}, ${userName || 'Anonymous'}, ${rating}, ${comment || ''}, NOW())
+        INSERT INTO reviews (product_id, user_id, user_name, rating, comment, photo, created_at)
+        VALUES (${productId}, ${userId}, ${userName || 'Anonymous'}, ${rating}, ${comment || ''}, ${safePhoto}, NOW())
       `;
 
       /* Update product average rating */
