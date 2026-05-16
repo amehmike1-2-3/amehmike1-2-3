@@ -830,6 +830,59 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* ══════════════════════════════════════════════════
+       STAFF GATE — login + product/KYC review actions
+    ══════════════════════════════════════════════════ */
+    const STAFF_ACCOUNTS = {
+      'product1@neyomarket.com': { pass: 'NeyoPR1!2026',  role: 'product_reviewer', name: 'Product Reviewer 1' },
+      'product2@neyomarket.com': { pass: 'NeyoPR2!2026',  role: 'product_reviewer', name: 'Product Reviewer 2' },
+      'kyc1@neyomarket.com':     { pass: 'NeyoKYC1!2026', role: 'kyc_reviewer',     name: 'KYC Reviewer'      },
+    };
+
+    if (req.query.action === 'staff-login' && req.method === 'POST') {
+      const { email, password } = req.body || {};
+      if (!email || !password) return res.status(400).json({ ok: false, error: 'Email and password required.' });
+      const acct = STAFF_ACCOUNTS[(email || '').toLowerCase()];
+      if (!acct || acct.pass !== password) return res.status(401).json({ ok: false, error: 'Invalid credentials.' });
+      return res.status(200).json({ ok: true, role: acct.role, name: acct.name, email: email.toLowerCase() });
+    }
+
+    if (req.query.action === 'staff-pending-products' && req.method === 'GET') {
+      const { email } = req.query;
+      const acct = STAFF_ACCOUNTS[(email||'').toLowerCase()];
+      if (!acct || acct.role !== 'product_reviewer') return res.status(403).json({ ok: false, error: 'Not authorised.' });
+      const rows = await sql`SELECT id,name,type,cat,price,discount_price,currency,description,seller,seller_id,seller_email,imgs,emoji,badge,location,created_at,commission FROM products WHERE status='pending' ORDER BY created_at ASC`;
+      return res.status(200).json({ ok: true, products: rows });
+    }
+
+    if (req.query.action === 'staff-review-product' && req.method === 'POST') {
+      const { productId, status, reviewerEmail } = req.body || {};
+      if (!productId || !status || !reviewerEmail) return res.status(400).json({ ok: false, error: 'Missing fields.' });
+      const acct = STAFF_ACCOUNTS[(reviewerEmail||'').toLowerCase()];
+      if (!acct || acct.role !== 'product_reviewer') return res.status(403).json({ ok: false, error: 'Not authorised.' });
+      if (!['active','rejected'].includes(status)) return res.status(400).json({ ok: false, error: 'Invalid status.' });
+      await sql`UPDATE products SET status=${status}, reviewed_by=${reviewerEmail}, reviewed_at=NOW() WHERE id=${Number(productId)}`;
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.query.action === 'staff-pending-kyc' && req.method === 'GET') {
+      const { email } = req.query;
+      const acct = STAFF_ACCOUNTS[(email||'').toLowerCase()];
+      if (!acct || acct.role !== 'kyc_reviewer') return res.status(403).json({ ok: false, error: 'Not authorised.' });
+      const rows = await sql`SELECT id,name,email,phone,role,kyc_status,kyc_type,nin_number,joined,created_at FROM users WHERE kyc_status='pending' AND nin_number IS NOT NULL ORDER BY created_at ASC`;
+      return res.status(200).json({ ok: true, users: rows });
+    }
+
+    if (req.query.action === 'staff-review-kyc' && req.method === 'POST') {
+      const { userId, status, reviewerEmail } = req.body || {};
+      if (!userId || !status || !reviewerEmail) return res.status(400).json({ ok: false, error: 'Missing fields.' });
+      const acct = STAFF_ACCOUNTS[(reviewerEmail||'').toLowerCase()];
+      if (!acct || acct.role !== 'kyc_reviewer') return res.status(403).json({ ok: false, error: 'Not authorised.' });
+      if (!['verified','rejected'].includes(status)) return res.status(400).json({ ok: false, error: 'Invalid status.' });
+      await sql`UPDATE users SET kyc_status=${status}, is_verified=${status==='verified'}, kyc_reviewed_by=${reviewerEmail}, kyc_reviewed_at=NOW() WHERE id=${String(userId)}`;
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(400).json({ error: 'Unknown action.' });
 
   } catch (err) {
