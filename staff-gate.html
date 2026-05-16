@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NeyoMarket Staff Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0c0f;
+  --bg2:#13151a;
+  --bg3:#1a1d24;
+  --border:#25282f;
+  --border2:#2e3240;
+  --text:#f0f0f0;
+  --muted:#6b7280;
+  --muted2:#4b5563;
+  --green:#10b981;
+  --green-bg:rgba(16,185,129,.1);
+  --red:#ef4444;
+  --red-bg:rgba(239,68,68,.1);
+  --gold:#c9922a;
+  --blue:#3b82f6;
+  --blue-bg:rgba(59,130,246,.08);
+  --accent:#7c3aed;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6}
+
+/* ── LOGIN SCREEN ── */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(124,58,237,.12),transparent)}
+.login-card{width:100%;max-width:380px;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:36px 32px;box-shadow:0 24px 48px rgba(0,0,0,.4)}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.login-logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--gold),#b45309);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:#000;font-family:'Syne',sans-serif}
+.login-logo-text{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:var(--text)}
+.login-logo-sub{font-size:.72rem;color:var(--muted);font-weight:400;display:block;margin-top:-2px}
+.login-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text);margin-bottom:6px}
+.login-sub{font-size:.82rem;color:var(--muted);margin-bottom:28px}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+.fi{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 14px;color:var(--text);font-size:.9rem;font-family:'DM Sans',sans-serif;outline:none;transition:.2s}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;border:none;padding:13px;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer;transition:.2s;font-family:'DM Sans',sans-serif;margin-top:4px;letter-spacing:.3px}
+.login-btn:hover{opacity:.9;transform:translateY(-1px)}
+.login-btn:active{transform:scale(.98)}
+.login-err{background:var(--red-bg);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--red);margin-bottom:14px;display:none}
+
+/* ── DASHBOARD ── */
+#dashboard{display:none;min-height:100vh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(8px)}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--text)}
+.staff-badge{padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.badge-reviewer{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25)}
+.badge-kyc{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.25)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.staff-name{font-size:.82rem;color:var(--muted)}
+.signout-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);padding:7px 14px;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s}
+.signout-btn:hover{color:var(--red);border-color:rgba(239,68,68,.3)}
+
+.dashboard-body{padding:24px;max-width:1100px;margin:0 auto}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.section-title{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--text)}
+.section-count{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace}
+.refresh-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);padding:8px 16px;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;display:flex;align-items:center;gap:6px}
+.refresh-btn:hover{color:var(--text);border-color:var(--border2)}
+
+/* ── STATS ROW ── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px}
+.stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.stat-val{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text);line-height:1}
+
+/* ── CARDS GRID ── */
+.cards-grid{display:flex;flex-direction:column;gap:12px}
+.item-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px;transition:.2s}
+.item-card:hover{border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.item-card-top{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.item-img{width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+.item-info{flex:1;min-width:0}
+.item-name{font-weight:700;font-size:.95rem;color:var(--text);margin-bottom:3px}
+.item-meta{font-size:.78rem;color:var(--muted);margin-bottom:8px;line-height:1.6}
+.item-desc{font-size:.8rem;color:var(--muted2);line-height:1.55;margin-bottom:10px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tag{padding:3px 10px;border-radius:6px;font-size:.68rem;font-weight:600;letter-spacing:.3px;font-family:'DM Mono',monospace}
+.tag-type{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.15)}
+.tag-cat{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+.tag-price{background:rgba(201,146,42,.1);color:var(--gold);border:1px solid rgba(201,146,42,.2)}
+.tag-date{background:var(--bg3);color:var(--muted2);border:1px solid var(--border)}
+.action-row{display:flex;gap:10px;flex-wrap:wrap}
+.btn-approve{background:var(--green-bg);color:var(--green);border:1.5px solid rgba(16,185,129,.3);padding:9px 22px;border-radius:9px;font-weight:700;font-size:.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;letter-spacing:.3px}
+.btn-approve:hover{background:var(--green);color:#000;transform:translateY(-1px)}
+.btn-reject{background:var(--red-bg);color:var(--red);border:1.5px solid rgba(239,68,68,.3);padding:9px 22px;border-radius:9px;font-weight:700;font-size:.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;letter-spacing:.3px}
+.btn-reject:hover{background:var(--red);color:#fff;transform:translateY(-1px)}
+.btn-loading{opacity:.5;pointer-events:none}
+.done-overlay{display:none;position:absolute;inset:0;background:rgba(11,12,15,.85);border-radius:14px;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;backdrop-filter:blur(4px)}
+.item-card{position:relative}
+
+/* KYC specific */
+.kyc-detail{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.kyc-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.kyc-row:last-child{border-bottom:none}
+.kyc-key{color:var(--muted);font-weight:500}
+.kyc-val{color:var(--text);font-weight:600;font-family:'DM Mono',monospace;font-size:.8rem}
+
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:3rem;margin-bottom:12px}
+.empty-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:6px}
+
+/* Loading */
+.loading-state{text-align:center;padding:60px 20px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:.82rem;font-weight:600;z-index:9999;animation:slideIn .3s ease;max-width:300px;font-family:'DM Sans',sans-serif}
+.toast-ok{background:var(--green);color:#000}
+.toast-fail{background:var(--red);color:#fff}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+@media(max-width:600px){
+  .dashboard-body{padding:16px}
+  .topbar{padding:12px 16px}
+  .item-card-top{flex-direction:column}
+  .item-img{width:100%;height:140px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">N</div>
+      <div>
+        <div class="login-logo-text">NeyoMarket</div>
+        <span class="login-logo-sub">Staff Portal</span>
+      </div>
+    </div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in with your staff credentials to continue.</div>
+    <div class="login-err" id="login-err"></div>
+    <div class="fg">
+      <label>Email Address</label>
+      <input class="fi" type="email" id="staff-email" placeholder="staff@neyomarket.com" autocomplete="username"/>
+    </div>
+    <div class="fg">
+      <label>Password</label>
+      <input class="fi" type="password" id="staff-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doStaffLogin()"/>
+    </div>
+    <button class="login-btn" onclick="doStaffLogin()" id="login-btn">Sign In →</button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">NeyoMarket</div>
+      <span class="staff-badge" id="role-badge">Staff</span>
+    </div>
+    <div class="topbar-right">
+      <span class="staff-name" id="staff-name-display"></span>
+      <button class="signout-btn" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-body">
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Product Review Section -->
+    <div id="section-products" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🛍 Product Approval Queue</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:2px">Review and approve or reject pending product listings</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="section-count" id="product-count">0 pending</span>
+          <button class="refresh-btn" onclick="loadProducts()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="products-container"><div class="loading-state"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- KYC Review Section -->
+    <div id="section-kyc" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🪪 KYC Verification Queue</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:2px">Review and verify pending identity submissions</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="section-count" id="kyc-count">0 pending</span>
+          <button class="refresh-btn" onclick="loadKYC()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="kyc-container"><div class="loading-state"><div class="spinner"></div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var SESSION = null;
+
+/* ══ HELPERS ══ */
+function toast(msg, type) {
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + (type || 'ok');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3500);
+}
+
+function currSymbol(c) {
+  return { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' }[c] || '₦';
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var m = Math.floor(diff/60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m/60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h/24) + 'd ago';
+}
+
+/* ══ AUTH ══ */
+function doStaffLogin() {
+  var email = (document.getElementById('staff-email').value || '').trim().toLowerCase();
+  var pass  = (document.getElementById('staff-pass').value  || '').trim();
+  var btn   = document.getElementById('login-btn');
+
+  if (!email || !pass) { showErr('Please enter your email and password.'); return; }
+
+  btn.textContent = 'Signing in…'; btn.style.opacity = '.6';
+
+  /* Validate credentials on backend — passwords never in HTML */
+  fetch('/api/auth?action=staff-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: pass })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (!data.ok) { showErr(data.error || 'Invalid credentials.'); return; }
+
+    SESSION = { email: email, role: data.role, name: data.name };
+
+    var ROLE_META = {
+      product_reviewer: { label: 'Product Reviewer', badge: 'badge-reviewer' },
+      kyc_reviewer:     { label: 'KYC Reviewer',     badge: 'badge-kyc'      }
+    };
+    var meta = ROLE_META[data.role] || { label: 'Staff', badge: 'badge-reviewer' };
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display    = 'block';
+    document.getElementById('staff-name-display').textContent = data.name;
+
+    var badge = document.getElementById('role-badge');
+    badge.textContent = meta.label;
+    badge.className   = 'staff-badge ' + meta.badge;
+
+    if (data.role === 'product_reviewer') {
+      document.getElementById('section-products').style.display = 'block';
+      loadProducts();
+    } else if (data.role === 'kyc_reviewer') {
+      document.getElementById('section-kyc').style.display = 'block';
+      loadKYC();
+    }
+  })
+  .catch(function(){ showErr('Network error. Try again.'); });
+}
+
+function showErr(msg) {
+  var err = document.getElementById('login-err');
+  var btn = document.getElementById('login-btn');
+  err.textContent = msg; err.style.display = 'block';
+  btn.textContent = 'Sign In →'; btn.style.opacity = '1';
+}
+
+function doSignOut() {
+  SESSION = null;
+  document.getElementById('dashboard').style.display    = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('staff-email').value = '';
+  document.getElementById('staff-pass').value  = '';
+  document.getElementById('login-btn').textContent = 'Sign In →';
+  document.getElementById('login-btn').style.opacity = '1';
+  document.getElementById('login-err').style.display = 'none';
+  document.getElementById('stats-row').innerHTML = '';
+  document.getElementById('section-products').style.display = 'none';
+  document.getElementById('section-kyc').style.display      = 'none';
+}
+
+/* ══ PRODUCTS ══ */
+function loadProducts() {
+  var c = document.getElementById('products-container');
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div style="color:var(--muted);font-size:.82rem">Loading pending products…</div></div>';
+
+  fetch('/api/auth?action=staff-pending-products&email=' + SESSION.email + '')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (!data.ok) { c.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load products</div><div>'+( data.error||'Try refreshing')+'</div></div>'; return; }
+      var prods = data.products || [];
+      document.getElementById('product-count').textContent = prods.length + ' pending';
+
+      /* Stats */
+      var digital  = prods.filter(function(p){ return p.type === 'digital'; }).length;
+      var physical = prods.filter(function(p){ return p.type === 'physical'; }).length;
+      document.getElementById('stats-row').innerHTML =
+        '<div class="stat-card"><div class="stat-label">Total Pending</div><div class="stat-val" style="color:var(--gold)">' + prods.length + '</div></div>' +
+        '<div class="stat-card"><div class="stat-label">Digital</div><div class="stat-val" style="color:var(--blue)">' + digital + '</div></div>' +
+        '<div class="stat-card"><div class="stat-label">Physical</div><div class="stat-val" style="color:var(--accent)">' + physical + '</div></div>';
+
+      if (!prods.length) {
+        c.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">All clear!</div><div>No products pending review right now.</div></div>';
+        return;
+      }
+
+      c.innerHTML = '<div class="cards-grid">' + prods.map(function(p) {
+        var imgs = [];
+        try { imgs = typeof p.imgs === 'string' ? JSON.parse(p.imgs) : (p.imgs||[]); } catch(e){}
+        var imgHtml = imgs.length
+          ? '<img class="item-img" src="' + imgs[0] + '" alt="" onerror="this.outerHTML=\'<div class=item-img style=font-size:1.8rem>' + (p.emoji||'📦') + '</div>\'">'
+          : '<div class="item-img">' + (p.emoji||'📦') + '</div>';
+        var sym   = currSymbol(p.currency);
+        var price = p.discount_price || p.price;
+        return '<div class="item-card" id="card-p-' + p.id + '">'
+          + '<div class="done-overlay" id="done-p-' + p.id + '"></div>'
+          + '<div class="item-card-top">'
+          + imgHtml
+          + '<div class="item-info">'
+          + '<div class="item-name">' + p.name + '</div>'
+          + '<div class="item-meta">by <strong>' + (p.seller||'—') + '</strong> · ' + (p.location||'Nigeria') + ' · ' + timeAgo(p.created_at) + '</div>'
+          + '<div class="item-desc">' + (p.description||'No description provided.') + '</div>'
+          + '<div class="item-tags">'
+          + '<span class="tag tag-type">' + (p.type||'—') + '</span>'
+          + '<span class="tag tag-cat">' + (p.cat||'—') + '</span>'
+          + '<span class="tag tag-price">' + sym + Number(price).toLocaleString() + ' ' + (p.currency||'NGN') + '</span>'
+          + '<span class="tag tag-date">ID: ' + p.id + '</span>'
+          + '</div>'
+          + '<div class="action-row">'
+          + '<button class="btn-approve" onclick="reviewProduct(' + p.id + ',\'active\',this)">✓ Approve</button>'
+          + '<button class="btn-reject"  onclick="reviewProduct(' + p.id + ',\'rejected\',this)">✕ Reject</button>'
+          + '</div>'
+          + '</div></div></div>';
+      }).join('') + '</div>';
+    })
+    .catch(function(){ c.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Network error</div><div>Check your connection and refresh.</div></div>'; });
+}
+
+function reviewProduct(id, status, btn) {
+  btn.classList.add('btn-loading');
+  fetch('/api/auth?action=staff-review-product', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId: id, status: status, reviewerEmail: SESSION.email })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    btn.classList.remove('btn-loading');
+    if (data.ok) {
+      var done = document.getElementById('done-p-' + id);
+      if (done) {
+        done.style.display = 'flex';
+        done.innerHTML = status === 'active'
+          ? '<span style="color:var(--green)">✓ Approved</span>'
+          : '<span style="color:var(--red)">✕ Rejected</span>';
+      }
+      toast(status === 'active' ? '✅ Product approved!' : '❌ Product rejected.', status === 'active' ? 'ok' : 'fail');
+      setTimeout(function(){ loadProducts(); }, 1500);
+    } else {
+      toast('Error: ' + (data.error||'Try again'), 'fail');
+    }
+  })
+  .catch(function(){ btn.classList.remove('btn-loading'); toast('Network error. Try again.', 'fail'); });
+}
+
+/* ══ KYC ══ */
+function loadKYC() {
+  var c = document.getElementById('kyc-container');
+  c.innerHTML = '<div class="loading-state"><div class="spinner"></div><div style="color:var(--muted);font-size:.82rem">Loading KYC submissions…</div></div>';
+
+  fetch('/api/auth?action=staff-pending-kyc&email=' + SESSION.email + '')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (!data.ok) { c.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load KYC</div><div>' + (data.error||'Try refreshing') + '</div></div>'; return; }
+      var users = data.users || [];
+      document.getElementById('kyc-count').textContent = users.length + ' pending';
+
+      document.getElementById('stats-row').innerHTML =
+        '<div class="stat-card"><div class="stat-label">Pending KYC</div><div class="stat-val" style="color:var(--gold)">' + users.length + '</div></div>' +
+        '<div class="stat-card"><div class="stat-label">NIN</div><div class="stat-val" style="color:var(--green)">' + users.filter(function(u){ return u.kyc_type==='nin'; }).length + '</div></div>' +
+        '<div class="stat-card"><div class="stat-label">BVN</div><div class="stat-val" style="color:var(--blue)">' + users.filter(function(u){ return u.kyc_type==='bvn'; }).length + '</div></div>';
+
+      if (!users.length) {
+        c.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">All clear!</div><div>No KYC submissions pending review.</div></div>';
+        return;
+      }
+
+      c.innerHTML = '<div class="cards-grid">' + users.map(function(u) {
+        var ninMasked = u.nin_number ? u.nin_number.substring(0,3) + '****' + u.nin_number.slice(-2) : '—';
+        return '<div class="item-card" id="card-k-' + u.id + '">'
+          + '<div class="done-overlay" id="done-k-' + u.id + '"></div>'
+          + '<div class="item-card-top">'
+          + '<div class="item-img">🪪</div>'
+          + '<div class="item-info">'
+          + '<div class="item-name">' + (u.name||'Unknown') + '</div>'
+          + '<div class="item-meta">' + (u.email||'—') + ' · ' + timeAgo(u.kyc_submitted_at||u.created_at) + '</div>'
+          + '<div class="kyc-detail">'
+          + '<div class="kyc-row"><span class="kyc-key">Verification Type</span><span class="kyc-val">' + (u.kyc_type||'nin').toUpperCase() + '</span></div>'
+          + '<div class="kyc-row"><span class="kyc-key">ID Number</span><span class="kyc-val">' + ninMasked + '</span></div>'
+          + '<div class="kyc-row"><span class="kyc-key">Phone</span><span class="kyc-val">' + (u.phone||'—') + '</span></div>'
+          + '<div class="kyc-row"><span class="kyc-key">Role</span><span class="kyc-val">' + (u.role||'buyer') + '</span></div>'
+          + '<div class="kyc-row"><span class="kyc-key">Joined</span><span class="kyc-val">' + (u.joined||'—') + '</span></div>'
+          + '</div>'
+          + '<div class="action-row">'
+          + '<button class="btn-approve" onclick="reviewKYC(' + u.id + ',\'verified\',this)">✓ Verify Identity</button>'
+          + '<button class="btn-reject"  onclick="reviewKYC(' + u.id + ',\'rejected\',this)">✕ Reject</button>'
+          + '</div>'
+          + '</div></div></div>';
+      }).join('') + '</div>';
+    })
+    .catch(function(){ c.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Network error</div><div>Check your connection and refresh.</div></div>'; });
+}
+
+function reviewKYC(userId, status, btn) {
+  btn.classList.add('btn-loading');
+  fetch('/api/auth?action=staff-review-kyc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId, status: status, reviewerEmail: SESSION.email })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    btn.classList.remove('btn-loading');
+    if (data.ok) {
+      var done = document.getElementById('done-k-' + userId);
+      if (done) {
+        done.style.display = 'flex';
+        done.innerHTML = status === 'verified'
+          ? '<span style="color:var(--green)">✓ Verified</span>'
+          : '<span style="color:var(--red)">✕ Rejected</span>';
+      }
+      toast(status === 'verified' ? '✅ Identity verified!' : '❌ KYC rejected.', status === 'verified' ? 'ok' : 'fail');
+      setTimeout(function(){ loadKYC(); }, 1500);
+    } else {
+      toast('Error: ' + (data.error||'Try again'), 'fail');
+    }
+  })
+  .catch(function(){ btn.classList.remove('btn-loading'); toast('Network error. Try again.', 'fail'); });
+}
+</script>
+</body>
+</html>
