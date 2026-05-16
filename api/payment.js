@@ -422,6 +422,27 @@ module.exports = async function handler(req, res) {
   }
 
   /* ══════════════════════════════════════════════════════════════════
+     UPDATE ORDER STATUS — seller marks order as preparing/shipped/delivered
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'update-order-status' && req.method === 'POST') {
+    try {
+      const { orderId, status, sellerId } = req.body || {};
+      if (!orderId || !status) return jsonErr(res, 400, 'orderId and status required.');
+      const allowed = ['preparing','shipped','delivered'];
+      if (!allowed.includes(status)) return jsonErr(res, 400, 'Invalid status.');
+
+      await sql`
+        UPDATE orders SET status = ${status}, updated_at = NOW()
+        WHERE id = ${String(orderId)}
+      `;
+      return res.status(200).json({ ok: true, status });
+    } catch (err) {
+      console.error('[payment/update-order-status]', err.message);
+      return jsonErr(res, 500, 'Could not update order status.', err.message);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
      ORDERS — DELETE ?action=orders&id=xxx
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'orders' && req.method === 'DELETE') {
