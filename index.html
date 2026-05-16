@@ -206,6 +206,24 @@
 .hot-deals-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
 .hot-deals-header h2{margin:0;font-size:1.1rem;}
 .hot-deals-badge{background:var(--red);color:#fff;font-size:.65rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.5px;animation:pulse-badge 1.5s infinite;}
+
+/* Flash Sale Countdown Banner */
+.flash-banner{display:none;background:linear-gradient(135deg,#7f1d1d,#dc2626,#b91c1c);border-radius:14px;padding:16px 18px;margin-bottom:20px;position:relative;overflow:hidden;cursor:pointer}
+.flash-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.06)}
+.flash-banner::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04)}
+.flash-banner-inner{position:relative;z-index:1;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.flash-banner-icon{font-size:2rem;flex-shrink:0;animation:flash-pulse 1s infinite alternate}
+@keyframes flash-pulse{from{transform:scale(1)}to{transform:scale(1.15)}}
+.flash-banner-text{flex:1;min-width:0}
+.flash-banner-title{font-weight:800;font-size:.95rem;color:#fff;margin-bottom:2px;letter-spacing:.3px}
+.flash-banner-sub{font-size:.75rem;color:rgba(255,255,255,.7);margin-bottom:8px}
+.flash-countdown-wrap{display:flex;gap:6px;align-items:center}
+.flash-cd-block{background:rgba(0,0,0,.3);border-radius:8px;padding:6px 10px;text-align:center;min-width:44px}
+.flash-cd-num{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:700;color:#fff;line-height:1;display:block}
+.flash-cd-label{font-size:.55rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;display:block;margin-top:2px}
+.flash-cd-sep{color:rgba(255,255,255,.5);font-size:1.2rem;font-weight:700;margin-bottom:6px}
+.flash-banner-cta{background:#fff;color:#dc2626;border:none;padding:8px 16px;border-radius:8px;font-weight:800;font-size:.78rem;cursor:pointer;flex-shrink:0;transition:.2s;letter-spacing:.3px}
+.flash-banner-cta:hover{background:#fee2e2}
 @keyframes pulse-badge{0%,100%{opacity:1;}50%{opacity:.6;}}
 /* Live countdown */
 .live-timer{display:inline-flex;align-items:center;gap:4px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25);color:var(--red);font-size:.64rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-bottom:4px;}
@@ -647,6 +665,29 @@ textarea.fi{resize:vertical;min-height:88px}
   transition:all .2s;cursor:pointer;background:var(--bg3)}
 .promote-slot:hover{border-color:var(--gold);background:rgba(201,146,42,.04)}
 .promote-slot.active-promo{border-style:solid;border-color:#a855f7;background:rgba(168,85,247,.04)}
+
+/* ══ WISHLIST / FOLLOW / ORDER TRACKER / SEARCH / BUNDLE ══ */
+.wishlist-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .2s;z-index:2}
+.wishlist-btn.wishlisted{background:#fee2e2;color:#dc2626}
+.wishlist-btn:hover{transform:scale(1.1)}
+.follow-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;border:1.5px solid var(--gold);color:var(--gold);background:transparent;transition:all .2s;font-family:inherit}
+.follow-btn.following{background:var(--gold);color:#000}
+.order-track{display:flex;align-items:flex-start;gap:0;margin:10px 0;padding-bottom:4px}
+.order-track-step{display:flex;flex-direction:column;align-items:center;flex:1;min-width:55px}
+.order-track-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:.65rem;transition:.3s;flex-shrink:0}
+.order-track-dot.done{background:var(--green);border-color:var(--green);color:#fff}
+.order-track-dot.active{background:var(--gold);border-color:var(--gold);color:#fff}
+.order-track-line{height:2px;flex:1;background:var(--border);margin-top:11px;transition:.3s}
+.order-track-line.done{background:var(--green)}
+.order-track-label{font-size:.55rem;color:var(--muted);margin-top:4px;text-align:center;line-height:1.3}
+.search-filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.search-input-wrap{flex:1;min-width:180px;position:relative}
+.search-input-wrap input{width:100%;padding:10px 14px 10px 36px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text);font-size:.88rem;box-sizing:border-box;font-family:inherit}
+.search-input-wrap::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.82rem;pointer-events:none}
+.filter-chip{padding:7px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg2);color:var(--muted);font-size:.75rem;cursor:pointer;white-space:nowrap;transition:.2s;font-family:inherit}
+.filter-chip.active{border-color:var(--gold);color:var(--gold);background:rgba(201,146,42,.06);font-weight:700}
+.bundle-card{background:linear-gradient(135deg,rgba(201,146,42,.08),rgba(201,146,42,.03));border:1.5px solid rgba(201,146,42,.25);border-radius:12px;padding:14px;margin-bottom:12px}
+.bundle-tag{display:inline-flex;align-items:center;gap:4px;background:var(--gold);color:#000;font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 
 /* ══════════════════════════════════════
    HOW IT WORKS
@@ -1398,6 +1439,25 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
 
     <div class="shd"><h2>Featured <span class="gld">Products</span></h2><p>Hand-verified, escrow-protected for you</p></div>
 
+    <!-- FLASH SALE COUNTDOWN BANNER -->
+    <div class="flash-banner" id="flash-sale-banner" onclick="go('market')">
+      <div class="flash-banner-inner">
+        <div class="flash-banner-icon">⚡</div>
+        <div class="flash-banner-text">
+          <div class="flash-banner-title">🔥 Flash Sale — Limited Time!</div>
+          <div class="flash-banner-sub" id="flash-banner-sub">Deals ending soon — grab them before they're gone!</div>
+          <div class="flash-countdown-wrap">
+            <div class="flash-cd-block"><span class="flash-cd-num" id="fcd-h">00</span><span class="flash-cd-label">hrs</span></div>
+            <div class="flash-cd-sep">:</div>
+            <div class="flash-cd-block"><span class="flash-cd-num" id="fcd-m">00</span><span class="flash-cd-label">min</span></div>
+            <div class="flash-cd-sep">:</div>
+            <div class="flash-cd-block"><span class="flash-cd-num" id="fcd-s">00</span><span class="flash-cd-label">sec</span></div>
+          </div>
+        </div>
+        <button class="flash-banner-cta">Shop Now →</button>
+      </div>
+    </div>
+
     <!-- TODAY'S HOT DEALS — only visible when active flash sales exist -->
     <div class="hot-deals-section" id="hot-deals-section" style="display:none">
       <div class="hot-deals-header">
@@ -1543,6 +1603,17 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="cp" onclick="fMkt(this,'software')">⚙️ Software</div>
       <div class="cp" onclick="fMkt(this,'fashion')">👗 Fashion</div>
       <div class="cp" onclick="fMkt(this,'electronics')">📱 Electronics</div>
+    </div>
+    <!-- Price range & currency filters -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="filter-chip active" id="fc-all" onclick="fPrice(this,'all')">All Prices</button>
+      <button class="filter-chip" id="fc-low" onclick="fPrice(this,'low')">Under ₦5k</button>
+      <button class="filter-chip" id="fc-mid" onclick="fPrice(this,'mid')">₦5k–₦50k</button>
+      <button class="filter-chip" id="fc-high" onclick="fPrice(this,'high')">₦50k+</button>
+      <button class="filter-chip" id="fc-usd" onclick="fCurr(this,'USD')">🇺🇸 USD</button>
+      <button class="filter-chip" id="fc-gbp" onclick="fCurr(this,'GBP')">🇬🇧 GBP</button>
+      <button class="filter-chip" id="fc-eur" onclick="fCurr(this,'EUR')">🇪🇺 EUR</button>
+      <button class="filter-chip" id="fc-wishlist" onclick="fWishlist(this)">❤️ Wishlist</button>
     </div>
     <div class="pg" id="mkt-grid"></div>
   </div>
@@ -1892,7 +1963,9 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           <button onclick="openWithdrawModal()" id="wallet-withdraw-btn" style="background:var(--gold);color:#000;border:none;padding:10px 22px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer;opacity:.4;transition:all .2s" disabled>💸 Withdraw Funds</button>
         </div>
         <!-- Stats row -->
-        <div id="seller-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-bottom:18px"></div>
+        <div id="seller-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-bottom:14px"></div>
+        <!-- Analytics summary -->
+        <div id="seller-analytics-summary" style="margin-bottom:16px"></div>
         <!-- Products list -->
         <div id="seller-products-list"></div>
       </div>
@@ -3226,9 +3299,13 @@ function mkCard(p) {
   var outOfStock = qty !== null && qty <= 0;
   var lowStock   = qty !== null && qty > 0 && qty <= 5;
 
+  var wishlist   = lv('nm_wishlist') || [];
+  var isWished   = wishlist.indexOf(String(p.id)) > -1;
+
   return '<div class="pcard' + (outOfStock ? ' out-of-stock' : '') + '"'
     + (outOfStock ? '' : ' onclick="opn(' + p.id + ')"') + timerData + '>'
     + (isAdmin ? '<button class="admin-delete-btn" onclick="event.stopPropagation();delProd(' + p.id + ')" title="Delete product">🗑️</button>' : '')
+    + '<button class="wishlist-btn' + (isWished ? ' wishlisted' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ',this)" title="' + (isWished ? 'Remove from wishlist' : 'Add to wishlist') + '">' + (isWished ? '❤️' : '🤍') + '</button>'
     + '<div class="pci">' + mi
     + (outOfStock ? '<span class="sale-badge" style="background:#6b7280">OUT OF STOCK</span>' : saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
     + '<span class="pb2 ' + tc + '">' + tl + '</span>'
@@ -3250,6 +3327,112 @@ function mkCard(p) {
     + '</div></div>';
 }
 window.mkCard = mkCard;
+
+/* ═══════════════════════════════════════════════════════
+   WISHLIST
+═══════════════════════════════════════════════════════ */
+function toggleWishlist(id, btn) {
+  var wishlist = lv('nm_wishlist') || [];
+  var idx      = wishlist.indexOf(String(id));
+  if (idx > -1) {
+    wishlist.splice(idx, 1);
+    if (btn) { btn.textContent = '🤍'; btn.classList.remove('wishlisted'); btn.title = 'Add to wishlist'; }
+    toast('Removed from wishlist', 'warn');
+  } else {
+    wishlist.push(String(id));
+    if (btn) { btn.textContent = '❤️'; btn.classList.add('wishlisted'); btn.title = 'Remove from wishlist'; }
+    toast('❤️ Added to wishlist!', 'ok');
+  }
+  sv('nm_wishlist', wishlist);
+}
+window.toggleWishlist = toggleWishlist;
+
+function fWishlist(el) {
+  document.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  var wishlist = lv('nm_wishlist') || [];
+  var wished   = getActive().filter(function(p){ return wishlist.indexOf(String(p.id)) > -1; });
+  rGrid('mkt-grid', wished);
+  if (!wished.length) {
+    var g = document.getElementById('mkt-grid');
+    if (g) g.innerHTML = '<div class="eg"><div style="font-size:2rem;margin-bottom:8px">🤍</div><p>Your wishlist is empty. Tap 🤍 on any product to save it.</p></div>';
+  }
+}
+window.fWishlist = fWishlist;
+
+/* ═══════════════════════════════════════════════════════
+   PRICE RANGE FILTER
+═══════════════════════════════════════════════════════ */
+function fPrice(el, range) {
+  document.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  var all = getActive();
+  var filtered;
+  if      (range === 'low')  filtered = all.filter(function(p){ return p.price < 5000; });
+  else if (range === 'mid')  filtered = all.filter(function(p){ return p.price >= 5000 && p.price <= 50000; });
+  else if (range === 'high') filtered = all.filter(function(p){ return p.price > 50000; });
+  else                       filtered = all;
+  rGrid('mkt-grid', filtered);
+}
+window.fPrice = fPrice;
+
+/* ═══════════════════════════════════════════════════════
+   CURRENCY FILTER
+═══════════════════════════════════════════════════════ */
+function fCurr(el, currency) {
+  document.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+  el.classList.add('active');
+  var filtered = getActive().filter(function(p){ return (p.currency || 'NGN') === currency; });
+  rGrid('mkt-grid', filtered);
+}
+window.fCurr = fCurr;
+
+/* ═══════════════════════════════════════════════════════
+   FOLLOW SELLER
+═══════════════════════════════════════════════════════ */
+function toggleFollow(sellerName, btn) {
+  if (!CU) { toast('Sign in to follow sellers.', 'warn'); return; }
+  var followed = lv('nm_followed') || [];
+  var idx      = followed.indexOf(sellerName);
+  if (idx > -1) {
+    followed.splice(idx, 1);
+    if (btn) { btn.textContent = '+ Follow'; btn.classList.remove('following'); }
+    toast('Unfollowed ' + sellerName, 'warn');
+  } else {
+    followed.push(sellerName);
+    if (btn) { btn.textContent = '✓ Following'; btn.classList.add('following'); }
+    toast('✓ Now following ' + sellerName + '!', 'ok');
+  }
+  sv('nm_followed', followed);
+}
+window.toggleFollow = toggleFollow;
+
+/* ═══════════════════════════════════════════════════════
+   ORDER STATUS TRACKER
+═══════════════════════════════════════════════════════ */
+function buildOrderTracker(status) {
+  var steps = [
+    { key: 'paid',      label: 'Paid',      icon: '💳' },
+    { key: 'preparing', label: 'Preparing', icon: '📦' },
+    { key: 'shipped',   label: 'Shipped',   icon: '🚚' },
+    { key: 'delivered', label: 'Delivered', icon: '✅' }
+  ];
+  var statusOrder = { paid: 0, preparing: 1, shipped: 2, delivered: 3, completed: 3 };
+  var current     = statusOrder[status] !== undefined ? statusOrder[status] : 0;
+
+  return '<div class="order-track">' + steps.map(function(step, i) {
+    var isDone   = i < current;
+    var isActive = i === current;
+    return '<div class="order-track-step">'
+      + '<div class="order-track-dot' + (isDone ? ' done' : isActive ? ' active' : '') + '">' + step.icon + '</div>'
+      + '<div class="order-track-label">' + step.label + '</div>'
+      + '</div>'
+      + (i < steps.length - 1
+        ? '<div class="order-track-line' + (isDone ? ' done' : '') + '"></div>'
+        : '');
+  }).join('') + '</div>';
+}
+window.buildOrderTracker = buildOrderTracker;
 
 /* ════════════════════════════════════════════════════════════════
    mkCard(p) — single product card HTML. Used by rGrid, renderHotDeals.
@@ -3361,6 +3544,7 @@ function opn(id) {
   if      (p.sellerTier === 'business') pdTierBadge = ' <span style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">💼 Business</span>';
   else if (p.sellerTier === 'pro')      pdTierBadge = ' <span style="background:linear-gradient(135deg,#c9922a,#b45309);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">🥇 Pro</span>';
   else if (p.sellerTier === 'starter')  pdTierBadge = ' <span style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:1px 7px;border-radius:4px;font-size:.6rem;font-weight:700">🔵 Starter</span>';
+  var followed = (lv('nm_followed') || []).indexOf(p.seller) > -1;
   var pdQty      = (p.quantity !== undefined && p.quantity !== null) ? parseInt(p.quantity, 10) : null;
   var pdLocation = p.location || p.seller_location || '';
   var pdBio      = p.sellerBio || p.seller_bio || '';
@@ -3427,6 +3611,7 @@ function opn(id) {
     /* ════ SELLER INFO ════ */
     + '<div style="padding:0 14px 14px;">'
     + '<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px"><strong style="color:#c9922a">' + p.seller + '</strong>' + verBadge + trustBadge + pdTierBadge + (pdLocation ? ' &nbsp;📍 ' + pdLocation : '') + '</p>'
+    + '<div style="margin-bottom:12px"><button class="follow-btn' + (followed ? ' following' : '') + '" onclick="toggleFollow(\'' + p.seller.replace(/'/g,"\\'") + '\',this)">' + (followed ? '✓ Following' : '+ Follow') + '</button></div>'
     + (pdStock ? '<div style="margin-bottom:8px">' + pdStock + '</div>' : '')
     + (pdBio ? '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--text);line-height:1.5">'
       + '<strong style="color:#111827;display:block;margin-bottom:4px">About Seller</strong>'
@@ -3461,8 +3646,12 @@ function opn(id) {
       + '<div style="display:flex;gap:4px;margin-bottom:8px" id="star-pick-' + p.id + '">'
       + [1,2,3,4,5].map(function(n){ return '<span onclick="pickStar(' + p.id + ',' + n + ')" style="font-size:1.3rem;cursor:pointer;color:#d1d5db" id="star-' + p.id + '-' + n + '">★</span>'; }).join('')
       + '</div>'
-      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience..." style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;color:var(--text);padding:8px;border-radius:6px;font-size:.82rem;resize:none;height:64px;outline:none;font-family:inherit"></textarea>'
-      + '<button onclick="submitReview(' + p.id + ')" style="margin-top:8px;width:100%;background:#c9922a;color:#fff;border:none;padding:8px;border-radius:6px;font-weight:700;font-size:.8rem;cursor:pointer">Submit Review</button>'
+      + '<textarea id="rev-comment-' + p.id + '" placeholder="Share your experience..." style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;color:var(--text);padding:8px;border-radius:6px;font-size:.82rem;resize:none;height:64px;outline:none;font-family:inherit;box-sizing:border-box"></textarea>'
+      + '<div style="margin:8px 0">'
+      + '<label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">📷 Add a photo (optional)</label>'
+      + '<input type="file" id="rev-photo-' + p.id + '" accept="image/*" style="font-size:.76rem;width:100%"/>'
+      + '</div>'
+      + '<button onclick="submitReview(' + p.id + ')" style="margin-top:4px;width:100%;background:#c9922a;color:#fff;border:none;padding:8px;border-radius:6px;font-weight:700;font-size:.8rem;cursor:pointer">Submit Review</button>'
       + '</div>' : '<p style="font-size:.79rem;color:var(--muted);margin:0"><a onclick="go(\'signin\')" style="color:#c9922a;cursor:pointer">Sign in</a> to leave a review</p>')
     + '</div>'
     + '</div>'
@@ -3538,11 +3727,14 @@ function loadReviews(productId) {
       listEl.innerHTML = revs.map(function(r) {
         var stars = '';
         for (var i = 1; i <= 5; i++) stars += '<span style="color:' + (i <= r.rating ? 'var(--gold)' : 'var(--border)') + '">★</span>';
-        return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
-          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+        var date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
           + '<strong style="font-size:.83rem">' + r.user_name + '</strong>'
           + '<span style="font-size:.85rem">' + stars + '</span></div>'
-          + (r.comment ? '<p style="font-size:.8rem;color:var(--muted);margin:0">' + r.comment + '</p>' : '')
+          + (date ? '<div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">' + date + '</div>' : '')
+          + (r.comment ? '<p style="font-size:.8rem;color:var(--muted);margin:0 0 6px">' + r.comment + '</p>' : '')
+          + (r.photo ? '<img src="' + r.photo + '" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:4px" onclick="this.style.maxHeight=this.style.maxHeight===\'none\'?\'180px\':\'none\'"/>' : '')
           + '</div>';
       }).join('');
     })
@@ -3554,27 +3746,43 @@ window.loadReviews = loadReviews;
 
 function submitReview(productId) {
   if (!CU) { toast('Please sign in to review', 'fail'); return; }
-  var rating  = selectedStars[productId];
-  var comment = (document.getElementById('rev-comment-' + productId) || {}).value || '';
+  var rating   = selectedStars[productId];
+  var comment  = (document.getElementById('rev-comment-' + productId) || {}).value || '';
+  var photoInp = document.getElementById('rev-photo-' + productId);
+  var file     = photoInp && photoInp.files && photoInp.files[0];
   if (!rating) { toast('Please select a star rating', 'fail'); return; }
-  fetch('/api/reviews', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId: String(productId), userId: String(CU.id), userName: CU.name, rating: rating, comment: comment })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      toast('Review submitted! ⭐', 'ok');
-      /* Update local product rating */
-      var p = prods.find(function(x){ return Number(x.id) === Number(productId); });
-      if (p) { p.rating = parseFloat(data.rating); p.reviews = data.reviews; sv('nm_products', prods); }
-      loadReviews(productId);
-    } else {
-      toast(data.error || 'Could not submit review', 'fail');
-    }
-  })
-  .catch(function(){ toast('Could not submit review', 'fail'); });
+
+  function postReview(photoUrl) {
+    fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: String(productId), userId: String(CU.id), userName: CU.name, rating: rating, comment: comment, photo: photoUrl || null })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        toast('Review submitted! ⭐', 'ok');
+        var p = prods.find(function(x){ return Number(x.id) === Number(productId); });
+        if (p) { p.rating = parseFloat(data.rating); p.reviews = data.reviews; sv('nm_products', prods); }
+        loadReviews(productId);
+      } else {
+        toast(data.error || 'Could not submit review', 'fail');
+      }
+    })
+    .catch(function(){ toast('Could not submit review', 'fail'); });
+  }
+
+  if (file) {
+    toast('⏳ Uploading photo…', 'ok');
+    var fd = new FormData();
+    fd.append('image', file);
+    fetch('https://api.imgbb.com/1/upload?key=' + (window.IMGBB_KEY || ''), { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ postReview(d.data && d.data.url ? d.data.url : null); })
+      .catch(function(){ postReview(null); });
+  } else {
+    postReview(null);
+  }
 }
 window.submitReview = submitReview;
 
@@ -4205,7 +4413,22 @@ function renderOrders() {
           /* If the logged-in user is neither detected buyer NOR seller (data mismatch),
              prefer seller view so they can always confirm delivery */
           if (isSeller || (!isBuyer && CU && CU.role === 'seller')) {
-            actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">📦 Confirm Delivery — Enter Code</button>';
+            var statusBtns = '';
+            if (o.status === 'paid' || o.status === 'escrow_held') {
+              statusBtns = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
+                + '<button onclick="updateOrderStatus(\'' + o.id + '\',\'preparing\')" style="flex:1;background:rgba(245,158,11,.1);border:1px solid #f59e0b;color:#f59e0b;padding:8px;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer">📦 Preparing</button>'
+                + '<button onclick="updateOrderStatus(\'' + o.id + '\',\'shipped\')" style="flex:1;background:rgba(59,130,246,.1);border:1px solid #3b82f6;color:#3b82f6;padding:8px;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer">🚚 Shipped</button>'
+                + '</div>';
+            } else if (o.status === 'preparing') {
+              statusBtns = '<div style="display:flex;gap:6px;margin-top:8px">'
+                + '<button onclick="updateOrderStatus(\'' + o.id + '\',\'shipped\')" style="flex:1;background:rgba(59,130,246,.1);border:1px solid #3b82f6;color:#3b82f6;padding:8px;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer">🚚 Mark as Shipped</button>'
+                + '</div>';
+            } else if (o.status === 'shipped') {
+              statusBtns = '<div style="display:flex;gap:6px;margin-top:8px">'
+                + '<button onclick="updateOrderStatus(\'' + o.id + '\',\'delivered\')" style="flex:1;background:rgba(16,185,129,.1);border:1px solid #10b981;color:#10b981;padding:8px;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer">✅ Mark as Delivered</button>'
+                + '</div>';
+            }
+            actionBtn = statusBtns + '<button onclick="openDVC(\'' + o.id + '\',\'seller\')" style="width:100%;background:var(--gold);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:8px">📦 Confirm Delivery — Enter Code</button>';
           } else {
             actionBtn = '<button onclick="openDVC(\'' + o.id + '\',\'buyer\')" style="width:100%;background:var(--blue);color:#fff;border:none;padding:14px;border-radius:6px;font-weight:700;font-size:.88rem;cursor:pointer;margin-top:10px">🔐 Get Delivery Code</button>';
           }
@@ -4261,10 +4484,11 @@ function renderOrders() {
           + '<div style="font-weight:700;font-size:.88rem">' + o.id + '</div></div>'
           + '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:3px 10px;border-radius:50px;font-size:.65rem;font-weight:700">' + statusLabel + '</span>'
           + '</div>'
+          + (isPhys ? buildOrderTracker(o.status) : '')
           + '<div style="font-size:.82rem;color:var(--text);margin-bottom:4px">' + o.items.map(function(i){ return i.emoji+' '+i.name.substring(0,28); }).join(', ') + '</div>'
           + addrRow
           + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px">'
-          + '<span style="font-family:serif;font-size:1.1rem;font-weight:700;color:var(--gold)">₦' + o.total.toLocaleString() + '</span>'
+          + '<span style="font-family:serif;font-size:1.1rem;font-weight:700;color:var(--gold)">' + currSymbol(o.currency) + o.total.toLocaleString() + '</span>'
           + '<span style="font-size:.7rem;color:var(--muted)">' + (o.date||'') + '</span>'
           + '</div>'
           + actionBtn
@@ -4344,7 +4568,29 @@ function markCol(id) {
   if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(20, 'Sale confirmed: ' + id);
   renderOrders();
 }
-window.markCol = markCol;
+/* ══ SELLER ORDER STATUS UPDATE ══ */
+function updateOrderStatus(orderId, status) {
+  toast('⏳ Updating order status…', 'ok');
+  fetch('/api/payment?action=update-order-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: orderId, status: status })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      toast('✅ Order marked as ' + status + '!', 'ok');
+      /* Update local ords */
+      var o = ords.find(function(x){ return x.id === orderId; });
+      if (o) { o.status = status; sv('nm_orders', ords); }
+      renderOrders();
+    } else {
+      toast('Could not update: ' + (data.error||'Try again'), 'fail');
+    }
+  })
+  .catch(function(){ toast('Network error. Try again.', 'fail'); });
+}
+window.updateOrderStatus = updateOrderStatus;
 
 /* ════════════════════════════════════════════════════════════════
    markDLEscrow — called by the onclick of the direct download anchor.
@@ -5312,6 +5558,10 @@ function renderSellerDash() {
     return mine ? sum + Math.round(o.total * 0.9) : sum;
   }, 0);
 
+  var myOrds       = ords.filter(function(o){ return o.items && o.items.some(function(i){ return prods.find(function(p){ return p.id === i.sellerId && (p.seller === CU.name); }); }); });
+  var completedOrds = myOrds.filter(function(o){ return o.status === 'completed'; }).length;
+  var topProd      = myProds.sort(function(a,b){ return (b.reviews||0)-(a.reviews||0); })[0];
+
   /* stats row */
   var statsEl = document.getElementById('seller-stats');
   if (statsEl) {
@@ -5321,6 +5571,26 @@ function renderSellerDash() {
       '<div class="sm"><div class="sl">Pending</div><div class="sv" style="color:var(--orange)">' + pending + '</div></div>' +
       '<div class="sm"><div class="sl">Earnings</div><div class="sv">₦' + totalRevenue.toLocaleString() + '</div></div>';
   }
+
+  /* Analytics summary */
+  var analyticsEl = document.getElementById('seller-analytics-summary');
+  if (analyticsEl) {
+    analyticsEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+      + '<div style="background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)">'
+      + '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Orders Completed</div>'
+      + '<div style="font-family:serif;font-size:1.5rem;font-weight:700;color:var(--green)">' + completedOrds + '</div>'
+      + '</div>'
+      + '<div style="background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border)">'
+      + '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Top Product</div>'
+      + '<div style="font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (topProd ? topProd.emoji + ' ' + topProd.name.substring(0,20) : '—') + '</div>'
+      + '</div>'
+      + '</div>'
+      + (myProds.length ? '<div style="background:rgba(201,146,42,.06);border:1px solid rgba(201,146,42,.2);border-radius:10px;padding:12px;font-size:.8rem;color:var(--text)">'
+      + '💡 <strong>Tip:</strong> Promote your top product to get more visibility and sales!'
+      + ' <button onclick="switchDashTab(\'settings\',document.getElementById(\'tab-settings\'))" style="background:none;border:none;color:var(--gold);font-weight:700;cursor:pointer;font-size:.8rem">Go to Promote →</button>'
+      + '</div>' : '');
+  } /* end if analyticsEl */
 
   /* products list */
   var listEl = document.getElementById('seller-products-list');
@@ -5341,19 +5611,24 @@ function renderSellerDash() {
       ? '<img src="' + p.imgs[0] + '" style="width:48px;height:48px;border-radius:9px;object-fit:cover;flex-shrink:0"/>'
       : '<div style="width:48px;height:48px;border-radius:9px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">' + p.emoji + '</div>';
 
-    var statusCol = p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--orange)' : 'var(--red)';
+    var statusCol   = p.status === 'active' ? 'var(--green)' : p.status === 'pending' ? 'var(--orange)' : 'var(--red)';
     var statusLabel = p.status === 'active' ? '● Live' : p.status === 'pending' ? '⏳ Under Review' : '✕ Rejected';
+    var sym         = currSymbol(p.currency);
 
     return '<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'
       + img
       + '<div style="flex:1;min-width:120px">'
       + '<div style="font-weight:600;font-size:.87rem;margin-bottom:3px">' + p.name.substring(0, 36) + (p.name.length > 36 ? '…' : '') + '</div>'
-      + '<div style="font-size:.76rem;color:var(--muted)">₦' + p.price.toLocaleString() + ' · ' + p.commission + '% commission</div>'
+      + '<div style="font-size:.76rem;color:var(--muted)">' + sym + p.price.toLocaleString() + ' · ' + p.commission + '% commission</div>'
+      + '<div style="font-size:.72rem;color:var(--muted);margin-top:2px">'
+      + (p.reviews > 0 ? '⭐ ' + p.rating + ' (' + p.reviews + ' reviews) · ' : '')
+      + (p.quantity !== null && p.quantity !== undefined ? '📦 ' + p.quantity + ' in stock' : '')
+      + '</div>'
       + '<div style="font-size:.74rem;color:' + statusCol + ';margin-top:2px;font-weight:600">' + statusLabel + '</div>'
       + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'
-      + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share Link</button>'
-      + (CU && p.sellerId && (String(p.sellerId) === String(CU.id) || CU.role === 'admin') ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑 Delete</button>' : '')
+      + '<button onclick="cpyAffProd(' + p.id + ')" style="background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">🔗 Share</button>'
+      + (CU && p.sellerId && (String(p.sellerId) === String(CU.id) || CU.role === 'admin') ? '<button onclick="deleteProduct(' + p.id + ')" style="background:rgba(255,58,92,.1);border:1px solid rgba(255,58,92,.25);color:var(--red);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">🗑</button>' : '')
       + '</div>'
       + '</div>';
   }).join('');
@@ -6613,12 +6888,13 @@ function aTab(tab, btn) {
             + allOrders.slice().reverse().map(function(o) {
                 var cust = o.customer||{};
                 var dcode = o.deliveryCode || o.delivery_code || '—';
+                var oSym = currSymbol(o.currency);
                 return '<tr>'
                   + '<td style="font-size:.74rem;color:var(--gold)">'+o.id+'</td>'
                   + '<td>'+(cust.name||'—')+'<br/><span style="font-size:.72rem;color:var(--muted)">'+(cust.email||'')+'</span></td>'
                   + '<td>'+(o.items||[]).length+'</td>'
-                  + '<td style="font-weight:600">₦'+parseFloat(o.total||0).toLocaleString()+'</td>'
-                  + '<td style="color:var(--green)">₦'+parseFloat(o.sellerPayout||o.seller_payout||0).toLocaleString()+'</td>'
+                  + '<td style="font-weight:600">'+oSym+parseFloat(o.total||0).toLocaleString()+'</td>'
+                  + '<td style="color:var(--green)">'+oSym+parseFloat(o.sellerPayout||o.seller_payout||0).toLocaleString()+'</td>'
                   + '<td style="font-family:monospace;font-weight:700;color:var(--orange);letter-spacing:2px">'+dcode+'</td>'
                   + '<td><span class="sb2 '+(o.collected||o.status==='paid'?'s-ok':'s-pend')+'">'+(o.collected?'Done':o.status||'Pending')+'</span></td>'
                   + '<td style="font-size:.74rem;color:var(--muted)">'+(o.date||'')+'</td>'
@@ -7230,6 +7506,7 @@ function renderHotDeals(products) {
   var section = document.getElementById('hot-deals-section');
   var grid    = document.getElementById('hot-deals-grid');
   var cnt     = document.getElementById('deals-count');
+  var banner  = document.getElementById('flash-sale-banner');
   if (!section || !grid) return;
 
   var now   = Date.now();
@@ -7242,11 +7519,59 @@ function renderHotDeals(products) {
     return hasDiscount && isOnSale && notExpired;
   });
 
-  if (!deals.length) { section.style.display = 'none'; return; }
+  if (!deals.length) {
+    section.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+
+  /* Show hot deals section */
   section.style.display = 'block';
   if (cnt) cnt.textContent = deals.length + ' deal' + (deals.length > 1 ? 's' : '') + ' ending soon';
   grid.innerHTML = deals.map(function(p) { return mkCard(p); }).join('');
   startCountdownTicker();
+
+  /* Show flash sale banner with countdown to soonest ending deal */
+  if (banner) {
+    var soonest = deals.reduce(function(min, p) {
+      var ends = p.saleEndsAt || p.sale_ends_at;
+      if (!ends) return min;
+      var t = new Date(ends).getTime();
+      return (!min || t < min) ? t : min;
+    }, null);
+
+    banner.style.display = 'block';
+
+    /* Update sub text */
+    var sub = document.getElementById('flash-banner-sub');
+    if (sub) sub.textContent = deals.length + ' deal' + (deals.length > 1 ? 's' : '') + ' on now — grab them before they\'re gone!';
+
+    /* Start banner countdown */
+    if (window._flashBannerInterval) clearInterval(window._flashBannerInterval);
+
+    function updateBannerClock() {
+      var hEl = document.getElementById('fcd-h');
+      var mEl = document.getElementById('fcd-m');
+      var sEl = document.getElementById('fcd-s');
+      if (!hEl) return;
+
+      var diff = soonest ? Math.max(0, soonest - Date.now()) : 0;
+      if (diff <= 0) {
+        clearInterval(window._flashBannerInterval);
+        renderHotDeals(window.prods);
+        return;
+      }
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      hEl.textContent = h < 10 ? '0' + h : String(h);
+      mEl.textContent = m < 10 ? '0' + m : String(m);
+      sEl.textContent = s < 10 ? '0' + s : String(s);
+    }
+
+    updateBannerClock();
+    window._flashBannerInterval = setInterval(updateBannerClock, 1000);
+  }
 }
 window.renderHotDeals = renderHotDeals;
 
@@ -7782,9 +8107,14 @@ function buildSystemPrompt() {
     "- Total platform revenue: ₦" + Math.round(totalRev).toLocaleString(),
     "",
     "## PRODUCT ESTATE — LIVE LISTINGS (recommend these to buyers by name when relevant)",
+    "IMPORTANT: Products are listed in their seller's chosen currency (NGN, USD, GBP, EUR, CAD, GHS).",
+    "Always show the correct currency symbol for each product — never assume all prices are in Naira.",
+    "Currency symbols: NGN=₦, USD=$, GBP=£, EUR=€, CAD=CA$, GHS=GH₵",
     activeProds.slice(0,20).map(function(p){
-      return "  • " + p.emoji + " " + p.name + " — ₦" + p.price.toLocaleString()
-        + " [" + p.cat + "]"
+      var symMap = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' };
+      var sym = symMap[p.currency] || '₦';
+      return "  • " + p.emoji + " " + p.name + " — " + sym + p.price.toLocaleString()
+        + " [" + p.cat + "] [" + (p.currency || 'NGN') + "]"
         + (p.isVerified || p.is_verified ? " ✓Trusted" : "")
         + (p.type === "digital" ? " (instant download)" : " (physical, delivered)");
     }).join("\n") || "  No active listings yet.",
@@ -7799,6 +8129,8 @@ function buildSystemPrompt() {
     "- Physical products: buyer confirms receipt to release escrow",
     "- Zero Scam Guarantee: escrow holds funds until delivery confirmed",
     "- Support: +2349072212496 (WhatsApp/call, 8am–8pm WAT)",
+    "- Products can be listed in NGN, USD, GBP, EUR, CAD or GHS",
+    "- Foreign currency products are converted to NGN at live rate during checkout",
     "",
     "## FORMAT",
     "- Use **bold** for key terms and important figures",
