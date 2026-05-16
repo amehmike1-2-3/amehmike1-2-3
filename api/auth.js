@@ -834,9 +834,9 @@ module.exports = async function handler(req, res) {
        STAFF GATE — login + product/KYC review actions
     ══════════════════════════════════════════════════ */
     const STAFF_ACCOUNTS = {
-      'product1@neyomarket.com': { pass: 'NeyoPR1!2026',  role: 'product_reviewer', name: 'Product Reviewer 1' },
-      'product2@neyomarket.com': { pass: 'NeyoPR2!2026',  role: 'product_reviewer', name: 'Product Reviewer 2' },
-      'kyc1@neyomarket.com':     { pass: 'NeyoKYC1!2026', role: 'kyc_reviewer',     name: 'KYC Reviewer'      },
+      'product1@neyomarket.com': { pass: process.env.STAFF_PR1_PASS,  role: 'product_reviewer', name: 'Product Reviewer 1' },
+      'product2@neyomarket.com': { pass: process.env.STAFF_PR2_PASS,  role: 'product_reviewer', name: 'Product Reviewer 2' },
+      'kyc1@neyomarket.com':     { pass: process.env.STAFF_KYC1_PASS, role: 'kyc_reviewer',     name: 'KYC Reviewer'      },
     };
 
     if (req.query.action === 'staff-login' && req.method === 'POST') {
