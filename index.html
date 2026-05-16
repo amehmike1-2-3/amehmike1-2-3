@@ -2676,6 +2676,7 @@ function apiCall(path, method, body) {
 
 /* Local cache helpers (used while offline or as fallback) */
 function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function lv(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch(e) { return null; } }
 function ld(k, d) { try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } catch (e) { return d; } }
 function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
 function sval(id, v) { var e = document.getElementById(id); if (e) e.value = v; }
@@ -3305,8 +3306,8 @@ function mkCard(p) {
   return '<div class="pcard' + (outOfStock ? ' out-of-stock' : '') + '"'
     + (outOfStock ? '' : ' onclick="opn(' + p.id + ')"') + timerData + '>'
     + (isAdmin ? '<button class="admin-delete-btn" onclick="event.stopPropagation();delProd(' + p.id + ')" title="Delete product">🗑️</button>' : '')
-    + '<button class="wishlist-btn' + (isWished ? ' wishlisted' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ',this)" title="' + (isWished ? 'Remove from wishlist' : 'Add to wishlist') + '">' + (isWished ? '❤️' : '🤍') + '</button>'
     + '<div class="pci">' + mi
+    + '<button class="wishlist-btn' + (isWished ? ' wishlisted' : '') + '" onclick="event.stopPropagation();toggleWishlist(' + p.id + ',this)" title="' + (isWished ? 'Remove from wishlist' : 'Add to wishlist') + '">' + (isWished ? '❤️' : '🤍') + '</button>'
     + (outOfStock ? '<span class="sale-badge" style="background:#6b7280">OUT OF STOCK</span>' : saleActive ? '<span class="sale-badge">SALE</span>' : (p.badge && p.badge !== 'Pending Review' ? '<span class="pb1">' + p.badge + '</span>' : ''))
     + '<span class="pb2 ' + tc + '">' + tl + '</span>'
     + '<span class="el">\uD83D\uDEE1 Escrow</span></div>'
@@ -8112,8 +8113,9 @@ function buildSystemPrompt() {
     "Currency symbols: NGN=₦, USD=$, GBP=£, EUR=€, CAD=CA$, GHS=GH₵",
     activeProds.slice(0,20).map(function(p){
       var symMap = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' };
-      var sym = symMap[p.currency] || '₦';
-      return "  • " + p.emoji + " " + p.name + " — " + sym + p.price.toLocaleString()
+      var sym = symMap[p.currency] || symMap[(p.currency||'').toUpperCase()] || '₦';
+      var price = p.discountPrice || p.discount_price || p.price;
+      return "  • " + (p.emoji||'📦') + " " + p.name + " — " + sym + Number(price).toLocaleString()
         + " [" + p.cat + "] [" + (p.currency || 'NGN') + "]"
         + (p.isVerified || p.is_verified ? " ✓Trusted" : "")
         + (p.type === "digital" ? " (instant download)" : " (physical, delivered)");
@@ -8166,8 +8168,11 @@ function sendMsg() {
 
   /* Product Estate snapshot: top 20 active products for AI recommendations */
   var productEstate = activeProds2.slice(0,20).map(function(p){
-    return p.emoji + ' ' + p.name + ' — ₦' + p.price.toLocaleString()
-      + ' [' + p.cat + ']'
+    var symMap2 = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' };
+    var sym2    = symMap2[(p.currency||'NGN').toUpperCase()] || '₦';
+    var price2  = p.discountPrice || p.discount_price || p.price;
+    return (p.emoji||'📦') + ' ' + p.name + ' — ' + sym2 + Number(price2).toLocaleString()
+      + ' [' + p.cat + '] [' + (p.currency||'NGN') + ']'
       + (p.isVerified || p.is_verified ? ' ✓Trusted' : '')
       + (p.type === 'digital' ? ' (digital)' : ' (physical)');
   });
@@ -8182,7 +8187,7 @@ function sendMsg() {
         userRole:       CU ? CU.role : 'guest',
         activeProducts: activeProds2.length,
         topCategories:  topCats2.join(', ') || 'none yet',
-        totalRevenue:   '₦' + Math.round(rev2).toLocaleString(),
+        totalRevenue:   'NGN ₦' + Math.round(rev2).toLocaleString() + ' (platform revenue in Naira)',
         productEstate:  productEstate  /* NEW: live listings for recommendations */
       }
     })
