@@ -887,6 +887,101 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    /* ══ ADMIN WALLET BALANCE ══ */
+    if (req.query.action === 'admin-wallet-balance' && req.method === 'GET') {
+      try {
+        const rows = await sql`
+          SELECT admin_wallet FROM users
+          WHERE role = 'admin'
+          ORDER BY id ASC LIMIT 1
+        `;
+        const balance = rows.length ? parseFloat(rows[0].admin_wallet || 0) : 0;
+        const txns    = await sql`
+          SELECT type, amount, description, ref, created_at
+          FROM admin_wallet_transactions
+          ORDER BY created_at DESC LIMIT 50
+        `;
+        return res.status(200).json({ ok: true, balance, transactions: txns });
+      } catch(err) {
+        console.error('[auth/admin-wallet-balance]', err.message);
+        return res.status(500).json({ ok: false, error: 'Could not load admin wallet.' });
+      }
+    }
+
+    /* ══ ADMIN WALLET TOP UP ══ */
+    if (req.query.action === 'admin-wallet-topup' && req.method === 'POST') {
+      const { amount, ref, adminId } = req.body || {};
+      if (!amount || !ref) return res.status(400).json({ ok: false, error: 'amount and ref required.' });
+      const amt = parseFloat(amount);
+      try {
+        /* Credit admin wallet */
+        await sql`
+          UPDATE users SET admin_wallet = COALESCE(admin_wallet, 0) + ${amt}
+          WHERE role = 'admin'
+        `;
+        /* Record transaction */
+        await sql`
+          INSERT INTO admin_wallet_transactions (type, amount, description, ref, created_at)
+          VALUES ('credit', ${amt}, ${'Platform wallet top-up via Paystack'}, ${ref}, NOW())
+        `;
+        console.log('[auth/admin-wallet-topup] ₦' + amt + ' ref:' + ref);
+        return res.status(200).json({ ok: true });
+      } catch(err) {
+        console.error('[auth/admin-wallet-topup]', err.message);
+        return res.status(500).json({ ok: false, error: 'Could not update admin wallet.' });
+      }
+    }
+
+    /* ══ ADMIN WALLET DEDUCT ══ */
+    if (req.query.action === 'admin-wallet-deduct' && req.method === 'POST') {
+      const { amount, ref, description } = req.body || {};
+      if (!amount) return res.status(400).json({ ok: false, error: 'amount required.' });
+      const amt = parseFloat(amount);
+      try {
+        await sql`
+          UPDATE users SET admin_wallet = COALESCE(admin_wallet, 0) - ${amt}
+          WHERE role = 'admin'
+        `;
+        await sql`
+          INSERT INTO admin_wallet_transactions (type, amount, description, ref, created_at)
+          VALUES ('debit', ${-amt}, ${description || 'Seller withdrawal'}, ${ref || ''}, NOW())
+        `;
+        return res.status(200).json({ ok: true });
+      } catch(err) {
+        console.error('[auth/admin-wallet-deduct]', err.message);
+        return res.status(500).json({ ok: false, error: 'Could not deduct from admin wallet.' });
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       ADMIN WALLET — balance + top up
+    ══════════════════════════════════════════════════ */
+    if (req.query.action === 'admin-wallet-balance') {
+      try {
+        const rows = await sql`SELECT admin_wallet FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1`;
+        const balance = parseFloat((rows[0] && rows[0].admin_wallet) || 0);
+        const txns    = await sql`SELECT type, amount, description, ref, created_at FROM admin_wallet_transactions ORDER BY created_at DESC LIMIT 50`;
+        return res.status(200).json({ ok: true, balance, transactions: txns });
+      } catch(err) {
+        console.error('[auth/admin-wallet-balance]', err.message);
+        return res.status(500).json({ ok: false, error: 'Could not load admin wallet.' });
+      }
+    }
+
+    if (req.query.action === 'admin-wallet-topup' && req.method === 'POST') {
+      const { amount, ref, adminId } = req.body || {};
+      if (!amount || !ref) return res.status(400).json({ ok: false, error: 'amount and ref required.' });
+      const amt = parseFloat(amount);
+      try {
+        await sql`UPDATE users SET admin_wallet = COALESCE(admin_wallet, 0) + ${amt} WHERE role = 'admin'`;
+        await sql`INSERT INTO admin_wallet_transactions (type, amount, description, ref, created_at) VALUES ('credit', ${amt}, ${'Platform wallet top-up by admin'}, ${ref}, NOW())`;
+        return res.status(200).json({ ok: true });
+      } catch(err) {
+        console.error('[auth/admin-wallet-topup]', err.message);
+        return res.status(500).json({ ok: false, error: 'Could not process top-up.' });
+      }
+    }
+
     return res.status(400).json({ error: 'Unknown action.' });
 
   } catch (err) {
