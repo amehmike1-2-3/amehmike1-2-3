@@ -666,7 +666,28 @@ textarea.fi{resize:vertical;min-height:88px}
 .promote-slot:hover{border-color:var(--gold);background:rgba(201,146,42,.04)}
 .promote-slot.active-promo{border-style:solid;border-color:#a855f7;background:rgba(168,85,247,.04)}
 
-/* ══ WISHLIST / FOLLOW / ORDER TRACKER / SEARCH / BUNDLE ══ */
+/* ══ BUYER WALLET + REFERRAL ══ */
+.wallet-topup-btn{background:linear-gradient(135deg,var(--gold),#b45309);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-weight:700;font-size:.8rem;cursor:pointer;transition:.2s}
+.wallet-topup-btn:hover{opacity:.9}
+.wallet-balance-card{background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);border-radius:14px;padding:18px;color:#fff;margin-bottom:14px;position:relative;overflow:hidden}
+.wallet-balance-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(201,146,42,.1)}
+.wallet-bal-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:5px}
+.wallet-bal-amount{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:700;color:var(--gold);line-height:1}
+.wallet-bonus{font-size:.75rem;color:rgba(255,255,255,.5);margin-top:4px}
+.wallet-txn{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.wallet-txn:last-child{border-bottom:none}
+.wallet-txn-label{color:var(--text);font-weight:500}
+.wallet-txn-date{font-size:.7rem;color:var(--muted);margin-top:2px}
+.wallet-txn-amount{font-weight:700;font-family:'Cormorant Garamond',serif;font-size:1rem}
+.wallet-txn-amount.credit{color:var(--green)}
+.wallet-txn-amount.debit{color:var(--red)}
+.ref-card{background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(124,58,237,.05));border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:16px;margin-bottom:14px}
+.ref-code-box{background:var(--bg3);border:1.5px dashed var(--gold);border-radius:8px;padding:12px;text-align:center;margin:10px 0;cursor:pointer}
+.ref-code{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:700;color:var(--gold);letter-spacing:3px}
+.ref-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ref-stat{background:var(--bg3);border-radius:8px;padding:10px;text-align:center}
+.ref-stat-val{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--text)}
+.ref-stat-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .wishlist-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .2s;z-index:2}
 .wishlist-btn.wishlisted{background:#fee2e2;color:#dc2626}
 .wishlist-btn:hover{transform:scale(1.1)}
@@ -1927,6 +1948,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="dash-tab on" id="tab-seller"    onclick="switchDashTab('seller',this)">🏪 Seller</button>
       <button class="dash-tab"    id="tab-orders"    onclick="switchDashTab('orders',this)">📦 Orders</button>
       <button class="dash-tab"    id="tab-affiliate" onclick="switchDashTab('affiliate',this)">💸 Affiliate</button>
+      <button class="dash-tab"    id="tab-wallet"    onclick="switchDashTab('wallet',this)">👛 Wallet</button>
       <button class="dash-tab"    id="tab-rewards"   onclick="switchDashTab('rewards',this)">⭐ Rewards</button>
       <button class="dash-tab"    id="tab-settings"  onclick="switchDashTab('settings',this)">⚙️ Settings</button>
     </div>
@@ -2022,6 +2044,52 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ══ TAB: WALLET ══ -->
+    <div id="panel-wallet" class="dash-panel" style="display:none">
+
+      <!-- Wallet Balance Card -->
+      <div class="wallet-balance-card">
+        <div style="position:relative;z-index:1">
+          <div class="wallet-bal-label">👛 Buyer Wallet</div>
+          <div class="wallet-bal-amount" id="buyer-wallet-balance">₦0.00</div>
+          <div class="wallet-bonus" id="buyer-wallet-bonus"></div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <button class="wallet-topup-btn" onclick="openWalletTopup()">+ Top Up Wallet</button>
+            <button onclick="openWalletPay()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:9px 18px;border-radius:8px;font-weight:700;font-size:.8rem;cursor:pointer">💳 Pay with Wallet</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referral Program -->
+      <div class="ref-card">
+        <div style="font-weight:800;font-size:.95rem;color:var(--text);margin-bottom:4px">🎁 Refer & Earn</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">Share your referral code. When a friend makes their first purchase, you both get <strong style="color:var(--gold)">₦500</strong> wallet credit!</div>
+        <div class="ref-code-box" onclick="copyRefCode()">
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Referral Code</div>
+          <div class="ref-code" id="buyer-ref-code">—</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Tap to copy</div>
+        </div>
+        <div class="ref-stats">
+          <div class="ref-stat">
+            <div class="ref-stat-val" id="ref-count">0</div>
+            <div class="ref-stat-label">Friends Referred</div>
+          </div>
+          <div class="ref-stat">
+            <div class="ref-stat-val" id="ref-earned">₦0</div>
+            <div class="ref-stat-label">Total Earned</div>
+          </div>
+        </div>
+        <button onclick="shareRefLink()" style="width:100%;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:700;font-size:.82rem;cursor:pointer">📤 Share Referral Link</button>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="dc">
+        <h3>📋 Wallet Transactions</h3>
+        <div id="wallet-txn-list"><p style="color:var(--muted);font-size:.82rem;text-align:center;padding:16px">No transactions yet.</p></div>
+      </div>
+
     </div>
 
     <!-- ══ TAB: REWARDS ══ -->
@@ -2836,11 +2904,13 @@ function runAutonomousCOO() {
 
         console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
         markCol(o.id); /* Applies tiered split + syncs to DB */
+        /* Award buyer loyalty points for auto-released order */
+        if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Auto-release: Order ' + o.id);
         released++;
       });
 
       if (released > 0) {
-        toast('🤖 COO Auto-Release: ' + released + ' order(s) completed after 48h escrow hold.', 'ok');
+        toast('🤖 ' + released + ' order(s) auto-released after 48h. +' + (released * 10) + ' loyalty points earned! ⭐', 'ok');
       }
     })
     .catch(function(e) {
@@ -4242,8 +4312,12 @@ function processPaystack(mode) {
         cM('m-cart'); cM('m-pd');
         oM('m-rec');
         toast('✅ Payment confirmed! Order ' + trackId, 'ok');
+        sendLocalNotification('Order Confirmed! ✅', 'Your order ' + trackId + ' is being processed. Escrow active.', 'https://neyomarket.com.ng/neyomarket-logo.webp');
         /* Award loyalty points for purchase */
         if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Purchase: ' + trackId);
+        /* Award referral bonus if buyer came via referral */
+        var refCode = window.__refCode || '';
+        if (refCode) awardReferralBonus(refCode);
       })
       .catch(function(err) {
         /* Network error — save locally as fallback */
@@ -4905,6 +4979,8 @@ function doSignIn() {
       updNav();
       toast('Welcome back, ' + u.name.split(' ')[0] + '! 👋', 'ok');
       go(u.role === 'admin' ? 'admin' : 'home');
+      /* Request push notification permission */
+      setTimeout(requestPushPermission, 5000);
       /* Run COO background check silently — auto-releases any >48h escrow orders */
       setTimeout(runAutonomousCOO, 3000);
     })
@@ -5240,11 +5316,14 @@ function switchDashTab(name, btn) {
   if (name === 'affiliate') {
     setTimeout(function(){ loadAffiliateDash(); }, 300);
   }
+  if (name === 'wallet') {
+    setTimeout(function(){ renderWalletTab(); }, 300);
+  }
   if (name === 'rewards') {
     setTimeout(function(){ renderLoyaltyTab(); }, 300);
   }
   /* hide all panels */
-  ['seller','orders','affiliate','rewards','settings'].forEach(function (t) {
+  ['seller','orders','affiliate','wallet','rewards','settings'].forEach(function (t) {
     var p = document.getElementById('panel-' + t);
     if (p) p.style.display = 'none';
   });
@@ -5504,6 +5583,152 @@ function renderLoyaltyTab() {
   }
 }
 window.renderLoyaltyTab = renderLoyaltyTab;
+
+/* ═══════════════════════════════════════════════════════
+   BUYER WALLET
+═══════════════════════════════════════════════════════ */
+function renderWalletTab() {
+  if (!CU) return;
+  var bal     = parseFloat(CU.buyerWallet || 0);
+  var bonus   = parseFloat(CU.buyerWalletBonus || 0);
+  var refCode = CU.buyerRefCode || CU.affCode || '';
+  var refCount = parseInt(CU.buyerRefCount || 0);
+  var refEarned = refCount * 500;
+
+  var balEl = document.getElementById('buyer-wallet-balance');
+  if (balEl) balEl.textContent = '₦' + bal.toLocaleString();
+
+  var bonusEl = document.getElementById('buyer-wallet-bonus');
+  if (bonusEl) bonusEl.textContent = bonus > 0 ? '+ ₦' + bonus.toLocaleString() + ' bonus credit' : 'Top up to start spending on NeyoMarket';
+
+  var codeEl = document.getElementById('buyer-ref-code');
+  if (codeEl) codeEl.textContent = refCode || 'Loading…';
+
+  var countEl = document.getElementById('ref-count');
+  if (countEl) countEl.textContent = refCount;
+
+  var earnEl = document.getElementById('ref-earned');
+  if (earnEl) earnEl.textContent = '₦' + refEarned.toLocaleString();
+
+  /* Load transactions */
+  fetch('/api/users?action=wallet-transactions&userId=' + CU.id)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var txns = data.transactions || [];
+      var el   = document.getElementById('wallet-txn-list');
+      if (!el) return;
+      if (!txns.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:16px">No transactions yet.</p>'; return; }
+      el.innerHTML = txns.slice(0,20).map(function(t) {
+        var isCredit = parseFloat(t.amount) > 0;
+        return '<div class="wallet-txn">'
+          + '<div><div class="wallet-txn-label">' + (t.description||'Transaction') + '</div>'
+          + '<div class="wallet-txn-date">' + (t.created_at ? new Date(t.created_at).toLocaleDateString() : '') + '</div></div>'
+          + '<div class="wallet-txn-amount ' + (isCredit ? 'credit' : 'debit') + '">'
+          + (isCredit ? '+' : '') + '₦' + Math.abs(parseFloat(t.amount)).toLocaleString() + '</div>'
+          + '</div>';
+      }).join('');
+    }).catch(function(){});
+}
+window.renderWalletTab = renderWalletTab;
+
+function openWalletTopup() {
+  if (!CU) { toast('Sign in to top up wallet.', 'fail'); return; }
+  var amount = prompt('Enter amount to top up (min ₦500):');
+  if (!amount || isNaN(amount) || parseFloat(amount) < 500) { toast('Minimum top up is ₦500.', 'warn'); return; }
+  amount = Math.round(parseFloat(amount));
+  var pubKey = window.PK || 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+  if (typeof PaystackPop === 'undefined') { toast('Paystack not loaded. Refresh and try again.', 'fail'); return; }
+  var handler = PaystackPop.setup({
+    key: pubKey, email: CU.email, amount: amount * 100, currency: 'NGN',
+    ref: 'WALLET-TOPUP-' + CU.id + '-' + Date.now(),
+    metadata: { type: 'wallet_topup', userId: String(CU.id) },
+    callback: function(response) {
+      fetch('/api/users?action=wallet-topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: CU.id, amount: amount, ref: response.reference })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          CU.buyerWallet = parseFloat(CU.buyerWallet || 0) + amount;
+          localStorage.setItem('nm_current_user', JSON.stringify(CU));
+          toast('✅ ₦' + amount.toLocaleString() + ' added to your wallet!', 'ok');
+          renderWalletTab();
+        } else { toast('Top up received but wallet update failed. Contact support.', 'warn'); }
+      }).catch(function(){ toast('Top up received! Refresh to see balance.', 'ok'); });
+    },
+    onClose: function() { toast('Top up cancelled.', 'warn'); }
+  });
+  handler.openIframe();
+}
+window.openWalletTopup = openWalletTopup;
+
+function openWalletPay() {
+  toast('Select a product and choose "Pay with Wallet" at checkout.', 'ok');
+}
+window.openWalletPay = openWalletPay;
+
+/* ═══════════════════════════════════════════════════════
+   REFERRAL PROGRAM
+═══════════════════════════════════════════════════════ */
+function copyRefCode() {
+  if (!CU) return;
+  var code = CU.buyerRefCode || CU.affCode || '';
+  if (!code) { toast('Referral code not set yet.', 'warn'); return; }
+  safeCopy(code, '✅ Referral code copied!');
+}
+window.copyRefCode = copyRefCode;
+
+function shareRefLink() {
+  if (!CU) return;
+  var code = CU.buyerRefCode || CU.affCode || '';
+  var link = 'https://neyomarket.com.ng/?ref=' + code;
+  var msg  = '🛍 Shop securely on NeyoMarket — Nigeria\'s trusted marketplace!\n\nEscrow-protected payments, verified sellers. Use my referral link and we both get ₦500 wallet credit on your first purchase! 🎁\n\n' + link;
+  if (navigator.share) {
+    navigator.share({ title: 'NeyoMarket', text: msg, url: link }).catch(function(){});
+  } else {
+    safeCopy(link, '🔗 Referral link copied! Share it to earn ₦500.');
+  }
+}
+window.shareRefLink = shareRefLink;
+
+/* Award referral bonus when a referred user makes first purchase */
+function awardReferralBonus(referrerCode) {
+  if (!referrerCode) return;
+  fetch('/api/users?action=referral-bonus', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refCode: referrerCode, newUserId: CU ? String(CU.id) : '' })
+  }).catch(function(){});
+}
+window.awardReferralBonus = awardReferralBonus;
+
+/* ═══════════════════════════════════════════════════════
+   PWA PUSH NOTIFICATIONS
+═══════════════════════════════════════════════════════ */
+function requestPushPermission() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+  if (Notification.permission === 'granted') return;
+  Notification.requestPermission().then(function(permission) {
+    if (permission === 'granted') {
+      toast('🔔 Notifications enabled! You\'ll be notified of flash sales and orders.', 'ok');
+    }
+  });
+}
+window.requestPushPermission = requestPushPermission;
+
+function sendLocalNotification(title, body, icon) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    new Notification(title, {
+      body:  body  || '',
+      icon:  icon  || 'https://neyomarket.com.ng/neyomarket-logo.webp',
+      badge: 'https://neyomarket.com.ng/neyomarket-logo.webp'
+    });
+  } catch(e) {}
+}
+window.sendLocalNotification = sendLocalNotification;
 
 /* Award points helper (called after purchase/sale) */
 function awardLoyaltyPoints(pts, label) {
@@ -9232,5 +9457,14 @@ function renderAffiliateAnalytics(d){
 window.loadAnalytics = loadAnalytics;
 window.anTab = anTab;
 window.anCurrentTab = anCurrentTab;
+
+/* Capture referral code from URL on page load */
+(function(){
+  try {
+    var urlRef = new URLSearchParams(window.location.search).get('ref');
+    if (urlRef) { window.__refCode = urlRef; localStorage.setItem('nm_ref', urlRef); }
+    else { window.__refCode = localStorage.getItem('nm_ref') || ''; }
+  } catch(e) { window.__refCode = ''; }
+})();
 
 </script>
