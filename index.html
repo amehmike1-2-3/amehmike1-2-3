@@ -2555,6 +2555,7 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <button class="asb" onclick="aTab('aff2',this)">💸 Affiliates</button>
       <div class="asl">Finance</div>
       <button class="asb" onclick="aTab('pay',this)">💰 Payouts</button>
+      <button class="asb" onclick="aTab('awallet',this)">🏦 Admin Wallet</button>
       <button class="asb" onclick="aTab('dis',this)">⚖️ Disputes & Refunds</button>
       <div class="asl">System</div>
       <button class="asb" onclick="aTab('set',this)">⚙️ Settings</button>
@@ -6459,6 +6460,74 @@ function injectKeyNow() {
 }
 window.injectKeyNow = injectKeyNow;
 
+/* ══ ADMIN WALLET TOP UP ══ */
+function adminWalletTopup() {
+  if (!CU || CU.role !== 'admin') { toast('Admin only.', 'fail'); return; }
+
+  /* Remove existing modal */
+  var ex = document.getElementById('admin-wallet-topup-modal');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'admin-wallet-topup-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;z-index:9999;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `
+    <div style="background:var(--bg2);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:28px 24px 40px;border:1px solid var(--border2)">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px"></div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:4px">🏦 Top Up Platform Wallet</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:20px">Fund NeyoMarket's wallet to pay seller withdrawals</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+        ${[5000,10000,50000,100000].map(function(a){
+          return '<button onclick="document.getElementById(\'aw-amount\').value='+a+'" style="background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);padding:10px 4px;border-radius:10px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">₦'+a.toLocaleString()+'</button>';
+        }).join('')}
+      </div>
+      <div style="position:relative;margin-bottom:16px">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:700">₦</span>
+        <input id="aw-amount" type="number" min="1000" placeholder="Enter custom amount"
+          style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:13px 14px 13px 30px;color:var(--text);font-size:1rem;font-weight:700;font-family:'Cormorant Garamond',serif;outline:none;box-sizing:border-box"/>
+      </div>
+      <button onclick="confirmAdminWalletTopup()" style="width:100%;background:linear-gradient(135deg,var(--gold),#b45309);color:#fff;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;margin-bottom:10px;font-family:inherit">💳 Pay via Paystack</button>
+      <button onclick="document.getElementById('admin-wallet-topup-modal').remove()" style="width:100%;background:none;border:1.5px solid var(--border2);color:var(--muted);padding:12px;border-radius:12px;font-size:.85rem;cursor:pointer;font-family:inherit">Cancel</button>
+    </div>
+  `;
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+window.adminWalletTopup = adminWalletTopup;
+
+function confirmAdminWalletTopup() {
+  var inp = document.getElementById('aw-amount');
+  var amount = inp ? Math.round(parseFloat(inp.value)) : 0;
+  if (!amount || amount < 1000) { toast('Minimum top up is ₦1,000.', 'warn'); return; }
+
+  var pubKey = window.PK || 'pk_live_aaf3faacd1ff2cb720a5f1afaf79112c3fc322ca';
+  if (typeof PaystackPop === 'undefined') { toast('Paystack not loaded. Refresh.', 'fail'); return; }
+
+  var handler = PaystackPop.setup({
+    key: pubKey, email: CU.email, amount: amount * 100, currency: 'NGN',
+    ref: 'ADMIN-WALLET-' + Date.now(),
+    metadata: { type: 'admin_wallet_topup', adminId: String(CU.id) },
+    callback: function(response) {
+      document.getElementById('admin-wallet-topup-modal') && document.getElementById('admin-wallet-topup-modal').remove();
+      fetch('/api/auth?action=admin-wallet-topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount, ref: response.reference, adminId: String(CU.id) })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          toast('✅ ₦' + amount.toLocaleString() + ' added to platform wallet!', 'ok');
+          aTab('awallet', document.querySelector('.asb[onclick*="awallet"]'));
+        } else { toast('Payment received but update failed. Contact support.', 'warn'); }
+      }).catch(function(){ toast('Payment received! Refresh to see balance.', 'ok'); });
+    },
+    onClose: function() { toast('Top up cancelled.', 'warn'); }
+  });
+  handler.openIframe();
+}
+window.confirmAdminWalletTopup = confirmAdminWalletTopup;
+
 /* Process a single seller subaccount from the admin panel */
 function processSubaccount(userId, sellerName, bankName, accountNumber, accountName) {
   var PSK = getPSK();
@@ -7422,6 +7491,63 @@ function aTab(tab, btn) {
           : '<div style="color:var(--muted);font-size:.84rem">No orders.</div>')
         + '</div>';
 
+    /* ─── ADMIN WALLET ─── */
+    } else if (tab === 'awallet') {
+      c.innerHTML = '<div class="ah"><h1>🏦 Admin Wallet</h1><p>NeyoMarket platform wallet — top up to fund seller withdrawals</p></div>'
+        + '<div id="admin-wallet-content"><div style="text-align:center;padding:30px;color:var(--muted)">⏳ Loading…</div></div>';
+
+      /* Fetch admin wallet balance */
+      fetch('/api/auth?action=admin-wallet-balance')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+          var bal     = parseFloat(data.balance || 0);
+          var txns    = data.transactions || [];
+          var content = document.getElementById('admin-wallet-content');
+          if (!content) return;
+
+          content.innerHTML =
+            /* Balance Card */
+            '<div style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);border-radius:16px;padding:24px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(201,146,42,.1)"></div>'
+            + '<div style="position:relative;z-index:1">'
+            + '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:6px">🏦 Platform Wallet Balance</div>'
+            + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:2.8rem;font-weight:700;color:var(--gold);line-height:1;margin-bottom:14px">₦' + bal.toLocaleString() + '</div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+            + '<button onclick="adminWalletTopup()" style="background:var(--gold);color:#000;border:none;padding:11px 22px;border-radius:8px;font-weight:700;font-size:.85rem;cursor:pointer">+ Top Up Platform Wallet</button>'
+            + '</div>'
+            + '</div></div>'
+
+            /* Stats */
+            + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">'
+            + '<div class="sc2"><div class="lb">Wallet Balance</div><div class="vl" style="color:var(--gold)">₦' + bal.toLocaleString() + '</div><div class="ch">Available to pay sellers</div></div>'
+            + '<div class="sc2"><div class="lb">Total Topped Up</div><div class="vl">' + (txns.filter(function(t){ return parseFloat(t.amount)>0; }).reduce(function(s,t){ return s+parseFloat(t.amount); }, 0)).toLocaleString() + '</div></div>'
+            + '<div class="sc2"><div class="lb">Total Paid Out</div><div class="vl" style="color:var(--red)">₦' + Math.abs(txns.filter(function(t){ return parseFloat(t.amount)<0; }).reduce(function(s,t){ return s+parseFloat(t.amount); }, 0)).toLocaleString() + '</div></div>'
+            + '</div>'
+
+            /* Transaction History */
+            + '<div class="act"><h3>📋 Wallet Transaction History</h3>'
+            + (txns.length
+              ? '<div class="tbl-wrap"><table class="tbl">'
+                + '<tr><th>Type</th><th>Amount</th><th>Description</th><th>Ref</th><th>Date</th></tr>'
+                + txns.slice(0,30).map(function(t) {
+                    var isCredit = parseFloat(t.amount) > 0;
+                    return '<tr>'
+                      + '<td><span class="sb2 '+(isCredit?'s-ok':'s-bad')+'">'+(isCredit?'Credit':'Debit')+'</span></td>'
+                      + '<td style="font-weight:700;color:'+(isCredit?'var(--green)':'var(--red)')+';">'+(isCredit?'+':'')+' ₦'+Math.abs(parseFloat(t.amount)).toLocaleString()+'</td>'
+                      + '<td style="font-size:.8rem">'+(t.description||'—')+'</td>'
+                      + '<td style="font-size:.72rem;color:var(--muted);font-family:monospace">'+(t.ref||'—')+'</td>'
+                      + '<td style="font-size:.76rem;color:var(--muted)">'+(t.created_at ? new Date(t.created_at).toLocaleDateString() : '—')+'</td>'
+                      + '</tr>';
+                  }).join('')
+                + '</table></div>'
+              : '<div style="color:var(--muted);font-size:.84rem;padding:10px 0">No transactions yet.</div>')
+            + '</div>';
+        })
+        .catch(function(){
+          var content = document.getElementById('admin-wallet-content');
+          if (content) content.innerHTML = '<div style="color:var(--red);padding:20px">Could not load admin wallet. Try again.</div>';
+        });
+
     /* ─── DISPUTES ─── */
     } else if (tab === 'dis') {
       c.innerHTML = '<div class="ah"><h1>⚖️ Disputes & Refunds</h1><p>One-click Paystack refunds for unresolved deliveries</p></div>'
@@ -8294,22 +8420,42 @@ function adminProcessWithdraw(withdrawalId, userId, amount) {
 window.adminProcessWithdraw = adminProcessWithdraw;
 
 function adminProcessWithdrawal(withdrawalId, userId, amount) {
-  if (!confirm('Process withdrawal of ₦' + parseFloat(amount).toLocaleString() + '?\n\nThis will trigger a Paystack transfer to the seller\'s bank.')) return;
-  fetch('/api/paystack?action=withdraw', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: userId, amount: parseFloat(amount), adminOverride: true })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      toast('✅ Withdrawal processed! Ref: ' + (data.reference||''), 'ok');
-      aTab('pay', null); /* Refresh payout tab */
-    } else {
-      toast('❌ Failed: ' + (data.error||'Unknown error'), 'fail');
-    }
-  })
-  .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
+  var amt = parseFloat(amount);
+  if (!confirm('Process withdrawal of ₦' + amt.toLocaleString() + '?\n\nThis will:\n1. Deduct ₦' + amt.toLocaleString() + ' from the Platform Wallet\n2. Trigger a Paystack transfer to the seller\'s bank.\n\nMake sure Platform Wallet has sufficient balance.')) return;
+
+  /* First check admin wallet balance */
+  fetch('/api/auth?action=admin-wallet-balance')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var walBal = parseFloat(data.balance || 0);
+      if (walBal < amt) {
+        toast('❌ Insufficient Platform Wallet balance! Available: ₦' + walBal.toLocaleString() + '. Top up the Admin Wallet first.', 'fail');
+        return;
+      }
+      /* Process withdrawal via Paystack */
+      fetch('/api/paystack?action=withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId, amount: amt, adminOverride: true })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          /* Deduct from admin wallet */
+          fetch('/api/auth?action=admin-wallet-deduct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amt, ref: data.reference || withdrawalId, description: 'Seller withdrawal: ' + userId })
+          }).catch(function(){});
+          toast('✅ Withdrawal processed! Ref: ' + (data.reference||'') + '. Platform wallet debited ₦' + amt.toLocaleString(), 'ok');
+          aTab('pay', null);
+        } else {
+          toast('❌ Failed: ' + (data.error||'Unknown error'), 'fail');
+        }
+      })
+      .catch(function(e){ toast('Error: ' + e.message, 'fail'); });
+    })
+    .catch(function(){ toast('Could not check platform wallet balance. Try again.', 'fail'); });
 }
 window.adminProcessWithdrawal = adminProcessWithdrawal;
 
