@@ -1286,7 +1286,7 @@ module.exports = async function handler(req, res) {
      Immediately mark withdrawal as 'completed' to prevent double-clicks
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'update-withdrawal-status' && req.method === 'POST') {
-    const { withdrawalId, status } = req.body || {};
+    const { withdrawalId, status, amount } = req.body || {};
     if (!withdrawalId || !status) return jsonErr(res, 400, 'withdrawalId and status required');
 
     try {
@@ -1295,6 +1295,16 @@ module.exports = async function handler(req, res) {
         SET status = ${String(status)}, updated_at = NOW()
         WHERE id = ${Number(withdrawalId)}
       `;
+
+      /* Deduct from admin wallet when withdrawal is completed */
+      if (status === 'completed' && amount) {
+        const amt = parseFloat(amount);
+        try {
+          await sql`UPDATE users SET admin_wallet = GREATEST(0, COALESCE(admin_wallet,0) - ${amt}) WHERE role = 'admin'`;
+          await sql`INSERT INTO admin_wallet_transactions (type, amount, description, ref, created_at) VALUES ('debit', ${-amt}, ${'Seller withdrawal payout'}, ${String(withdrawalId)}, NOW())`;
+        } catch(e) { console.warn('[payment/update-withdrawal-status] admin wallet deduct (non-fatal):', e.message); }
+      }
+
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error('[payment/update-withdrawal-status]', err.message);
