@@ -41,17 +41,85 @@ module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const action = req.query.action || '';
+
+  /* ══════════════════════════════════════════════════════
+     PUBLIC WALLET ENDPOINTS — no admin token needed
+  ══════════════════════════════════════════════════════ */
+
+  /* GET wallet transactions */
+  if (action === 'wallet-transactions' && req.method === 'GET') {
+    try {
+      const { userId } = req.query;
+      if (!userId) return res.status(400).json({ error: 'userId required.' });
+      const rows = await sql`
+        SELECT type, amount, description, ref, created_at
+        FROM wallet_transactions
+        WHERE user_id = ${String(userId)}
+        ORDER BY created_at DESC
+        LIMIT 30
+      `;
+      return res.status(200).json({ ok: true, transactions: rows });
+    } catch(err) {
+      console.error('[users/wallet-transactions]', err.message);
+      return res.status(500).json({ ok: false, error: 'Could not load transactions.' });
+    }
+  }
+
+  /* POST wallet top-up */
+  if (action === 'wallet-topup' && req.method === 'POST') {
+    try {
+      const { userId, amount, ref } = req.body || {};
+      if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required.' });
+      const amt = parseFloat(amount);
+      if (isNaN(amt) || amt < 500) return res.status(400).json({ error: 'Minimum top up is ₦500.' });
+
+      await sql`UPDATE users SET buyer_wallet = COALESCE(buyer_wallet,0) + ${amt} WHERE id = ${String(userId)}`;
+      await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${String(userId)}, 'credit', ${amt}, ${'Wallet top-up'}, ${ref||''}, NOW())`;
+      return res.status(200).json({ ok: true });
+    } catch(err) {
+      console.error('[users/wallet-topup]', err.message);
+      return res.status(500).json({ ok: false, error: 'Could not process top-up.' });
+    }
+  }
+
+  /* POST referral bonus — award ₦500 to referrer and new buyer */
+  if (action === 'referral-bonus' && req.method === 'POST') {
+    try {
+      const { refCode, newUserId } = req.body || {};
+      if (!refCode) return res.status(400).json({ error: 'refCode required.' });
+
+      /* Find referrer by aff_code or buyer_ref_code */
+      const referrers = await sql`SELECT id, buyer_ref_count FROM users WHERE aff_code = ${refCode} OR buyer_ref_code = ${refCode} LIMIT 1`;
+      if (!referrers.length) return res.status(200).json({ ok: true, skipped: 'Referrer not found.' });
+
+      const referrerId   = String(referrers[0].id);
+      const currentCount = parseInt(referrers[0].buyer_ref_count || 0);
+
+      /* Award ₦500 to referrer */
+      await sql`UPDATE users SET buyer_wallet = COALESCE(buyer_wallet,0) + 500, buyer_ref_count = ${currentCount + 1} WHERE id = ${referrerId}`;
+      await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${referrerId}, 'credit', ${500}, ${'Referral bonus — friend made first purchase'}, ${newUserId||''}, NOW())`;
+
+      /* Award ₦500 bonus to new buyer too */
+      if (newUserId) {
+        await sql`UPDATE users SET buyer_wallet_bonus = COALESCE(buyer_wallet_bonus,0) + 500 WHERE id = ${String(newUserId)}`;
+        await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${String(newUserId)}, 'credit', ${500}, ${'Welcome bonus — referred by a friend'}, ${refCode}, NOW())`;
+      }
+
+      return res.status(200).json({ ok: true });
+    } catch(err) {
+      console.error('[users/referral-bonus]', err.message);
+      return res.status(500).json({ ok: false, error: 'Could not process referral bonus.' });
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ADMIN ENDPOINTS — token required below
+  ══════════════════════════════════════════════════════ */
   const token = getAuthToken(req);
-
-  // Admin token required
-  if (!token) {
-    return res.status(401).json({ error: '401 Unauthorized: Token required.' });
-  }
-
+  if (!token) return res.status(401).json({ error: '401 Unauthorized: Token required.' });
   const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin-secret-token';
-  if (token !== ADMIN_TOKEN) {
-    return res.status(403).json({ error: '403 Forbidden: Invalid token.' });
-  }
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: '403 Forbidden: Invalid token.' });
 
   try {
     /* ────────────────────────────────────────────────────
@@ -98,9 +166,6 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ user: toPublicUser(rows[0]), message: 'User updated.' });
     }
 
-    /* ────────────────────────────────────────────────────
-       DELETE USER (ADMIN ONLY)
-    ──────────────────────────────────────────────────── */
     if (req.method === 'DELETE') {
       const userId = req.query.userId;
       if (!userId) return res.status(400).json({ error: 'userId required.' });
