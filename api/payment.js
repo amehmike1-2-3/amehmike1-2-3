@@ -1333,5 +1333,38 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  return jsonErr(res, 405, 'Unknown action. Valid: orders | disputes | confirm | dvc-release | refund | order | webhook | check-balance | update-withdrawal-status | refund-balance');
+  /* ══════════════════════════════════════════════════════════════════
+     WALLET DEDUCT — deduct from buyer wallet on wallet payment
+  ══════════════════════════════════════════════════════════════════ */
+  if (action === 'wallet-deduct' && req.method === 'POST') {
+    try {
+      const { userId, amount, ref, description } = req.body || {};
+      if (!userId || !amount) return jsonErr(res, 400, 'userId and amount required.');
+      const amt = parseFloat(amount);
+      if (isNaN(amt) || amt <= 0) return jsonErr(res, 400, 'Invalid amount.');
+
+      /* Check balance first */
+      const userRows = await sql`SELECT buyer_wallet FROM users WHERE id = ${String(userId)} LIMIT 1`;
+      if (!userRows.length) return jsonErr(res, 404, 'User not found.');
+      const currentBal = parseFloat(userRows[0].buyer_wallet || 0);
+      if (currentBal < amt) return jsonErr(res, 400, 'Insufficient wallet balance.');
+
+      /* Deduct */
+      await sql`UPDATE users SET buyer_wallet = buyer_wallet - ${amt} WHERE id = ${String(userId)}`;
+
+      /* Record transaction */
+      await sql`
+        INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at)
+        VALUES (${String(userId)}, 'debit', ${-amt}, ${description || 'Purchase'}, ${ref || ''}, NOW())
+      `;
+
+      console.log('[payment/wallet-deduct]', userId, '₦' + amt, ref);
+      return res.status(200).json({ ok: true, newBalance: currentBal - amt });
+    } catch (err) {
+      console.error('[payment/wallet-deduct]', err.message);
+      return jsonErr(res, 500, 'Could not process wallet payment.', err.message);
+    }
+  }
+
+  return jsonErr(res, 405, 'Unknown action. Valid: orders | disputes | confirm | dvc-release | refund | order | webhook | check-balance | update-withdrawal-status | refund-balance | wallet-deduct');
 };
