@@ -112,6 +112,10 @@ function toPublicUser(row) {
     loyaltyPoints:    parseInt(row.loyalty_points || 0),
     loyaltyHistory:   row.loyalty_history   || [],
     badgeVerified:    row.badge_verified    || false,
+    buyerWallet:      parseFloat(row.buyer_wallet       || 0),
+    buyerWalletBonus: parseFloat(row.buyer_wallet_bonus || 0),
+    buyerRefCode:     row.buyer_ref_code    || row.aff_code || '',
+    buyerRefCount:    parseInt(row.buyer_ref_count || 0),
   };
 }
 
