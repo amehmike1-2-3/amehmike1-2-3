@@ -1809,6 +1809,8 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="sh-cb" onchange="vShip()"/><label for="sh-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="sh-err"></div>
       <button class="pb3" id="sh-pay" disabled onclick="processPaystack('physical')">🔐 Pay Securely with Paystack</button>
+      <button class="pb3" id="sh-wallet-pay" disabled onclick="processWalletPay('physical')" style="background:linear-gradient(135deg,#0f2027,#203a43);margin-top:8px">👛 Pay with Wallet</button>
+      <div id="sh-wallet-bal" style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px"></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
   <span style="font-size:.72rem;color:var(--green);font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
@@ -1833,6 +1835,8 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
       <div class="tr2"><input type="checkbox" id="co-cb" onchange="vCo()"/><label for="co-cb">I agree to the <a onclick="oM('m-terms')">Terms of Service</a> and escrow release process.</label></div>
       <div class="em" id="co-err"></div>
       <button class="pb3" id="co-pay" disabled onclick="processPaystack('digital')">🔐 Pay Securely with Paystack</button>
+      <button class="pb3" id="co-wallet-pay" disabled onclick="processWalletPay('digital')" style="background:linear-gradient(135deg,#0f2027,#203a43);margin-top:8px">👛 Pay with Wallet</button>
+      <div id="co-wallet-bal" style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px"></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l7-7-1.414-1.414L11 12.172 8.414 9.586 7 11l4 4z" fill="#059669"/></svg>
   <span style="font-size:.72rem;color:var(--green);font-weight:600">Secured by Paystack · 256-bit SSL · Escrow Protected</span>
@@ -4100,16 +4104,30 @@ function bSum(pageId) {
 }
 
 function vShip() {
-  var ok = gv('sh-name') && gv('sh-wa') && gv('sh-addr') && gv('sh-email');
-  var cb = document.getElementById('sh-cb'); ok = ok && cb && cb.checked;
+  var ok  = gv('sh-name') && gv('sh-wa') && gv('sh-addr') && gv('sh-email');
+  var cb  = document.getElementById('sh-cb'); ok = ok && cb && cb.checked;
   var btn = document.getElementById('sh-pay'); if (btn) btn.disabled = !ok;
+  /* Wallet button */
+  var walletBtn = document.getElementById('sh-wallet-pay');
+  var walletBal = document.getElementById('sh-wallet-bal');
+  var bal = parseFloat((CU && CU.buyerWallet) || 0);
+  var total = cart.reduce(function(s,i){ var d=parseFloat(i.discountPrice||i.discount_price||0);var p=d>0&&d<parseFloat(i.price)?d:parseFloat(i.price);return s+(p+(i.type==='physical'?parseFloat(i.shippingFee||i.shipping_fee||0):0))*(i.qty||1);},0);
+  if (walletBtn) { walletBtn.disabled = !(ok && bal >= total); }
+  if (walletBal) { walletBal.textContent = 'Wallet balance: ₦' + bal.toLocaleString() + (bal < total ? ' (insufficient — top up in your wallet tab)' : ' ✅'); walletBal.style.color = bal >= total ? 'var(--green)' : 'var(--red)'; }
 }
 window.vShip = vShip;
 
 function vCo() {
-  var ok = gv('co-name') && gv('co-wa') && gv('co-email');
-  var cb = document.getElementById('co-cb'); ok = ok && cb && cb.checked;
+  var ok  = gv('co-name') && gv('co-wa') && gv('co-email');
+  var cb  = document.getElementById('co-cb'); ok = ok && cb && cb.checked;
   var btn = document.getElementById('co-pay'); if (btn) btn.disabled = !ok;
+  /* Wallet button */
+  var walletBtn = document.getElementById('co-wallet-pay');
+  var walletBal = document.getElementById('co-wallet-bal');
+  var bal = parseFloat((CU && CU.buyerWallet) || 0);
+  var total = cart.reduce(function(s,i){ var d=parseFloat(i.discountPrice||i.discount_price||0);var p=d>0&&d<parseFloat(i.price)?d:parseFloat(i.price);return s+(p*(i.qty||1));},0);
+  if (walletBtn) { walletBtn.disabled = !(ok && bal >= total); }
+  if (walletBal) { walletBal.textContent = 'Wallet balance: ₦' + bal.toLocaleString() + (bal < total ? ' (insufficient — top up in your wallet tab)' : ' ✅'); walletBal.style.color = bal >= total ? 'var(--green)' : 'var(--red)'; }
 }
 window.vCo = vCo;
 
@@ -5665,9 +5683,146 @@ function openWalletTopup() {
 window.openWalletTopup = openWalletTopup;
 
 function openWalletPay() {
-  toast('Select a product and choose "Pay with Wallet" at checkout.', 'ok');
+  var bal = parseFloat((CU && CU.buyerWallet) || 0) + parseFloat((CU && CU.buyerWalletBonus) || 0);
+  if (bal <= 0) {
+    toast('Your wallet is empty. Top up first to pay with wallet.', 'warn');
+    return;
+  }
+  if (!cart.length) {
+    /* No items in cart — guide them to shop first */
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:var(--bg2);border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;border:1px solid var(--border2)';
+    box.innerHTML = '<div style="font-size:2.2rem;margin-bottom:10px">👛</div>'
+      + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:8px">Pay with Wallet</div>'
+      + '<div style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Available balance:</div>'
+      + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:2rem;font-weight:700;color:var(--gold);margin-bottom:16px">₦' + bal.toLocaleString() + '</div>'
+      + '<div style="font-size:.82rem;color:var(--muted);margin-bottom:20px;line-height:1.6">Browse the marketplace, add a product to your cart, then select <strong style="color:var(--gold)">Pay with Wallet</strong> at checkout.</div>'
+      + '<button onclick="this.closest(\'div[style*=fixed]\').remove();go(\'market\')" style="width:100%;background:linear-gradient(135deg,var(--gold),#b45309);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;font-size:.88rem;cursor:pointer;margin-bottom:10px">🛍 Browse Marketplace</button>'
+      + '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="width:100%;background:none;border:1px solid var(--border2);color:var(--muted);padding:10px;border-radius:10px;font-size:.82rem;cursor:pointer">Cancel</button>';
+    modal.appendChild(box);
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+    document.body.appendChild(modal);
+    return;
+  }
+  /* Cart has items — go straight to checkout */
+  startCheckout();
 }
 window.openWalletPay = openWalletPay;
+
+/* ══ PROCESS WALLET PAYMENT ══ */
+function processWalletPay(mode) {
+  if (!CU) { toast('Please sign in first.', 'fail'); return; }
+  if (!cart.length) { toast('Cart is empty.', 'fail'); return; }
+
+  var isPhys    = mode === 'physical';
+  var emailEl   = document.getElementById(isPhys ? 'sh-email' : 'co-email');
+  var nameEl    = document.getElementById(isPhys ? 'sh-name'  : 'co-name');
+  var waEl      = document.getElementById(isPhys ? 'sh-wa'    : 'co-wa');
+  var addrEl    = isPhys ? document.getElementById('sh-addr') : null;
+
+  var email  = emailEl  ? emailEl.value.trim()  : CU.email;
+  var name   = nameEl   ? nameEl.value.trim()   : CU.name;
+  var wa     = waEl     ? waEl.value.trim()     : CU.phone;
+  var addr   = addrEl   ? addrEl.value.trim()   : '';
+
+  /* Calculate total */
+  var total = cart.reduce(function(s, i) {
+    var d = parseFloat(i.discountPrice||i.discount_price||0);
+    var p = (d > 0 && d < parseFloat(i.price)) ? d : parseFloat(i.price);
+    var ship = isPhys ? parseFloat(i.shippingFee||i.shipping_fee||0) : 0;
+    return s + (p + ship) * (i.qty || 1);
+  }, 0);
+  total = Math.round(total);
+
+  var walletBal = parseFloat(CU.buyerWallet || 0) + parseFloat(CU.buyerWalletBonus || 0);
+  if (walletBal < total) {
+    toast('Insufficient wallet balance. Top up ₦' + (total - walletBal).toLocaleString() + ' more in your Wallet tab.', 'fail');
+    return;
+  }
+
+  /* Confirm with user */
+  if (!confirm('Pay ₦' + total.toLocaleString() + ' from your wallet?\n\nWallet balance: ₦' + walletBal.toLocaleString() + '\nAfter payment: ₦' + (walletBal - total).toLocaleString())) return;
+
+  toast('⏳ Processing wallet payment…', 'ok');
+
+  var trackId  = 'WALL-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase();
+  var sellerId = cart[0] && (cart[0].sellerId || cart[0].seller_id);
+  var affCode  = window.__refCode || '';
+  var platFee  = Math.round(total * 0.05);
+  var sellerPayout = total - platFee;
+
+  var orderPayload = {
+    id:          trackId,
+    userId:      String(CU.id),
+    customer:    { name: name, email: email, whatsapp: wa, address: addr },
+    items:       cart,
+    total:       total,
+    platformFee: platFee,
+    sellerPayout:sellerPayout,
+    affiliateFee:0,
+    affCode:     affCode || null,
+    sellerId:    sellerId,
+    status:      'paid',
+    mode:        mode,
+    ref:         trackId,
+    payMethod:   'wallet',
+    shipping:    isPhys ? { name: name, whatsapp: wa, address: addr, email: email } : null,
+    currency:    (cart[0] && cart[0].currency) || 'NGN'
+  };
+
+  /* Deduct from wallet + save order */
+  fetch('/api/users?action=wallet-deduct', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: String(CU.id), amount: total, ref: trackId, description: 'Purchase: ' + cart.map(function(i){ return i.name; }).join(', ') })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (!data.ok) { toast('Wallet payment failed: ' + (data.error||'Try again'), 'fail'); return; }
+
+    /* Update local wallet balance */
+    CU.buyerWallet = parseFloat(CU.buyerWallet||0) - total;
+    localStorage.setItem('nm_current_user', JSON.stringify(CU));
+
+    /* Save order */
+    return fetch('/api/payment?action=confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderPayload)
+    });
+  })
+  .then(function(r){ return r && r.json(); })
+  .then(function(data) {
+    if (!data) return;
+    /* Add to local orders */
+    var newOrder = Object.assign({}, orderPayload, { items: cart.slice(), date: new Date().toLocaleDateString() });
+    ords.unshift(newOrder);
+    sv('nm_orders', ords);
+    cart = []; sv('nm_cart', cart); updBadge();
+
+    /* Award +10 loyalty points */
+    if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Wallet purchase: ' + trackId);
+
+    /* Show receipt */
+    var rf = document.getElementById('rec-fill');
+    if (rf) rf.innerHTML =
+      '<div>Name: ' + name + '</div>' +
+      '<div>Amount: ₦' + total.toLocaleString() + ' (paid from wallet)</div>' +
+      '<div>Wallet Balance: ₦' + parseFloat(CU.buyerWallet).toLocaleString() + '</div>' +
+      '<div>Order ID: ' + trackId + '</div>' +
+      '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
+      '<div style="margin-top:8px;color:var(--green)">✅ Payment confirmed! Escrow active.</div>';
+
+    cM('m-cart');
+    oM('m-rec');
+    toast('✅ Paid ₦' + total.toLocaleString() + ' from wallet! +10 loyalty points ⭐', 'ok');
+    sendLocalNotification('Order Confirmed! ✅', 'Paid ₦' + total.toLocaleString() + ' from wallet. Order ' + trackId, '');
+  })
+  .catch(function(e){ toast('Error: ' + (e.message||'Try again'), 'fail'); });
+}
+window.processWalletPay = processWalletPay;
 
 /* ═══════════════════════════════════════════════════════
    REFERRAL PROGRAM
