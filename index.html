@@ -2911,59 +2911,7 @@ function syncOrderUpdateToAPI(orderId, update) {
    This client-side version handles the currently-logged-in buyer's orders
    immediately so they don't see stale "Escrow Held" badges.
 ════════════════════════════════════════════════════════════════════ */
-function runAutonomousCOO() {
-  if (!CU) return; /* Only run when a user is signed in */
-
-  var now      = Date.now();
-  var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
-
-  /* Fetch live orders from Neon so we don't rely on stale local cache */
-  fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var orders = data.orders || [];
-      var released = 0;
-
-      orders.forEach(function(o) {
-        /* Only process escrow_held or paid orders that are not yet complete */
-        var isEligible = (o.status === 'escrow_held' || o.status === 'paid')
-                      && !o.collected
-                      && o.status !== 'completed';
-        if (!isEligible) return;
-
-        /* Determine order age — use created_at if date is not parseable */
-        var orderDate = o.created_at || o.date || null;
-        var orderTime = orderDate ? new Date(orderDate).getTime() : 0;
-        if (!orderTime || isNaN(orderTime)) return; /* can't determine age — skip */
-
-        var ageMs = now - orderTime;
-        if (ageMs < LIMIT_MS) return; /* Not yet 48 hours — skip */
-
-        /* Inject into local ords array so markCol can find it */
-        var inMem = ords.find(function(x){ return x.id === o.id; });
-        if (!inMem) {
-          /* Parse items/customer safely */
-          var items = o.items;
-          if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-          ords.push(Object.assign({}, o, { items: items }));
-        }
-
-        console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
-        markCol(o.id); /* Applies tiered split + syncs to DB */
-        /* Award buyer loyalty points for auto-released order */
-        if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Auto-release: Order ' + o.id);
-        released++;
-      });
-
-      if (released > 0) {
-        toast('🤖 ' + released + ' order(s) auto-released after 48h. +' + (released * 10) + ' loyalty points earned! ⭐', 'ok');
-      }
-    })
-    .catch(function(e) {
-      console.warn('[COO] Auto-release check failed:', e.message);
-    });
-}
-window.runAutonomousCOO = runAutonomousCOO;
+/* runAutonomousCOO removed — manual COO only via the Confirm Collection button */
 
 function getActive() { return prods.filter(function (p) { return p.status === 'active'; }); }
 
@@ -4360,10 +4308,6 @@ function processPaystack(mode) {
       },
 
     callback: function (resp) {
-      /* ── DUPLICATE GUARD — Paystack occasionally fires callback twice ── */
-      if (window.__lastPayRef === resp.reference) return;
-      window.__lastPayRef = resp.reference;
-
       /* ── DB FIRST, UI SECOND ── */
       /* Show saving indicator */
       toast('⏳ Saving your order…', 'ok');
@@ -5149,8 +5093,6 @@ function doSignIn() {
       go(u.role === 'admin' ? 'admin' : 'home');
       /* Request push notification permission */
       setTimeout(requestPushPermission, 5000);
-      /* Run COO background check silently — auto-releases any >48h escrow orders */
-      setTimeout(runAutonomousCOO, 3000);
     })
     .catch(function (apiErr) {
       restoreBtn();
@@ -5979,29 +5921,37 @@ function processWalletPay(mode) {
   }, 0);
   total = Math.round(total);
 
-  var walletBal = parseFloat(CU.buyerWallet || 0) + parseFloat(CU.buyerWalletBonus || 0);
-  if (walletBal < total) {
-    toast('Insufficient wallet balance. Top up ₦' + (total - walletBal).toLocaleString() + ' more in your Wallet tab.', 'fail');
-    return;
-  }
+  /* Convert to NGN if cart currency is not NGN */
+  var walletCartCurrency = (cart[0] && cart[0].currency) ? String(cart[0].currency).toUpperCase() : 'NGN';
 
-  /* Confirm with user */
-  if (!confirm('Pay ₦' + total.toLocaleString() + ' from your wallet?\n\nWallet balance: ₦' + walletBal.toLocaleString() + '\nAfter payment: ₦' + (walletBal - total).toLocaleString())) return;
+  function proceedWalletPayment(ngnTotal) {
+    ngnTotal = Math.round(ngnTotal);
+    var walletBal = parseFloat(CU.buyerWallet || 0) + parseFloat(CU.buyerWalletBonus || 0);
+    if (walletBal < ngnTotal) {
+      toast('Insufficient wallet balance. Top up ₦' + (ngnTotal - walletBal).toLocaleString() + ' more in your Wallet tab.', 'fail');
+      return;
+    }
 
-  toast('⏳ Processing wallet payment…', 'ok');
+    /* Confirm with user */
+    var displayLabel = walletCartCurrency !== 'NGN'
+      ? currSymbol(walletCartCurrency) + total.toLocaleString() + ' = ₦' + ngnTotal.toLocaleString()
+      : '₦' + ngnTotal.toLocaleString();
+    if (!confirm('Pay ' + displayLabel + ' from your wallet?\n\nWallet balance: ₦' + walletBal.toLocaleString() + '\nAfter payment: ₦' + (walletBal - ngnTotal).toLocaleString())) return;
 
-  var trackId  = 'WALL-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase();
-  var sellerId = cart[0] && (cart[0].sellerId || cart[0].seller_id);
-  var affCode  = window.__refCode || '';
-  var platFee  = Math.round(total * 0.05);
-  var sellerPayout = total - platFee;
+    toast('⏳ Processing wallet payment…', 'ok');
 
-  var orderPayload = {
-    id:          trackId,
-    userId:      String(CU.id),
-    customer:    { name: name, email: email, whatsapp: wa, address: addr },
-    items:       cart,
-    total:       total,
+    var trackId  = 'WALL-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase();
+    var sellerId = cart[0] && (cart[0].sellerId || cart[0].seller_id);
+    var affCode  = window.__refCode || '';
+    var platFee  = Math.round(ngnTotal * 0.05);
+    var sellerPayout = ngnTotal - platFee;
+
+    var orderPayload = {
+      id:          trackId,
+      userId:      String(CU.id),
+      customer:    { name: name, email: email, whatsapp: wa, address: addr },
+      items:       cart,
+      total:       ngnTotal,
     platformFee: platFee,
     sellerPayout:sellerPayout,
     affiliateFee:0,
@@ -6016,7 +5966,7 @@ function processWalletPay(mode) {
   };
 
   /* Deduct from wallet + save order */
-  fetch('/api/payment?action=wallet-deduct', {
+  fetch('/api/users?action=wallet-deduct', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: String(CU.id), amount: total, ref: trackId, description: 'Purchase: ' + cart.map(function(i){ return i.name; }).join(', ') })
@@ -6052,7 +6002,7 @@ function processWalletPay(mode) {
     var rf = document.getElementById('rec-fill');
     if (rf) rf.innerHTML =
       '<div>Name: ' + name + '</div>' +
-      '<div>Amount: ₦' + total.toLocaleString() + ' (paid from wallet)</div>' +
+      '<div>Amount: ₦' + ngnTotal.toLocaleString() + ' (paid from wallet)</div>' +
       '<div>Wallet Balance: ₦' + parseFloat(CU.buyerWallet).toLocaleString() + '</div>' +
       '<div>Order ID: ' + trackId + '</div>' +
       '<div>Date: ' + new Date().toLocaleDateString() + '</div>' +
@@ -6060,10 +6010,47 @@ function processWalletPay(mode) {
 
     cM('m-cart');
     oM('m-rec');
-    toast('✅ Paid ₦' + total.toLocaleString() + ' from wallet! +10 loyalty points ⭐', 'ok');
-    sendLocalNotification('Order Confirmed! ✅', 'Paid ₦' + total.toLocaleString() + ' from wallet. Order ' + trackId, '');
+    toast('✅ Paid ₦' + ngnTotal.toLocaleString() + ' from wallet! +10 loyalty points ⭐', 'ok');
+    sendLocalNotification('Order Confirmed! ✅', 'Paid ₦' + ngnTotal.toLocaleString() + ' from wallet. Order ' + trackId, '');
+    /* Redirect to orders after 3s */
+    setTimeout(function() {
+      cM('m-rec');
+      go('profile');
+      setTimeout(function() {
+        var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
+        if (ordTab && typeof ordTab.click === 'function') ordTab.click();
+      }, 300);
+    }, 3000);
   })
   .catch(function(e){ toast('Error: ' + (e.message||'Try again'), 'fail'); });
+  } /* end proceedWalletPayment */
+
+  /* Convert to NGN if needed, then proceed */
+  if (walletCartCurrency === 'NGN') {
+    proceedWalletPayment(total);
+  } else {
+    toast('⏳ Fetching live exchange rate…', 'ok');
+    fetch('https://open.er-api.com/v6/latest/' + walletCartCurrency)
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var rate = (data && data.rates && data.rates.NGN) ? data.rates.NGN : null;
+        if (!rate) {
+          var fallback = { USD: 1580, GBP: 2000, EUR: 1720, CAD: 1160, GHS: 105 };
+          rate = fallback[walletCartCurrency] || 1580;
+          toast('⚠ Using estimated rate. Live rate unavailable.', 'warn');
+        }
+        var ngnTotal = Math.round(total * rate);
+        toast('💱 ' + currSymbol(walletCartCurrency) + total.toLocaleString() + ' = ₦' + ngnTotal.toLocaleString() + ' (live rate)', 'ok');
+        proceedWalletPayment(ngnTotal);
+      })
+      .catch(function() {
+        var fallback = { USD: 1580, GBP: 2000, EUR: 1720, CAD: 1160, GHS: 105 };
+        var rate     = fallback[walletCartCurrency] || 1580;
+        var ngnTotal = Math.round(total * rate);
+        toast('⚠ Using estimated rate. Paying ₦' + ngnTotal.toLocaleString(), 'warn');
+        proceedWalletPayment(ngnTotal);
+      });
+  }
 }
 window.processWalletPay = processWalletPay;
 
