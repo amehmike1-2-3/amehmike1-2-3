@@ -431,10 +431,34 @@ module.exports = async function handler(req, res) {
       const allowed = ['preparing','shipped','delivered'];
       if (!allowed.includes(status)) return jsonErr(res, 400, 'Invalid status.');
 
-      await sql`
-        UPDATE orders SET status = ${status}, updated_at = NOW()
-        WHERE id = ${String(orderId)}
-      `;
+      await sql`UPDATE orders SET status = ${status}, updated_at = NOW() WHERE id = ${String(orderId)}`;
+
+      /* Email buyer when shipped */
+      if (status === 'shipped') {
+        try {
+          const SITE = process.env.SITE_URL || 'https://neyomarket.com.ng';
+          const oRow = await sql`SELECT customer, seller_id FROM orders WHERE id = ${String(orderId)} LIMIT 1`;
+          if (oRow.length) {
+            const cust = typeof oRow[0].customer === 'string' ? JSON.parse(oRow[0].customer) : (oRow[0].customer || {});
+            if (cust.email) {
+              const sRow = await sql`SELECT name, phone FROM users WHERE id = ${String(oRow[0].seller_id||'')} LIMIT 1`;
+              const sName = sRow.length ? sRow[0].name : 'Your Seller';
+              const sWa   = sRow.length ? (sRow[0].phone||'') : '';
+              const html = '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px">'
+                + '<div style="background:linear-gradient(135deg,#0a0a1a,#1a1a2e);padding:20px;border-radius:12px 12px 0 0;text-align:center"><div style="font-size:24px;font-weight:900;color:#c9922a;font-family:Georgia,serif">NeyoMarket</div></div>'
+                + '<div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">'
+                + '<h2 style="color:#0a0a1a;margin:0 0 12px">Your Order is On Its Way! 🚚</h2>'
+                + '<p style="color:#555">Hi <strong>' + (cust.name||'Customer') + '</strong>, <strong>' + sName + '</strong> has shipped your order.</p>'
+                + '<div style="background:#e8f0fe;border-radius:10px;padding:14px;margin:16px 0;font-size:13px;color:#1a56db">📦 Order ID: <strong>' + String(orderId) + '</strong></div>'
+                + (sWa ? '<p style="color:#555;font-size:13px">Contact seller on WhatsApp: <a href="https://wa.me/' + sWa + '" style="color:#25d366;font-weight:700">' + sWa + '</a></p>' : '')
+                + '<a href="' + SITE + '/?page=profile" style="display:block;background:#c9922a;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;text-align:center;margin-top:16px">Track Order →</a>'
+                + '</div></body></html>';
+              fetch(SITE + '/api/auth?action=send-email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: cust.email, subject: '🚚 Your Order Has Been Shipped — ' + String(orderId), html }) }).catch(function(){});
+            }
+          }
+        } catch(e) { console.warn('[payment/shipped-email] non-fatal:', e.message); }
+      }
+
       return res.status(200).json({ ok: true, status });
     } catch (err) {
       console.error('[payment/update-order-status]', err.message);
@@ -811,48 +835,67 @@ module.exports = async function handler(req, res) {
         }
       } catch (e) { console.warn('[payment/confirm] buyer loyalty points (non-fatal):', e.message); }
 
-      /* ── Email buyer: order confirmation + download link (non-fatal) ──
-         Uses fetch to /api/auth?action=send-email so no extra dep needed.
-         Falls back gracefully if email service not configured.          */
       const buyerEmail   = (customer && customer.email) ? String(customer.email) : '';
       const buyerName    = (customer && customer.name)  ? String(customer.name)  : 'Valued Customer';
-      const productNames = itemList.map(function(i){ return i.name || 'Product'; }).join(', ');
       const SITE         = process.env.SITE_URL || 'https://neyomarket.com.ng';
+      const sym          = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', GHS:'GH₵' }[(itemList[0] && itemList[0].currency) || 'NGN'] || '₦';
+      const itemListHtml = itemList.map(function(i){ return '<li style="padding:4px 0;color:#555">' + (i.emoji||'📦') + ' ' + (i.name||'Product') + (i.selectedVariant ? ' — ' + i.selectedVariant : '') + ' × ' + (i.qty||1) + '</li>'; }).join('');
+
+      /* Email helper */
+      function sendNeyoEmail(to, subject, content) {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">'
+          + '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:30px 10px">'
+          + '<table width="100%" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">'
+          + '<tr><td style="background:linear-gradient(135deg,#0a0a1a,#1a1a2e);padding:24px 32px;text-align:center">'
+          + '<div style="font-size:26px;font-weight:900;color:#c9922a;font-family:Georgia,serif">NeyoMarket</div>'
+          + '<div style="color:rgba(255,255,255,.5);font-size:11px;margin-top:3px;letter-spacing:2px;text-transform:uppercase">Nigeria\'s Secure Marketplace</div>'
+          + '</td></tr>'
+          + '<tr><td style="padding:28px 32px">' + content + '</td></tr>'
+          + '<tr><td style="background:#f9f9f9;padding:16px 32px;text-align:center;border-top:1px solid #eee">'
+          + '<p style="color:#999;font-size:12px;margin:0">© 2026 NeyoMarket · <a href="' + SITE + '" style="color:#c9922a;text-decoration:none">neyomarket.com.ng</a></p>'
+          + '<p style="color:#bbb;font-size:11px;margin:6px 0 0">Support: +2349072212496 or +2349168321317</p>'
+          + '</td></tr></table></td></tr></table></body></html>';
+        fetch(SITE + '/api/auth?action=send-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to, subject, html })
+        }).catch(function(e){ console.warn('[payment/email]', e.message); });
+      }
+
       if (buyerEmail) {
+        /* Buyer — order confirmed */
+        sendNeyoEmail(buyerEmail, '✅ Order Confirmed — ' + String(orderId),
+          '<h2 style="color:#0a0a1a;margin:0 0 8px;font-size:20px">Order Confirmed! ✅</h2>'
+          + '<p style="color:#555;line-height:1.7;margin:0 0 16px">Hi <strong>' + buyerName + '</strong>, your payment is secured in escrow.</p>'
+          + '<div style="background:#f9f4eb;border-radius:10px;padding:16px;margin-bottom:16px">'
+          + '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Order ID</div>'
+          + '<div style="font-family:monospace;font-weight:700;color:#c9922a">' + String(orderId) + '</div>'
+          + '<ul style="margin:12px 0 8px;padding-left:18px">' + itemListHtml + '</ul>'
+          + '<div style="border-top:1px solid #e8d9c0;padding-top:10px;font-weight:700;color:#0a0a1a">Total: ' + sym + Number(amount).toLocaleString() + '</div>'
+          + '</div>'
+          + '<div style="background:#e8f5e9;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#2e7d32">'
+          + '🔒 <strong>Escrow Active</strong> — Money is held safely and released only after you confirm receipt.</div>'
+          + (isAllDigital && topFileUrl ? '<a href="' + topFileUrl + '" style="display:block;background:#059669;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px;text-align:center;margin-bottom:12px">⬇️ Download Your Product</a>' : '')
+          + '<a href="' + SITE + '/?page=profile" style="display:block;background:linear-gradient(135deg,#c9922a,#b45309);color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px;text-align:center">Track Your Order →</a>'
+        );
+
+        /* Seller — new order */
         try {
-          const emailBody = [
-            '<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:20px">',
-            '<div style="background:#c9922a;padding:16px 20px;border-radius:8px 8px 0 0">',
-            '<h2 style="color:#fff;margin:0">NeyoMarket — Order Confirmed ✅</h2></div>',
-            '<div style="background:#f9fafb;padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">',
-            '<p>Hi <strong>' + buyerName + '</strong>,</p>',
-            '<p>Your order <strong>' + String(orderId) + '</strong> has been confirmed.</p>',
-            '<table style="width:100%;border-collapse:collapse;margin:12px 0">',
-            '<tr><td style="padding:6px 0;color:#6b7280">Items:</td><td style="padding:6px 0;font-weight:600">' + productNames + '</td></tr>',
-            '<tr><td style="padding:6px 0;color:#6b7280">Amount:</td><td style="padding:6px 0;font-weight:600">₦' + amount.toLocaleString() + '</td></tr>',
-            '<tr><td style="padding:6px 0;color:#6b7280">Status:</td><td style="padding:6px 0">' + (orderStatus === 'paid' ? '✅ Paid' : '🛡️ Escrow Held') + '</td></tr>',
-            '</table>',
-            isAllDigital && topFileUrl
-              ? '<div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin:14px 0"><p style="margin:0 0 8px;font-weight:700;color:#065f46">⬇️ Your Download Link</p><a href="' + topFileUrl + '" style="background:#059669;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700">Download Your Product</a><p style="margin:10px 0 0;font-size:.8rem;color:#6b7280">Link is also available in your Orders page on NeyoMarket.</p></div>'
-              : '<p>Track your order at: <a href="' + SITE + '">' + SITE + '</a></p>',
-            '<p style="color:#6b7280;font-size:.82rem;margin-top:20px">This is an automated email from NeyoMarket. Reply to this email if you need help.</p>',
-            '</div></body></html>'
-          ].join('');
-
-          /* Fire-and-forget — don't block the response */
-          fetch(SITE + '/api/auth?action=send-email', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-              to:      buyerEmail,
-              subject: 'NeyoMarket — Order ' + String(orderId) + ' Confirmed ✅',
-              html:    emailBody
-            })
-          }).catch(function(e){ console.warn('[payment/confirm] email send (non-fatal):', e.message); });
-
-        } catch(emailErr) {
-          console.warn('[payment/confirm] email build error (non-fatal):', emailErr.message);
-        }
+          const sellerEmailRow = await sql`SELECT email, name FROM users WHERE id = ${String(resolvedSellerId || '')} LIMIT 1`;
+          if (sellerEmailRow.length && sellerEmailRow[0].email) {
+            sendNeyoEmail(sellerEmailRow[0].email, '🛍 New Order — ' + String(orderId),
+              '<h2 style="color:#0a0a1a;margin:0 0 8px;font-size:20px">New Order Received! 🎉</h2>'
+              + '<p style="color:#555;line-height:1.7;margin:0 0 16px">Hi <strong>' + sellerEmailRow[0].name + '</strong>, <strong>' + buyerName + '</strong> just purchased from your store.</p>'
+              + '<div style="background:#f9f4eb;border-radius:10px;padding:16px;margin-bottom:16px">'
+              + '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Order ID</div>'
+              + '<div style="font-family:monospace;font-weight:700;color:#c9922a">' + String(orderId) + '</div>'
+              + '<ul style="margin:12px 0 8px;padding-left:18px">' + itemListHtml + '</ul>'
+              + '<div style="border-top:1px solid #e8d9c0;padding-top:10px;font-weight:700;color:#0a0a1a">Total: ' + sym + Number(amount).toLocaleString() + '</div>'
+              + '</div>'
+              + '<p style="color:#555;font-size:13px;line-height:1.6">Prepare and ship promptly. Payment releases after buyer confirms receipt.</p>'
+              + '<a href="' + SITE + '/?page=profile" style="display:block;background:linear-gradient(135deg,#c9922a,#b45309);color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px;text-align:center;margin-top:16px">View Order →</a>'
+            );
+          }
+        } catch(e) { console.warn('[payment/confirm] seller email (non-fatal):', e.message); }
       }
 
       return res.status(200).json({
@@ -1286,23 +1329,36 @@ module.exports = async function handler(req, res) {
      Immediately mark withdrawal as 'completed' to prevent double-clicks
   ══════════════════════════════════════════════════════════════════ */
   if (action === 'update-withdrawal-status' && req.method === 'POST') {
-    const { withdrawalId, status, amount } = req.body || {};
+    const { withdrawalId, status, amount, sellerEmail, sellerName } = req.body || {};
     if (!withdrawalId || !status) return jsonErr(res, 400, 'withdrawalId and status required');
 
     try {
-      await sql`
-        UPDATE withdrawals 
-        SET status = ${String(status)}, updated_at = NOW()
-        WHERE id = ${Number(withdrawalId)}
-      `;
+      await sql`UPDATE withdrawals SET status = ${String(status)}, updated_at = NOW() WHERE id = ${Number(withdrawalId)}`;
 
-      /* Deduct from admin wallet when withdrawal is completed */
       if (status === 'completed' && amount) {
         const amt = parseFloat(amount);
         try {
           await sql`UPDATE users SET admin_wallet = GREATEST(0, COALESCE(admin_wallet,0) - ${amt}) WHERE role = 'admin'`;
           await sql`INSERT INTO admin_wallet_transactions (type, amount, description, ref, created_at) VALUES ('debit', ${-amt}, ${'Seller withdrawal payout'}, ${String(withdrawalId)}, NOW())`;
         } catch(e) { console.warn('[payment/update-withdrawal-status] admin wallet deduct (non-fatal):', e.message); }
+
+        /* Email seller */
+        if (sellerEmail) {
+          const SITE = process.env.SITE_URL || 'https://neyomarket.com.ng';
+          const html = '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px">'
+            + '<div style="background:linear-gradient(135deg,#0a0a1a,#1a1a2e);padding:20px;border-radius:12px 12px 0 0;text-align:center"><div style="font-size:24px;font-weight:900;color:#c9922a;font-family:Georgia,serif">NeyoMarket</div></div>'
+            + '<div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">'
+            + '<h2 style="color:#0a0a1a;margin:0 0 12px">Withdrawal Processed! 💸</h2>'
+            + '<p style="color:#555">Hi <strong>' + (sellerName||'Seller') + '</strong>, your withdrawal has been sent to your bank account.</p>'
+            + '<div style="background:#f9f4eb;border-radius:10px;padding:16px;margin:16px 0">'
+            + '<div style="font-size:13px;color:#666;margin-bottom:6px">Amount</div>'
+            + '<div style="font-size:28px;font-weight:900;color:#c9922a;font-family:Georgia,serif">₦' + Number(amt).toLocaleString() + '</div>'
+            + '</div>'
+            + '<p style="color:#888;font-size:12px">Funds typically arrive within 1-3 business days.</p>'
+            + '<a href="' + SITE + '/?page=profile" style="display:block;background:#c9922a;color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;text-align:center;margin-top:16px">View Dashboard →</a>'
+            + '</div></body></html>';
+          fetch(SITE + '/api/auth?action=send-email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: sellerEmail, subject: '💸 Withdrawal of ₦' + Number(amt).toLocaleString() + ' Processed', html }) }).catch(function(){});
+        }
       }
 
       return res.status(200).json({ ok: true });
