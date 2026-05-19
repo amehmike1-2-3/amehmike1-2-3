@@ -2917,8 +2917,7 @@ function runAutonomousCOO() {
   var now      = Date.now();
   var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
 
-  /* Session-level dedup guard — tracks which orders were processed THIS session.
-     Prevents re-firing markCol (and its loyalty points) on every login. */
+  /* Session-level dedup guard — prevents re-processing orders on every login */
   if (!window.__cooProcessed) window.__cooProcessed = {};
 
   /* Fetch live orders from Neon so we don't rely on stale local cache */
@@ -2935,7 +2934,7 @@ function runAutonomousCOO() {
                       && o.status !== 'completed';
         if (!isEligible) return;
 
-        /* DEDUP GUARD — skip if this order was already processed by COO this session */
+        /* DEDUP GUARD — skip if already processed this session */
         if (window.__cooProcessed[o.id]) return;
 
         /* Determine order age — use created_at if date is not parseable */
@@ -2946,7 +2945,7 @@ function runAutonomousCOO() {
         var ageMs = now - orderTime;
         if (ageMs < LIMIT_MS) return; /* Not yet 48 hours — skip */
 
-        /* Mark as processed BEFORE calling markCol to prevent any re-entry */
+        /* Mark BEFORE calling markCol to prevent any re-entry */
         window.__cooProcessed[o.id] = true;
 
         /* Inject into local ords array so markCol can find it */
@@ -2959,7 +2958,7 @@ function runAutonomousCOO() {
         }
 
         console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
-        /* markCol already calls awardLoyaltyPoints(20) internally — do NOT add extra points here */
+        /* NOTE: markCol already calls awardLoyaltyPoints(20) internally — do NOT add extra points here */
         markCol(o.id); /* Applies tiered split + syncs to DB */
         released++;
       });
@@ -4488,19 +4487,17 @@ function processPaystack(mode) {
         sendLocalNotification('Order Confirmed! ✅', 'Your order ' + trackId + ' is being processed. Escrow active.', 'https://neyomarket.com.ng/neyomarket-logo.webp');
         /* Award loyalty points for purchase */
         if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Purchase: ' + trackId);
-        /* Award referral bonus ONLY if a verified referral code exists for this session */
+        /* Award referral bonus ONLY if a verified referral code exists — then clear it immediately */
         var sessionRefCode = window.__refCode || '';
         if (sessionRefCode && sessionRefCode !== 'GUEST' && sessionRefCode.length > 2) {
           awardReferralBonus(sessionRefCode);
-          /* Clear the referral code so it cannot fire again on the next purchase */
           window.__refCode = '';
           try { localStorage.removeItem('nm_ref'); sessionStorage.removeItem('nm_ref_session'); } catch(e) {}
         }
-        /* Redirect to Order History after a short delay so receipt is visible */
+        /* Redirect to Order History after 3s so user can see the receipt first */
         setTimeout(function() {
           cM('m-rec');
           go('profile');
-          /* Scroll to orders tab if the profile page has tab navigation */
           setTimeout(function() {
             var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
             if (ordTab && typeof ordTab.click === 'function') ordTab.click();
@@ -6082,6 +6079,22 @@ function processWalletPay(mode) {
     oM('m-rec');
     toast('✅ Paid ₦' + total.toLocaleString() + ' from wallet! +10 loyalty points ⭐', 'ok');
     sendLocalNotification('Order Confirmed! ✅', 'Paid ₦' + total.toLocaleString() + ' from wallet. Order ' + trackId, '');
+    /* Award referral bonus ONLY if a verified referral code exists — then clear it immediately */
+    var walletRefCode = window.__refCode || '';
+    if (walletRefCode && walletRefCode !== 'GUEST' && walletRefCode.length > 2) {
+      awardReferralBonus(walletRefCode);
+      window.__refCode = '';
+      try { localStorage.removeItem('nm_ref'); sessionStorage.removeItem('nm_ref_session'); } catch(e) {}
+    }
+    /* Redirect to Order History after 3s */
+    setTimeout(function() {
+      cM('m-rec');
+      go('profile');
+      setTimeout(function() {
+        var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
+        if (ordTab && typeof ordTab.click === 'function') ordTab.click();
+      }, 300);
+    }, 3000);
   })
   .catch(function(e){ toast('Error: ' + (e.message||'Try again'), 'fail'); });
 }
@@ -10032,7 +10045,7 @@ window.anCurrentTab = anCurrentTab;
       localStorage.setItem('nm_ref', JSON.stringify(refObj));
       sessionStorage.setItem('nm_ref_session', urlRef);
     } else {
-      /* Read existing stored referral — validate it has not expired */
+      /* Read existing stored referral — validate expiry */
       var stored = localStorage.getItem('nm_ref');
       window.__refCode = '';
       if (stored) {
