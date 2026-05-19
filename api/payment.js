@@ -44,7 +44,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@neyomarket.com';
    SHARED HELPERS
 ───────────────────────────────────────────── */
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin',  'https://neyomarket.com.ng');
+  res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-paystack-signature');
   res.setHeader('X-Content-Type-Options',       'nosniff');
@@ -783,6 +783,15 @@ module.exports = async function handler(req, res) {
           UPDATE users SET admin_balance = COALESCE(admin_balance, 0) + ${split.platformFee}
           WHERE LOWER(email) = LOWER(${ADMIN_EMAIL})
         `;
+      }
+
+      /* Resolve affiliate user ID from affCode — required before recording commission */
+      let affUserId = null;
+      if (hasValidAff && rawAff) {
+        try {
+          const affRows = await sql`SELECT id FROM users WHERE aff_code = ${rawAff} LIMIT 1`;
+          if (affRows.length) affUserId = String(affRows[0].id);
+        } catch(e) { console.warn('[payment/confirm] affUserId lookup (non-fatal):', e.message); }
       }
 
       /* Record affiliate commission as PENDING — wallet credited only when order completes */
