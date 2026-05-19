@@ -17,15 +17,13 @@ const sql = neon(process.env.DATABASE_URL);
    - GMAIL_PASS (your Google App Password)
 ════════════════════════════════════════════════════════ */
 const gmailTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // SSL/TLS
+  host:   'smtp.gmail.com',
+  port:   465,
+  secure: true,
   auth: {
-    user: process.env.GMAIL_USER || 'amehmichael2336@gmail.com',
-    pass: process.env.GMAIL_PASS || 'iewd drzi pdbj zxux'
-  },
-  logger: false,
-  debug: false
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
 });
 
 /* ════════════════════════════════════════════════════════
@@ -979,6 +977,28 @@ module.exports = async function handler(req, res) {
       } catch(err) {
         console.error('[auth/admin-wallet-topup]', err.message);
         return res.status(500).json({ ok: false, error: 'Could not process top-up.' });
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       SEND-EMAIL — generic email sender called by payment.js
+    ══════════════════════════════════════════════════ */
+    if (req.query.action === 'send-email' && req.method === 'POST') {
+      const { to, subject, html, text } = req.body || {};
+      if (!to || !subject) return res.status(400).json({ ok: false, error: 'to and subject required.' });
+      try {
+        await gmailTransporter.sendMail({
+          from:    '"NeyoMarket" <' + process.env.GMAIL_USER + '>',
+          to:      to,
+          subject: subject,
+          html:    html || '',
+          text:    text || ''
+        });
+        console.log('[auth/send-email] Sent to', to, '|', subject);
+        return res.status(200).json({ ok: true });
+      } catch(err) {
+        console.error('[auth/send-email]', err.message);
+        return res.status(500).json({ ok: false, error: err.message });
       }
     }
 
