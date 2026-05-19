@@ -2917,6 +2917,10 @@ function runAutonomousCOO() {
   var now      = Date.now();
   var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
 
+  /* Session-level dedup guard — tracks which orders were processed THIS session.
+     Prevents re-firing markCol (and its loyalty points) on every login. */
+  if (!window.__cooProcessed) window.__cooProcessed = {};
+
   /* Fetch live orders from Neon so we don't rely on stale local cache */
   fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
@@ -2931,6 +2935,9 @@ function runAutonomousCOO() {
                       && o.status !== 'completed';
         if (!isEligible) return;
 
+        /* DEDUP GUARD — skip if this order was already processed by COO this session */
+        if (window.__cooProcessed[o.id]) return;
+
         /* Determine order age — use created_at if date is not parseable */
         var orderDate = o.created_at || o.date || null;
         var orderTime = orderDate ? new Date(orderDate).getTime() : 0;
@@ -2938,6 +2945,9 @@ function runAutonomousCOO() {
 
         var ageMs = now - orderTime;
         if (ageMs < LIMIT_MS) return; /* Not yet 48 hours — skip */
+
+        /* Mark as processed BEFORE calling markCol to prevent any re-entry */
+        window.__cooProcessed[o.id] = true;
 
         /* Inject into local ords array so markCol can find it */
         var inMem = ords.find(function(x){ return x.id === o.id; });
@@ -2949,14 +2959,13 @@ function runAutonomousCOO() {
         }
 
         console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
+        /* markCol already calls awardLoyaltyPoints(20) internally — do NOT add extra points here */
         markCol(o.id); /* Applies tiered split + syncs to DB */
-        /* Award buyer loyalty points for auto-released order */
-        if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Auto-release: Order ' + o.id);
         released++;
       });
 
       if (released > 0) {
-        toast('🤖 ' + released + ' order(s) auto-released after 48h. +' + (released * 10) + ' loyalty points earned! ⭐', 'ok');
+        toast('🤖 ' + released + ' order(s) auto-released after 48h. ⭐', 'ok');
       }
     })
     .catch(function(e) {
@@ -4479,9 +4488,24 @@ function processPaystack(mode) {
         sendLocalNotification('Order Confirmed! ✅', 'Your order ' + trackId + ' is being processed. Escrow active.', 'https://neyomarket.com.ng/neyomarket-logo.webp');
         /* Award loyalty points for purchase */
         if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Purchase: ' + trackId);
-        /* Award referral bonus if buyer came via referral */
-        var refCode = window.__refCode || '';
-        if (refCode) awardReferralBonus(refCode);
+        /* Award referral bonus ONLY if a verified referral code exists for this session */
+        var sessionRefCode = window.__refCode || '';
+        if (sessionRefCode && sessionRefCode !== 'GUEST' && sessionRefCode.length > 2) {
+          awardReferralBonus(sessionRefCode);
+          /* Clear the referral code so it cannot fire again on the next purchase */
+          window.__refCode = '';
+          try { localStorage.removeItem('nm_ref'); sessionStorage.removeItem('nm_ref_session'); } catch(e) {}
+        }
+        /* Redirect to Order History after a short delay so receipt is visible */
+        setTimeout(function() {
+          cM('m-rec');
+          go('profile');
+          /* Scroll to orders tab if the profile page has tab navigation */
+          setTimeout(function() {
+            var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
+            if (ordTab && typeof ordTab.click === 'function') ordTab.click();
+          }, 300);
+        }, 3000);
       })
       .catch(function(err) {
         /* Network error — save locally as fallback */
@@ -10001,8 +10025,31 @@ window.anCurrentTab = anCurrentTab;
 (function(){
   try {
     var urlRef = new URLSearchParams(window.location.search).get('ref');
-    if (urlRef) { window.__refCode = urlRef; localStorage.setItem('nm_ref', urlRef); }
-    else { window.__refCode = localStorage.getItem('nm_ref') || ''; }
+    if (urlRef && urlRef.length > 2 && urlRef !== 'GUEST') {
+      window.__refCode = urlRef;
+      /* Store as structured JSON with 30-day expiry — matches checkout reader format */
+      var refObj = { code: urlRef, expires: Date.now() + (30 * 24 * 60 * 60 * 1000) };
+      localStorage.setItem('nm_ref', JSON.stringify(refObj));
+      sessionStorage.setItem('nm_ref_session', urlRef);
+    } else {
+      /* Read existing stored referral — validate it has not expired */
+      var stored = localStorage.getItem('nm_ref');
+      window.__refCode = '';
+      if (stored) {
+        try {
+          var parsed = JSON.parse(stored);
+          if (parsed && parsed.code && parsed.expires && Date.now() < parsed.expires) {
+            window.__refCode = parsed.code;
+          } else {
+            /* Expired — clean up to prevent ghost credits */
+            localStorage.removeItem('nm_ref');
+          }
+        } catch(e) {
+          /* Legacy plain-string format — remove it to prevent ghost credits */
+          localStorage.removeItem('nm_ref');
+        }
+      }
+    }
   } catch(e) { window.__refCode = ''; }
 })();
 
