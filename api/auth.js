@@ -21,8 +21,8 @@ const gmailTransporter = nodemailer.createTransport({
   port: 465,
   secure: true, // SSL/TLS
   auth: {
-    user: process.env.GMAIL_USER || 'amehmichael2336@gmail.com',
-    pass: process.env.GMAIL_PASS || 'iewd drzi pdbj zxux'
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
   },
   logger: false,
   debug: false
@@ -844,13 +844,12 @@ module.exports = async function handler(req, res) {
       if (!to || !subject || !html)
         return res.status(400).json({ ok: false, error: 'to, subject and html are required.' });
 
-      /* Basic email validation */
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to).trim()))
         return res.status(400).json({ ok: false, error: 'Invalid recipient email address.' });
 
       try {
         const info = await gmailTransporter.sendMail({
-          from:    'NeyoMarket <amehmichael2336@gmail.com>',
+          from:    'NeyoMarket <' + (process.env.GMAIL_USER || 'noreply@neyomarket.com.ng') + '>',
           to:      String(to).trim(),
           subject: String(subject),
           html:    String(html),
