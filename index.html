@@ -1795,6 +1795,16 @@ footer{background:var(--text);color:#fff;border-top:1px solid rgba(255,255,255,.
           <p class="hint">Shown on product page so buyers know where you are.</p>
         </div>
       </div>
+
+      <!-- Product Variants -->
+      <div class="dc" style="margin-top:14px">
+        <h3>🎨 Product Variants <span style="font-size:.7rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional — e.g. Color, Size, Storage)</span></h3>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;line-height:1.6">Add variants if your product comes in different options. Each variant can have its own stock quantity.</p>
+        <div id="variants-container"></div>
+        <button type="button" onclick="addVariant()" style="width:100%;background:none;border:1.5px dashed var(--border2);color:var(--muted);padding:10px;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
+          + Add Variant (Color / Size / Storage etc.)
+        </button>
+      </div>
       <div class="fg" style="margin-top:10px">
         <label>Seller Bio <span style="font-size:.7rem;font-weight:400;text-transform:none">(optional — shown to buyers)</span></label>
         <textarea class="fi" id="s-bio" rows="3" placeholder="Tell buyers about yourself — your expertise, experience, what you sell..."></textarea>
@@ -3258,7 +3268,8 @@ function submitProduct() {
     fileExt:        digitalFileData ? digitalFileData.ext  : null,
     fileName:       digitalFileData ? digitalFileData.name : null,
     fileUrl:        null,   /* filled below if digital upload succeeds */
-    condition:      gv('s-condition') || null  /* NEW: capture condition (new/used) */
+    condition:      gv('s-condition') || null,  /* NEW: capture condition (new/used) */
+    variants:       getVariants()               /* NEW: product variants */
   };
 
   var pType = payload.type;
@@ -3356,6 +3367,8 @@ window.submitProduct = submitProduct;
 function resetSell() {
   uploadedImages = []; dReady = false; digitalFileData = null;
   ['s-name','s-type','s-cat','s-price','s-currency','s-comm','s-desc','s-email','s-discount-price','s-sale-ends','s-shipping-fee'].forEach(function (id) { sval(id, ''); });
+  var vc = document.getElementById('variants-container'); if (vc) vc.innerHTML = '';
+  variantCount = 0;
   var cb = document.getElementById('sell-cb'); if (cb) cb.checked = false;
   var dw = document.getElementById('dfile-wrap'); if (dw) dw.style.display = 'none';
   var fn = document.getElementById('dfile-name'); if (fn) fn.textContent = 'Tap to Choose File';
@@ -3446,7 +3459,90 @@ function mkCard(p) {
       : '<button class="addbtn" onclick="event.stopPropagation();addCart(' + p.id + ')">\uD83D\uDED2 Add to Cart</button>')
     + '</div></div>';
 }
-window.mkCard = mkCard;
+/* ═══ PRODUCT VARIANTS ═══ */
+var variantCount = 0;
+function addVariant() {
+  variantCount++;
+  var id = 'variant-' + variantCount;
+  var container = document.getElementById('variants-container');
+  if (!container) return;
+  var div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center';
+  div.innerHTML = '<input class="fi" placeholder="Option (e.g. Red, XL, 128GB)" style="margin:0" id="' + id + '-name"/>'
+    + '<input class="fi" type="number" placeholder="Stock qty" min="0" style="margin:0" id="' + id + '-qty"/>'
+    + '<button type="button" onclick="document.getElementById(\'' + id + '\').remove()" style="background:var(--red-bg);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:8px;padding:10px 14px;cursor:pointer;font-size:.85rem">✕</button>';
+  container.appendChild(div);
+}
+window.addVariant = addVariant;
+
+function getVariants() {
+  var variants = [];
+  var container = document.getElementById('variants-container');
+  if (!container) return variants;
+  container.querySelectorAll('[id^="variant-"]').forEach(function(div) {
+    var id    = div.id;
+    var name  = (document.getElementById(id + '-name')  || {}).value || '';
+    var qty   = (document.getElementById(id + '-qty')   || {}).value || '';
+    if (name.trim()) variants.push({ name: name.trim(), qty: qty ? parseInt(qty) : null });
+  });
+  return variants;
+}
+window.getVariants = getVariants;
+
+/* ═══ VARIANT SELECTION ═══ */
+var selectedVariants = {}; /* productId → variantName */
+
+function selectVariant(productId, variantIdx, btn) {
+  var p = prods.find(function(x){ return String(x.id) === String(productId); });
+  if (!p) return;
+  var vars = p.variants;
+  if (typeof vars === 'string') { try { vars = JSON.parse(vars); } catch(e){ vars = []; } }
+  if (!Array.isArray(vars) || !vars[variantIdx]) return;
+
+  /* Highlight selected button */
+  var selector = document.getElementById('variant-selector-' + productId);
+  if (selector) selector.querySelectorAll('button').forEach(function(b){
+    b.style.borderColor = 'var(--border2)';
+    b.style.background  = 'var(--bg3)';
+    b.style.color       = 'var(--text)';
+  });
+  btn.style.borderColor = 'var(--gold)';
+  btn.style.background  = 'rgba(201,146,42,.1)';
+  btn.style.color       = 'var(--gold)';
+
+  selectedVariants[productId] = vars[variantIdx].name;
+  var label = document.getElementById('variant-selected-' + productId);
+  if (label) label.textContent = '✓ Selected: ' + vars[variantIdx].name;
+}
+window.selectVariant = selectVariant;
+
+function addCartWithVariant(productId) {
+  var p = prods.find(function(x){ return String(x.id) === String(productId); });
+  if (!p) return;
+
+  var vars = p.variants;
+  if (typeof vars === 'string') { try { vars = JSON.parse(vars); } catch(e){ vars = []; } }
+  if (!Array.isArray(vars)) vars = [];
+
+  /* If product has variants, require selection */
+  if (vars.length > 0 && !selectedVariants[productId]) {
+    toast('Please select an option first (e.g. color, size).', 'warn');
+    return;
+  }
+
+  addCart(productId);
+  /* Attach variant to cart item */
+  if (selectedVariants[productId]) {
+    var idx = cart.findIndex(function(i){ return String(i.id) === String(productId); });
+    if (idx > -1) {
+      cart[idx].selectedVariant = selectedVariants[productId];
+      sv('nm_cart', cart);
+    }
+  }
+  cM('m-pd');
+}
+window.addCartWithVariant = addCartWithVariant;
 
 /* ═══════════════════════════════════════════════════════
    WISHLIST
@@ -3711,7 +3807,25 @@ function opn(id) {
     
     /* ════ ACTION BUTTONS — CONSOLIDATED ════ */
     + '<div style="padding:0 14px 14px;">'
-    + '<button style="background:#c9922a;color:#fff;border:none;padding:13px 16px;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;width:100%;margin-bottom:8px;transition:background .2s" onclick="addCart(' + p.id + ');cM(\'m-pd\')" onmouseover="this.style.background=\'#a67318\'" onmouseout="this.style.background=\'#c9922a\'">🛒 Add to Cart</button>'
+    + (function(){
+        var vars = p.variants;
+        if (typeof vars === 'string') { try { vars = JSON.parse(vars); } catch(e){ vars = []; } }
+        if (!Array.isArray(vars) || !vars.length) return '';
+        return '<div style="margin-bottom:12px">'
+          + '<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Select Option</div>'
+          + '<div style="display:flex;flex-wrap:wrap;gap:8px" id="variant-selector-' + p.id + '">'
+          + vars.map(function(v, i){
+            var outOfStock = v.qty !== null && v.qty !== undefined && parseInt(v.qty) <= 0;
+            return '<button onclick="selectVariant(' + p.id + ',' + i + ',this)" '
+              + 'style="padding:8px 14px;border-radius:8px;border:1.5px solid var(--border2);background:var(--bg3);color:' + (outOfStock?'var(--muted)':'var(--text)') + ';font-size:.8rem;font-weight:600;cursor:' + (outOfStock?'not-allowed':'pointer') + ';font-family:inherit;transition:.2s" '
+              + (outOfStock ? 'disabled title="Out of stock"' : '')
+              + '>' + v.name + (outOfStock ? ' (sold out)' : (v.qty ? ' (' + v.qty + ' left)' : '')) + '</button>';
+          }).join('')
+          + '</div>'
+          + '<div id="variant-selected-' + p.id + '" style="font-size:.75rem;color:var(--muted);margin-top:6px"></div>'
+          + '</div>';
+      })()
+    + '<button style="background:#c9922a;color:#fff;border:none;padding:13px 16px;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;width:100%;margin-bottom:8px;transition:background .2s" onclick="addCartWithVariant(' + p.id + ')" onmouseover="this.style.background=\'#a67318\'" onmouseout="this.style.background=\'#c9922a\'">🛒 Add to Cart</button>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     + (CU && waLink
       ? '<a href="' + waLink + '" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;background:#25d366;color:#fff;padding:10px;border-radius:8px;font-weight:600;font-size:.8rem;text-decoration:none;cursor:pointer">💬 WhatsApp</a>'
