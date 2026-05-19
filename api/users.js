@@ -89,27 +89,30 @@ module.exports = async function handler(req, res) {
       const { refCode, newUserId } = req.body || {};
       if (!refCode) return res.status(400).json({ error: 'refCode required.' });
 
-      /* STRICT GUARD 1: refCode must be a real non-guest code */
+      /* GUARD 1: reject empty / GUEST / too-short codes */
       const cleanRef = String(refCode).trim();
       if (!cleanRef || cleanRef.length < 3 || cleanRef === 'GUEST') {
         return res.status(200).json({ ok: true, skipped: 'No valid referral code.' });
       }
 
-      /* STRICT GUARD 2: newUserId must be provided — we need it to check for duplicates */
+      /* GUARD 2: newUserId required for dedup check */
       if (!newUserId) return res.status(400).json({ error: 'newUserId required.' });
       const cleanBuyerId = String(newUserId).trim();
 
-      /* DEDUP GUARD: Check if this buyer has already received a referral bonus.
-         We record this via a non-null referred_by column on the users table.
-         If the buyer already has referred_by set, abort — bonus was already paid. */
+      /* GUARD 3: check if this buyer already received a referral bonus */
       const buyerRows = await sql`SELECT id, referred_by FROM users WHERE id = ${cleanBuyerId} LIMIT 1`;
       if (!buyerRows.length) return res.status(200).json({ ok: true, skipped: 'Buyer not found.' });
       if (buyerRows[0].referred_by) {
         return res.status(200).json({ ok: true, skipped: 'Referral bonus already claimed for this buyer.' });
       }
 
-      /* SELF-REFERRAL GUARD: referrer must not be the same person as the buyer */
-      const referrers = await sql`SELECT id, buyer_ref_count FROM users WHERE (aff_code = ${cleanRef} OR buyer_ref_code = ${cleanRef}) AND id != ${cleanBuyerId} LIMIT 1`;
+      /* GUARD 4: self-referral blocked — referrer must not be the same person as the buyer */
+      const referrers = await sql`
+        SELECT id, buyer_ref_count FROM users
+        WHERE (aff_code = ${cleanRef} OR buyer_ref_code = ${cleanRef})
+          AND id != ${cleanBuyerId}
+        LIMIT 1
+      `;
       if (!referrers.length) return res.status(200).json({ ok: true, skipped: 'Referrer not found or self-referral blocked.' });
 
       const referrerId   = String(referrers[0].id);
