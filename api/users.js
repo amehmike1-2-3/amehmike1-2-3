@@ -89,23 +89,44 @@ module.exports = async function handler(req, res) {
       const { refCode, newUserId } = req.body || {};
       if (!refCode) return res.status(400).json({ error: 'refCode required.' });
 
-      /* Find referrer by aff_code or buyer_ref_code */
-      const referrers = await sql`SELECT id, buyer_ref_count FROM users WHERE aff_code = ${refCode} OR buyer_ref_code = ${refCode} LIMIT 1`;
-      if (!referrers.length) return res.status(200).json({ ok: true, skipped: 'Referrer not found.' });
+      /* STRICT GUARD 1: refCode must be a real non-guest code */
+      const cleanRef = String(refCode).trim();
+      if (!cleanRef || cleanRef.length < 3 || cleanRef === 'GUEST') {
+        return res.status(200).json({ ok: true, skipped: 'No valid referral code.' });
+      }
+
+      /* STRICT GUARD 2: newUserId must be provided — we need it to check for duplicates */
+      if (!newUserId) return res.status(400).json({ error: 'newUserId required.' });
+      const cleanBuyerId = String(newUserId).trim();
+
+      /* DEDUP GUARD: Check if this buyer has already received a referral bonus.
+         We record this via a non-null referred_by column on the users table.
+         If the buyer already has referred_by set, abort — bonus was already paid. */
+      const buyerRows = await sql`SELECT id, referred_by FROM users WHERE id = ${cleanBuyerId} LIMIT 1`;
+      if (!buyerRows.length) return res.status(200).json({ ok: true, skipped: 'Buyer not found.' });
+      if (buyerRows[0].referred_by) {
+        return res.status(200).json({ ok: true, skipped: 'Referral bonus already claimed for this buyer.' });
+      }
+
+      /* SELF-REFERRAL GUARD: referrer must not be the same person as the buyer */
+      const referrers = await sql`SELECT id, buyer_ref_count FROM users WHERE (aff_code = ${cleanRef} OR buyer_ref_code = ${cleanRef}) AND id != ${cleanBuyerId} LIMIT 1`;
+      if (!referrers.length) return res.status(200).json({ ok: true, skipped: 'Referrer not found or self-referral blocked.' });
 
       const referrerId   = String(referrers[0].id);
       const currentCount = parseInt(referrers[0].buyer_ref_count || 0);
 
+      /* Mark buyer as referred FIRST — prevents race condition double-credit */
+      await sql`UPDATE users SET referred_by = ${cleanRef} WHERE id = ${cleanBuyerId}`;
+
       /* Award ₦500 to referrer */
       await sql`UPDATE users SET buyer_wallet = COALESCE(buyer_wallet,0) + 500, buyer_ref_count = ${currentCount + 1} WHERE id = ${referrerId}`;
-      await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${referrerId}, 'credit', ${500}, ${'Referral bonus — friend made first purchase'}, ${newUserId||''}, NOW())`;
+      await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${referrerId}, 'credit', ${500}, ${'Referral bonus — friend made first purchase'}, ${cleanBuyerId}, NOW())`;
 
-      /* Award ₦500 bonus to new buyer too */
-      if (newUserId) {
-        await sql`UPDATE users SET buyer_wallet_bonus = COALESCE(buyer_wallet_bonus,0) + 500 WHERE id = ${String(newUserId)}`;
-        await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${String(newUserId)}, 'credit', ${500}, ${'Welcome bonus — referred by a friend'}, ${refCode}, NOW())`;
-      }
+      /* Award ₦500 welcome bonus to new buyer */
+      await sql`UPDATE users SET buyer_wallet_bonus = COALESCE(buyer_wallet_bonus,0) + 500 WHERE id = ${cleanBuyerId}`;
+      await sql`INSERT INTO wallet_transactions (user_id, type, amount, description, ref, created_at) VALUES (${cleanBuyerId}, 'credit', ${500}, ${'Welcome bonus — referred by a friend'}, ${cleanRef}, NOW())`;
 
+      console.log('[users/referral-bonus] ₦500 awarded — referrer:', referrerId, '← buyer:', cleanBuyerId, 'via code:', cleanRef);
       return res.status(200).json({ ok: true });
     } catch(err) {
       console.error('[users/referral-bonus]', err.message);
