@@ -2917,9 +2917,6 @@ function runAutonomousCOO() {
   var now      = Date.now();
   var LIMIT_MS = 48 * 60 * 60 * 1000; /* 48 hours in milliseconds */
 
-  /* Session-level dedup guard — prevents re-processing orders on every login */
-  if (!window.__cooProcessed) window.__cooProcessed = {};
-
   /* Fetch live orders from Neon so we don't rely on stale local cache */
   fetch('/api/payment?action=orders&userId=' + encodeURIComponent(String(CU.id)))
     .then(function(r){ return r.json(); })
@@ -2934,9 +2931,6 @@ function runAutonomousCOO() {
                       && o.status !== 'completed';
         if (!isEligible) return;
 
-        /* DEDUP GUARD — skip if already processed this session */
-        if (window.__cooProcessed[o.id]) return;
-
         /* Determine order age — use created_at if date is not parseable */
         var orderDate = o.created_at || o.date || null;
         var orderTime = orderDate ? new Date(orderDate).getTime() : 0;
@@ -2944,9 +2938,6 @@ function runAutonomousCOO() {
 
         var ageMs = now - orderTime;
         if (ageMs < LIMIT_MS) return; /* Not yet 48 hours — skip */
-
-        /* Mark BEFORE calling markCol to prevent any re-entry */
-        window.__cooProcessed[o.id] = true;
 
         /* Inject into local ords array so markCol can find it */
         var inMem = ords.find(function(x){ return x.id === o.id; });
@@ -2958,13 +2949,14 @@ function runAutonomousCOO() {
         }
 
         console.log('[COO] Auto-releasing order', o.id, '— age:', Math.round(ageMs/3600000) + 'h');
-        /* NOTE: markCol already calls awardLoyaltyPoints(20) internally — do NOT add extra points here */
         markCol(o.id); /* Applies tiered split + syncs to DB */
+        /* Award buyer loyalty points for auto-released order */
+        if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Auto-release: Order ' + o.id);
         released++;
       });
 
       if (released > 0) {
-        toast('🤖 ' + released + ' order(s) auto-released after 48h. ⭐', 'ok');
+        toast('🤖 ' + released + ' order(s) auto-released after 48h. +' + (released * 10) + ' loyalty points earned! ⭐', 'ok');
       }
     })
     .catch(function(e) {
@@ -4368,6 +4360,10 @@ function processPaystack(mode) {
       },
 
     callback: function (resp) {
+      /* ── DUPLICATE GUARD — Paystack occasionally fires callback twice ── */
+      if (window.__lastPayRef === resp.reference) return;
+      window.__lastPayRef = resp.reference;
+
       /* ── DB FIRST, UI SECOND ── */
       /* Show saving indicator */
       toast('⏳ Saving your order…', 'ok');
@@ -4487,22 +4483,9 @@ function processPaystack(mode) {
         sendLocalNotification('Order Confirmed! ✅', 'Your order ' + trackId + ' is being processed. Escrow active.', 'https://neyomarket.com.ng/neyomarket-logo.webp');
         /* Award loyalty points for purchase */
         if (typeof awardLoyaltyPoints === 'function') awardLoyaltyPoints(10, 'Purchase: ' + trackId);
-        /* Award referral bonus ONLY if a verified referral code exists — then clear it immediately */
-        var sessionRefCode = window.__refCode || '';
-        if (sessionRefCode && sessionRefCode !== 'GUEST' && sessionRefCode.length > 2) {
-          awardReferralBonus(sessionRefCode);
-          window.__refCode = '';
-          try { localStorage.removeItem('nm_ref'); sessionStorage.removeItem('nm_ref_session'); } catch(e) {}
-        }
-        /* Redirect to Order History after 3s so user can see the receipt first */
-        setTimeout(function() {
-          cM('m-rec');
-          go('profile');
-          setTimeout(function() {
-            var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
-            if (ordTab && typeof ordTab.click === 'function') ordTab.click();
-          }, 300);
-        }, 3000);
+        /* Award referral bonus if buyer came via referral */
+        var refCode = window.__refCode || '';
+        if (refCode) awardReferralBonus(refCode);
       })
       .catch(function(err) {
         /* Network error — save locally as fallback */
@@ -6033,7 +6016,7 @@ function processWalletPay(mode) {
   };
 
   /* Deduct from wallet + save order */
-  fetch('/api/users?action=wallet-deduct', {
+  fetch('/api/payment?action=wallet-deduct', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: String(CU.id), amount: total, ref: trackId, description: 'Purchase: ' + cart.map(function(i){ return i.name; }).join(', ') })
@@ -6079,22 +6062,6 @@ function processWalletPay(mode) {
     oM('m-rec');
     toast('✅ Paid ₦' + total.toLocaleString() + ' from wallet! +10 loyalty points ⭐', 'ok');
     sendLocalNotification('Order Confirmed! ✅', 'Paid ₦' + total.toLocaleString() + ' from wallet. Order ' + trackId, '');
-    /* Award referral bonus ONLY if a verified referral code exists — then clear it immediately */
-    var walletRefCode = window.__refCode || '';
-    if (walletRefCode && walletRefCode !== 'GUEST' && walletRefCode.length > 2) {
-      awardReferralBonus(walletRefCode);
-      window.__refCode = '';
-      try { localStorage.removeItem('nm_ref'); sessionStorage.removeItem('nm_ref_session'); } catch(e) {}
-    }
-    /* Redirect to Order History after 3s */
-    setTimeout(function() {
-      cM('m-rec');
-      go('profile');
-      setTimeout(function() {
-        var ordTab = document.querySelector('[data-tab="orders"], #tab-orders, .tab-orders');
-        if (ordTab && typeof ordTab.click === 'function') ordTab.click();
-      }, 300);
-    }, 3000);
   })
   .catch(function(e){ toast('Error: ' + (e.message||'Try again'), 'fail'); });
 }
@@ -10038,31 +10005,8 @@ window.anCurrentTab = anCurrentTab;
 (function(){
   try {
     var urlRef = new URLSearchParams(window.location.search).get('ref');
-    if (urlRef && urlRef.length > 2 && urlRef !== 'GUEST') {
-      window.__refCode = urlRef;
-      /* Store as structured JSON with 30-day expiry — matches checkout reader format */
-      var refObj = { code: urlRef, expires: Date.now() + (30 * 24 * 60 * 60 * 1000) };
-      localStorage.setItem('nm_ref', JSON.stringify(refObj));
-      sessionStorage.setItem('nm_ref_session', urlRef);
-    } else {
-      /* Read existing stored referral — validate expiry */
-      var stored = localStorage.getItem('nm_ref');
-      window.__refCode = '';
-      if (stored) {
-        try {
-          var parsed = JSON.parse(stored);
-          if (parsed && parsed.code && parsed.expires && Date.now() < parsed.expires) {
-            window.__refCode = parsed.code;
-          } else {
-            /* Expired — clean up to prevent ghost credits */
-            localStorage.removeItem('nm_ref');
-          }
-        } catch(e) {
-          /* Legacy plain-string format — remove it to prevent ghost credits */
-          localStorage.removeItem('nm_ref');
-        }
-      }
-    }
+    if (urlRef) { window.__refCode = urlRef; localStorage.setItem('nm_ref', urlRef); }
+    else { window.__refCode = localStorage.getItem('nm_ref') || ''; }
   } catch(e) { window.__refCode = ''; }
 })();
 
