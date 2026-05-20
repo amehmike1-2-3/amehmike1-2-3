@@ -15,6 +15,37 @@ module.exports = async function handler(req, res) {
 
   try {
 
+    /* ── GET /api/reviews?type=announcements ── */
+    if (req.method === 'GET' && req.query.type === 'announcements') {
+      const rows = await sql`
+        SELECT id, title, content, badge_text, created_at
+        FROM announcements
+        ORDER BY created_at DESC
+        LIMIT 20
+      `;
+      return res.status(200).json({ announcements: rows });
+    }
+
+    /* ── POST /api/reviews?type=announcements  (admin only) ── */
+    if (req.method === 'POST' && req.query.type === 'announcements') {
+      const { title, content, badge_text, adminId } = req.body || {};
+      if (!title || !content)
+        return res.status(400).json({ error: 'title and content are required.' });
+
+      /* Basic admin guard — check caller is the master admin */
+      const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@neyomarket.com';
+      const adminRows = await sql`SELECT id, role FROM users WHERE id = ${String(adminId || '')} LIMIT 1`;
+      const caller = adminRows[0];
+      if (!caller || (caller.role !== 'admin' && String(caller.id) !== 'master_admin_001'))
+        return res.status(403).json({ error: 'Admin only.' });
+
+      await sql`
+        INSERT INTO announcements (title, content, badge_text, created_at)
+        VALUES (${title}, ${content}, ${badge_text || null}, NOW())
+      `;
+      return res.status(201).json({ ok: true });
+    }
+
     /* ── GET /api/reviews?productId=xxx ── */
     if (req.method === 'GET') {
       const productId = req.query.productId;
